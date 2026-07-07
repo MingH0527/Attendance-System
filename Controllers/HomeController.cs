@@ -10,14 +10,3 @@ public class HomeController : Controller
     }
 }
 
-hai
-
-    hai
-
-
-who are you 
-hellllll
-
-
-
-hiii
