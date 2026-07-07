@@ -10,18 +10,5 @@ public class HomeController : Controller
     }
 }
 
-hai
 
-    hai
-
-
-who are you 
-hellllll
-
-        ni shi ivy ma 
-
-        ni zai na li
-
-
-ok
-
+ni hao ma 
