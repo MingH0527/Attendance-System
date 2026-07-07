@@ -9,7 +9,3 @@ public class HomeController : Controller
         return View();
     }
 }
-
-ni hao ma 
-    ni hao
-    ni shi ivy ma 
