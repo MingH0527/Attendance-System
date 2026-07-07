@@ -17,11 +17,11 @@ hai
 
 who are you 
 hellllll
-<<<<<<< HEAD
-        ni shi ivy ma 
-=======
 
+        ni shi ivy ma 
+
+        ni zai na li
 
 
 ok
->>>>>>> 9ce2ff672152ec3ee446655f556db51cf6678d03
+
