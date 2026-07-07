@@ -10,6 +10,5 @@ public class HomeController : Controller
     }
 }
 
-
 ni hao ma 
     ni hao
