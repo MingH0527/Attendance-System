@@ -1,0 +1,37 @@
+﻿@model WebAndMobile.Models.User
+
+<h1>Register</h1>
+
+@if (ViewBag.Error != null)
+{
+    <p style="color:red">@ViewBag.Error</p>
+}
+
+<form method="post">
+    <label>Username</label><br />
+    <input type="text" name="Username" /><br /><br />
+
+    <label>Email</label><br />
+    <input type="email" name="Email" /><br /><br />
+
+    <label>Password</label><br />
+    <input type="password" name="Password" /><br /><br />
+
+    <label>Phone</label><br />
+    <input type="text" name="Phone" /><br /><br />
+
+    <label>Address</label><br />
+    <input type="text" name="Address" /><br /><br />
+
+    <label>Gender</label><br />
+    <select name="Gender">
+        <option value="">-- Select Gender --</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+    </select><br /><br />
+
+    <button type="submit">Register</button>
+</form>
+
+<br />
+<a href="/Account/Login">Already have account? Login</a>
