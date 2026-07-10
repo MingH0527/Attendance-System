@@ -1,37 +1,558 @@
 ﻿@model WebAndMobile.Models.User
 
-<h1>Register</h1>
+@{
+    ViewData["Title"] = "Create Account";
 
-@if (ViewBag.Error != null)
-{
-    <p style="color:red">@ViewBag.Error</p>
+    var firstErrorStep = ViewData.ModelState.IsValid
+        ? 1
+        : (ViewData.ModelState["Password"] != null ||
+           ViewData.ModelState["ConfirmPassword"] != null
+            ? 3
+            : (ViewData.ModelState["Address"] != null ? 2 : 1));
 }
 
-<form method="post">
-    <label>Username</label><br />
-    <input type="text" name="Username" /><br /><br />
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    <label>Email</label><br />
-    <input type="email" name="Email" /><br /><br />
+<link rel="stylesheet"
+      href="~/css/register.css"
+      asp-append-version="true" />
 
-    <label>Password</label><br />
-    <input type="password" name="Password" /><br /><br />
+<div class="register-page">
 
-    <label>Phone</label><br />
-    <input type="text" name="Phone" /><br /><br />
+    <div class="register-shell">
 
-    <label>Address</label><br />
-    <input type="text" name="Address" /><br /><br />
+        <section class="register-side">
 
-    <label>Gender</label><br />
-    <select name="Gender">
-        <option value="">-- Select Gender --</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-    </select><br /><br />
+            <a asp-controller="Home"
+               asp-action="Index"
+               class="back-link">
+                ← Back to home
+            </a>
 
-    <button type="submit">Register</button>
-</form>
+            <div class="side-copy">
 
-<br />
-<a href="/Account/Login">Already have account? Login</a>
+                <span class="eyebrow">
+                    HLIH Attendance System
+                </span>
+
+                <h1>Create your student account</h1>
+
+                <p>
+                    Complete your profile, pin your location and secure
+                    your account in three simple steps.
+                </p>
+
+            </div>
+
+            <div class="side-badge">
+                Student accounts are assigned automatically
+            </div>
+
+        </section>
+
+        <main class="register-card">
+
+            <form id="multiStepForm"
+                  asp-controller="Account"
+                  asp-action="Register"
+                  method="post"
+                  novalidate>
+
+                @Html.AntiForgeryToken()
+
+               <div asp-validation-summary="ModelOnly"
+                     class="form-alert">
+                </div>
+
+                <header class="form-header">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            Registration
+                        </span>
+
+                        <h2 id="stepTitle">
+                            Profile details
+                        </h2>
+
+                    </div>
+
+                    <span class="step-count"
+                          id="stepCount">
+                        Step 1 of 3
+                    </span>
+
+                </header>
+
+                <div class="stepper"
+                     aria-label="Registration progress">
+
+                    <div class="stepper-line">
+                        <span id="progressFill"></span>
+                    </div>
+
+                    <button type="button"
+                            class="step-node active"
+                            data-step-target="1">
+
+                        <span>1</span>
+                        <small>Profile</small>
+
+                    </button>
+
+                    <button type="button"
+                            class="step-node"
+                            data-step-target="2">
+
+                        <span>2</span>
+                        <small>Location</small>
+
+                    </button>
+
+                    <button type="button"
+                            class="step-node"
+                            data-step-target="3">
+
+                        <span>3</span>
+                        <small>Security</small>
+
+                    </button>
+
+                </div>
+
+                <!-- STEP 1 -->
+                <section class="form-step active"
+                         data-step="1">
+
+                    <div class="field-grid">
+
+                        <div class="field full">
+
+                            <label asp-for="Username">
+                                Username
+                            </label>
+
+                            <div class="input-box">
+
+                                <span class="input-icon">
+                                    👤
+                                </span>
+
+                                <input asp-for="Username"
+                                       id="usernameInput"
+                                       placeholder="Enter your username"
+                                       maxlength="30"
+                                       autocomplete="username" />
+
+                            </div>
+
+                            <span asp-validation-for="Username"
+                                  class="field-error">
+                            </span>
+
+                        </div>
+
+                        <div class="field full">
+
+                            <label asp-for="Email">
+                                Gmail address
+                            </label>
+
+                            <div class="input-box">
+
+                                <span class="input-icon">
+                                    ✉
+                                </span>
+
+                                <input asp-for="Email"
+                                       id="emailInput"
+                                       placeholder="example@gmail.com"
+                                       maxlength="100"
+                                       autocomplete="email" />
+
+                            </div>
+
+                            <span asp-validation-for="Email"
+                                  class="field-error">
+                            </span>
+
+                            <small class="field-hint">
+                                Only addresses ending in @@gmail.com
+                                are accepted.
+                            </small>
+
+                        </div>
+
+                        <div class="field full">
+
+                            <label asp-for="Phone">
+                                Phone number
+                            </label>
+
+                            <div class="input-box phone-box">
+
+                                <span class="country-code">
+                                    🇲🇾 +60
+                                </span>
+
+                                <input asp-for="Phone"
+                                       id="phoneInput"
+                                       placeholder="0123456789"
+                                       maxlength="11"
+                                       inputmode="numeric"
+                                       autocomplete="tel" />
+
+                            </div>
+
+                            <span asp-validation-for="Phone"
+                                  class="field-error">
+                            </span>
+
+                            <small class="field-hint">
+                                012–019: 10 digits ·
+                                011: 11 digits ·
+                                must begin with 01.
+                            </small>
+
+                        </div>
+
+                        <fieldset class="field full gender-field">
+
+                            <legend>Gender</legend>
+
+                            <div class="gender-options">
+
+                                <label class="choice-card"
+                                       for="genderMale">
+
+                                    <input type="radio"
+                                           id="genderMale"
+                                           name="Gender"
+                                           value="male"
+                                    @(Model.Gender == "male" ? "checked" : "") />
+
+                                    <span class="choice-mark"></span>
+
+                                    <span>
+                                        <b>Male</b>
+                                        <small>♂</small>
+                                    </span>
+
+                                </label>
+
+                                <label class="choice-card"
+                                       for="genderFemale">
+
+                                    <input type="radio"
+                                           id="genderFemale"
+                                           name="Gender"
+                                           value="female"
+                                    @(Model.Gender == "female" ? "checked" : "") />
+
+                                    <span class="choice-mark"></span>
+
+                                    <span>
+                                        <b>Female</b>
+                                        <small>♀</small>
+                                    </span>
+
+                                </label>
+
+                            </div>
+
+                            <span asp-validation-for="Gender"
+                                  class="field-error">
+                            </span>
+
+                        </fieldset>
+
+                    </div>
+
+                    <div class="form-actions single">
+
+                        <button type="button"
+                                class="btn primary"
+                                id="nextStep1">
+                            Continue to location →
+                        </button>
+
+                    </div>
+
+                </section>
+
+                <!-- STEP 2 -->
+                <section class="form-step"
+                         data-step="2">
+
+                    <div class="location-intro">
+
+                        <div>
+
+                            <h3>Pin your address</h3>
+
+                            <p>
+                                Use your current location or click
+                                anywhere on the map. You can drag the
+                                marker to adjust it.
+                            </p>
+
+                        </div>
+
+                        <button type="button"
+                                class="btn secondary compact"
+                                id="locateMeBtn">
+                            ◎ Use my location
+                        </button>
+
+                    </div>
+
+                    <div class="field">
+
+                        <label asp-for="Address">
+                            Selected address
+                        </label>
+
+                        <div class="input-box">
+
+                            <span class="input-icon">
+                                📍
+                            </span>
+
+                            <input asp-for="Address"
+                                   id="addressInput"
+                                   placeholder="No location selected yet"
+                                   readonly />
+
+                        </div>
+
+                        <span asp-validation-for="Address"
+                              class="field-error">
+                        </span>
+
+                        <span class="field-error"
+                              id="clientLocationError">
+                        </span>
+
+                    </div>
+
+                    <div id="map"
+                         aria-label="Location map">
+                    </div>
+
+                    <input asp-for="Latitude"
+                           type="hidden"
+                           id="latitudeInput" />
+
+                    <input asp-for="Longitude"
+                           type="hidden"
+                           id="longitudeInput" />
+
+                    <div class="form-actions">
+
+                        <button type="button"
+                                class="btn ghost"
+                                data-back="1">
+                            ← Back
+                        </button>
+
+                        <button type="button"
+                                class="btn primary"
+                                id="nextStep2">
+                            Continue to security →
+                        </button>
+
+                    </div>
+
+                </section>
+
+                <!-- STEP 3 -->
+                <section class="form-step"
+                         data-step="3">
+
+                    <div class="field-grid">
+
+                        <div class="field full">
+
+                            <label asp-for="Password">
+                                Password
+                            </label>
+
+                            <div class="input-box">
+
+                                <span class="input-icon">
+                                    🔒
+                                </span>
+
+                                <input asp-for="Password"
+                                       id="passwordInput"
+                                       type="password"
+                                       placeholder="Create a strong password"
+                                       maxlength="15"
+                                       autocomplete="new-password" />
+
+                                <button type="button"
+                                        class="password-toggle"
+                                        data-toggle-password="passwordInput"
+                                        aria-label="Show password">
+                                    Show
+                                </button>
+
+                            </div>
+
+                            <span asp-validation-for="Password"
+                                  class="field-error">
+                            </span>
+
+                        </div>
+
+                        <div class="password-rules"
+                             id="passwordRules">
+
+                            <span data-rule="length">
+                                8–15 characters
+                            </span>
+
+                            <span data-rule="case">
+                                Upper and lowercase
+                            </span>
+
+                            <span data-rule="number">
+                                At least one number
+                            </span>
+
+                            <span data-rule="symbol">
+                                One symbol: @@ $ ! % * ? &amp;
+                            </span>
+
+                        </div>
+
+                        <div class="field full">
+
+                            <label asp-for="ConfirmPassword">
+                                Confirm password
+                            </label>
+
+                            <div class="input-box">
+
+                                <span class="input-icon">
+                                    🛡
+                                </span>
+
+                                <input asp-for="ConfirmPassword"
+                                       id="confirmPasswordInput"
+                                       type="password"
+                                       placeholder="Enter the same password again"
+                                       maxlength="15"
+                                       autocomplete="new-password" />
+
+                                <button type="button"
+                                        class="password-toggle"
+                                        data-toggle-password="confirmPasswordInput"
+                                        aria-label="Show password">
+                                    Show
+                                </button>
+
+                            </div>
+
+                            <span asp-validation-for="ConfirmPassword"
+                                  class="field-error">
+                            </span>
+
+                            <span class="field-error"
+                                  id="confirmClientError">
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="form-actions">
+
+                        <button type="button"
+                                class="btn ghost"
+                                data-back="2">
+                            ← Back
+                        </button>
+
+                        <button type="submit"
+                                class="btn primary"
+                                id="submitButton">
+                            Create account
+                        </button>
+
+                    </div>
+
+                </section>
+
+                <p class="login-link">
+
+                    Already have an account?
+
+                    <a asp-controller="Account"
+                       asp-action="Login">
+                        Log in
+                    </a>
+
+                </p>
+
+            </form>
+
+        </main>
+
+    </div>
+
+</div>
+
+<div class="location-modal-overlay"
+     id="locationModal"
+     hidden>
+
+    <div class="location-modal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="locationModalTitle">
+
+        <div class="modal-icon">
+            📍
+        </div>
+
+        <h3 id="locationModalTitle">
+            Use your current location?
+        </h3>
+
+        <p>
+            This helps place the marker near your address.
+            Your browser will ask for permission.
+        </p>
+
+        <div class="modal-buttons">
+
+            <button type="button"
+                    class="btn ghost"
+                    id="skipLocationButton">
+                Not now
+            </button>
+
+            <button type="button"
+                    class="btn primary"
+                    id="allowLocationButton">
+                Allow location
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    window.registerInitialStep = @firstErrorStep;
+</script>
+
+<script src="~/js/register.js"
+        asp-append-version="true">
+</script>
