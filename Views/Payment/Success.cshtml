@@ -1,0 +1,27 @@
+﻿@{
+    ViewData["Title"] = "Payment Successful";
+}
+
+<link rel="stylesheet" href="~/css/Payment.css" />
+
+<div class="payment-page">
+    <div class="payment-container success-container">
+
+        <div class="ticket-stub"></div>
+
+        <div class="success-icon">
+            <svg viewBox="0 0 52 52" width="56" height="56">
+                <circle cx="26" cy="26" r="25" fill="none" stroke="#2f8f6f" stroke-width="2" />
+                <path fill="none" stroke="#2f8f6f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"
+                      d="M14 27l8 8 16-17" />
+            </svg>
+        </div>
+
+        <span class="eyebrow success-eyebrow">Receipt Confirmed</span>
+        <h1>Payment Successful!</h1>
+        <p class="subtitle">Your payment has been received. A confirmation has been recorded against your student account.</p>
+
+        <a asp-controller="Home" asp-action="Index" class="pay-button back-button">Back Home</a>
+
+    </div>
+</div>

@@ -1,0 +1,119 @@
+﻿@model WebAndMobile.Models.Payment
+
+@{
+    ViewData["Title"] = "Confirm Payment";
+}
+
+<link rel="stylesheet" href="~/css/Payment.css" />
+
+<div class="payment-page">
+    <div class="payment-container">
+
+        <div class="ticket-stub"></div>
+
+        <span class="eyebrow">Attendance System</span>
+        <h1>Confirm Payment</h1>
+        <p class="subtitle">Review the details and choose how you'd like to pay.</p>
+
+        <form asp-action="Pay" method="post" class="payment-form">
+
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+            <!-- Order summary: replaces the old Student ID / Name / typed Amount inputs.
+                 Student identity comes from the logged-in session server-side, not from the form. -->
+            <div class="order-summary">
+                <div class="order-summary__row">
+                    <span class="order-summary__label">Paying for</span>
+                    <span class="order-summary__value">@Model.FeeName</span>
+                </div>
+                <div class="order-summary__row order-summary__row--total">
+                    <span class="order-summary__label">Amount</span>
+                    <span class="order-summary__value order-summary__amount">RM @Model.Amount.ToString("N2")</span>
+                </div>
+            </div>
+
+            <!-- Carried through silently; re-validated against the session on the server, never trusted as-is -->
+            <input type="hidden" asp-for="FeeId" />
+            <input type="hidden" asp-for="FeeName" />
+            <input type="hidden" asp-for="Amount" />
+            <input type="hidden" asp-for="StudentId" />
+            <input type="hidden" asp-for="StudentName" />
+
+            <div class="form-group">
+                <label>Payment Method</label>
+
+                <div class="method-options">
+                    <label class="method-option">
+                        <input type="radio" name="PaymentMethod" value="Online Banking"
+                               checked onchange="showMethodDetails('bank')" />
+                        <span class="method-option__label">🏦 Online Banking</span>
+                    </label>
+                    <div id="details-bank" class="method-details">
+                        <label for="BankName">Select your bank</label>
+                        <select id="BankName" name="BankName">
+                            <option value="">-- Choose a bank --</option>
+                            <option value="Maybank">Maybank</option>
+                            <option value="CIMB">CIMB Bank</option>
+                            <option value="Public Bank">Public Bank</option>
+                            <option value="RHB">RHB Bank</option>
+                            <option value="Hong Leong">Hong Leong Bank</option>
+                        </select>
+                    </div>
+
+                    <label class="method-option">
+                        <input type="radio" name="PaymentMethod" value="Credit Card"
+                               onchange="showMethodDetails('card')" />
+                        <span class="method-option__label">💳 Credit Card</span>
+                    </label>
+                    <div id="details-card" class="method-details" hidden>
+                        <label for="CardName">Name on card</label>
+                        <input type="text" id="CardName" name="CardName" placeholder="As printed on card" autocomplete="cc-name" />
+
+                        <label for="CardNumber">Card number</label>
+                        <input type="text" id="CardNumber" name="CardNumber" placeholder="•••• •••• •••• ••••"
+                               inputmode="numeric" maxlength="19" autocomplete="cc-number" />
+
+                        <div class="card-row">
+                            <div>
+                                <label for="CardExpiry">Expiry</label>
+                                <input type="text" id="CardExpiry" name="CardExpiry" placeholder="MM/YY" autocomplete="cc-exp" />
+                            </div>
+                            <div>
+                                <label for="CardCvv">CVV</label>
+                                <input type="password" id="CardCvv" name="CardCvv" placeholder="•••" maxlength="4" autocomplete="cc-csc" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="method-option">
+                        <input type="radio" name="PaymentMethod" value="TNG eWallet"
+                               onchange="showMethodDetails('ewallet')" />
+                        <span class="method-option__label">📱 TNG eWallet</span>
+                    </label>
+                    <div id="details-ewallet" class="method-details" hidden>
+                        <label for="EwalletPhone">Phone number registered with TNG eWallet</label>
+                        <input type="tel" id="EwalletPhone" name="EwalletPhone" placeholder="e.g. 012-3456789" autocomplete="tel" />
+                    </div>
+                </div>
+                <span asp-validation-for="PaymentMethod" class="field-error"></span>
+            </div>
+
+            <button type="submit" class="pay-button">
+                Pay RM @Model.Amount.ToString("N2")
+            </button>
+
+            <a asp-action="SelectFee" class="back-link">← Choose a different item</a>
+
+            <p class="secure-note">🔒 Your payment details are processed securely.</p>
+
+        </form>
+    </div>
+</div>
+
+<script>
+    function showMethodDetails(method) {
+        document.getElementById('details-bank').hidden = method !== 'bank';
+        document.getElementById('details-card').hidden = method !== 'card';
+        document.getElementById('details-ewallet').hidden = method !== 'ewallet';
+    }
+</script>

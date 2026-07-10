@@ -1,0 +1,507 @@
+﻿
+Payment · CSS
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 100%);
+    min-height: 100vh;
+    margin: 0;
+    color: #1a1a2e;
+}
+
+/* ---------- Page wrapper ---------- */
+
+.payment-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 64px 20px;
+}
+
+/* ---------- Card: styled like a payment ticket / receipt ---------- */
+
+.payment-container {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 40px 36px 32px;
+    box-shadow: 0 20px 45px rgba(30, 58, 92, 0.12);
+    overflow: hidden;
+}
+
+/* perforated stub strip along the top, like a ticket edge */
+.ticket-stub {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: #1e3a5c;
+    -webkit-mask-image: repeating-radial-gradient(circle at 0 3px, transparent 0 3px, black 3.5px 100%);
+    mask-image: repeating-radial-gradient(circle at 0 3px, transparent 0 3px, black 3.5px 100%);
+    -webkit-mask-size: 14px 6px;
+    mask-size: 14px 6px;
+}
+
+.eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #c89b3c;
+    margin-bottom: 8px;
+}
+
+h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: #1e3a5c;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #667085;
+    margin: 0 0 28px;
+}
+
+/* ---------- Form ---------- */
+
+.payment-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #344054;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+}
+
+input,
+select {
+    font-size: 15px;
+    font-family: inherit;
+    padding: 11px 14px;
+    border: 1px solid #d7dce3;
+    border-radius: 10px;
+    background: #fbfcfe;
+    color: #1a1a2e;
+    width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+    input::placeholder {
+        color: #a2a9b5;
+    }
+
+    input:hover,
+    select:hover {
+        border-color: #b7c0cc;
+    }
+
+    input:focus,
+    select:focus,
+    input:focus-visible,
+    select:focus-visible {
+        outline: none;
+        border-color: #1e3a5c;
+        box-shadow: 0 0 0 3px rgba(30, 58, 92, 0.12);
+    }
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23667085'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 34px;
+}
+
+/* Amount field with currency prefix, tabular numbers like a ledger */
+
+.amount-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+    .amount-field .currency {
+        position: absolute;
+        left: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #667085;
+        pointer-events: none;
+    }
+
+    .amount-field input {
+        padding-left: 40px;
+        font-variant-numeric: tabular-nums;
+        font-size: 17px;
+        font-weight: 600;
+    }
+
+/* ---------- Validation ---------- */
+
+.validation-summary ul {
+    margin: 0 0 16px;
+    padding-left: 18px;
+    color: #b3261e;
+    font-size: 13px;
+}
+
+.field-error {
+    color: #b3261e;
+    font-size: 12px;
+    margin-top: 4px;
+    min-height: 14px;
+}
+
+/* ---------- Submit ---------- */
+
+.pay-button {
+    margin-top: 8px;
+    padding: 13px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #1e3a5c;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+}
+
+    .pay-button:hover {
+        background: #16304d;
+    }
+
+    .pay-button:active {
+        transform: translateY(1px);
+    }
+
+    .pay-button:focus-visible {
+        outline: 3px solid rgba(200, 155, 60, 0.6);
+        outline-offset: 2px;
+    }
+
+.secure-note {
+    text-align: center;
+    font-size: 12px;
+    color: #98a2b3;
+    margin: 16px 0 0;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 480px) {
+    .payment-page {
+        padding: 32px 16px;
+    }
+
+    .payment-container {
+        padding: 32px 22px 24px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+}
+
+/* ---------- Success page ---------- */
+
+.success-container {
+    text-align: center;
+}
+
+.success-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.success-eyebrow {
+    color: #2f8f6f;
+}
+
+.success-container .subtitle {
+    margin-bottom: 28px;
+}
+
+.back-button {
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+/* ---------- Fee list (SelectFee page) ---------- */
+
+.fee-list-container {
+    width: 100%;
+    max-width: 560px;
+}
+
+    .fee-list-container .eyebrow {
+        color: #c89b3c;
+    }
+
+    .fee-list-container h1 {
+        font-size: 26px;
+    }
+
+    .fee-list-container .subtitle {
+        margin-bottom: 28px;
+    }
+
+.fee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fee-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #ffffff;
+    border: 1px solid #e3e8ef;
+    border-radius: 14px;
+    padding: 18px 20px;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 4px 14px rgba(30, 58, 92, 0.05);
+    transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+    .fee-card:hover {
+        border-color: #1e3a5c;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(30, 58, 92, 0.1);
+    }
+
+    .fee-card:focus-visible {
+        outline: 3px solid rgba(30, 58, 92, 0.3);
+        outline-offset: 2px;
+    }
+
+.fee-card__icon {
+    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #f3f6fa;
+}
+
+.fee-card--tuition .fee-card__icon {
+    background: #eaf1fb;
+}
+
+.fee-card--library .fee-card__icon {
+    background: #fdf3e3;
+}
+
+.fee-card--hostel .fee-card__icon {
+    background: #eaf7f0;
+}
+
+.fee-card--books .fee-card__icon {
+    background: #f6eefb;
+}
+
+.fee-card__body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.fee-card__name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #1a1a2e;
+}
+
+.fee-card__desc {
+    font-size: 13px;
+    color: #667085;
+    margin-top: 2px;
+}
+
+.fee-card__amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 15px;
+    color: #1e3a5c;
+    white-space: nowrap;
+}
+
+.fee-card__variable {
+    font-weight: 600;
+    font-size: 13px;
+    color: #838fa0;
+}
+
+.fee-card__chevron {
+    font-size: 20px;
+    color: #c3cad4;
+    flex-shrink: 0;
+}
+
+/* ---------- Order summary (Pay confirmation page) ---------- */
+
+.order-summary {
+    background: #f7f9fc;
+    border: 1px solid #e3e8ef;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+}
+
+.order-summary__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 0;
+}
+
+.order-summary__row--total {
+    border-top: 1px dashed #d7dce3;
+    margin-top: 4px;
+    padding-top: 12px;
+}
+
+.order-summary__label {
+    font-size: 13px;
+    color: #667085;
+}
+
+.order-summary__value {
+    font-weight: 600;
+    font-size: 15px;
+    color: #1a1a2e;
+}
+
+.order-summary__amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e3a5c;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Payment method (card-style radio group) ---------- */
+
+.method-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.method-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #d7dce3;
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+    .method-option:hover {
+        border-color: #b7c0cc;
+    }
+
+    .method-option input[type="radio"] {
+        width: auto;
+        accent-color: #1e3a5c;
+    }
+
+    .method-option:has(input:checked) {
+        border-color: #1e3a5c;
+        background: #f3f6fa;
+    }
+
+.method-option__label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a2e;
+}
+
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #667085;
+    text-decoration: none;
+}
+
+    .back-link:hover {
+        color: #1e3a5c;
+        text-decoration: underline;
+    }
+
+.method-details {
+    margin: -2px 0 4px 0;
+    padding: 14px 14px 4px;
+    border: 1px dashed #d7dce3;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    background: #fbfcfe;
+    display: flex;
+    flex-direction: column;
+}
+
+    .method-details label {
+        font-size: 12px;
+        color: #667085;
+        margin-bottom: 4px;
+    }
+
+    .method-details input,
+    .method-details select {
+        margin-bottom: 12px;
+        font-size: 14px;
+        padding: 9px 12px;
+    }
+
+.card-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .pay-button,
+    input,
+    select,
+    .fee-card,
+    .method-option {
+        transition: none;
+    }
+}

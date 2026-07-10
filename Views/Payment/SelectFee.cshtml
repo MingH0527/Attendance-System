@@ -1,0 +1,60 @@
+﻿@model List<WebAndMobile.Models.FeeItem>
+
+@{
+    ViewData["Title"] = "Fee Payment";
+}
+
+<link rel="stylesheet" href="~/css/Payment.css" />
+
+<div class="payment-page">
+    <div class="fee-list-container">
+
+        <span class="eyebrow">Attendance System</span>
+        <h1>What would you like to pay?</h1>
+        <p class="subtitle">Select an item below. Your student details are filled in automatically.</p>
+
+        <div class="fee-list">
+            @foreach (var fee in Model)
+            {
+                <a asp-action="Pay" asp-route-feeId="@fee.Id" class="fee-card fee-card--@fee.Category.ToLower()">
+                    <div class="fee-card__icon">
+                        @switch (fee.Category)
+                        {
+                            case "Tuition":
+                                <span>🎓</span>
+                                break;
+                            case "Library":
+                                <span>📚</span>
+                                break;
+                            case "Hostel":
+                                <span>🏠</span>
+                                break;
+                            case "Books":
+                                <span>📖</span>
+                                break;
+                            default:
+                                <span>💳</span>
+                                break;
+                        }
+                    </div>
+                    <div class="fee-card__body">
+                        <span class="fee-card__name">@fee.Name</span>
+                        <span class="fee-card__desc">@fee.Description</span>
+                    </div>
+                    <div class="fee-card__amount">
+                        @if (fee.AmountIsFixed)
+                        {
+                            <span>RM @fee.Amount.ToString("N2")</span>
+                        }
+                        else
+                        {
+                            <span class="fee-card__variable">from RM @fee.Amount.ToString("N2")</span>
+                        }
+                    </div>
+                    <div class="fee-card__chevron">›</div>
+                </a>
+            }
+        </div>
+
+    </div>
+</div>
