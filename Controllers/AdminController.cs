@@ -8,4 +8,9 @@ public class AdminController : Controller
     {
         return Content("Welcome Admin");
     }
+
+    public IActionResult Timetable()
+    {
+        return Content("Welcome Admin");
+    }
 }
