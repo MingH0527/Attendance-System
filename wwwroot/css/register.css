@@ -671,3 +671,10 @@ body {
         padding-inline: 10px;
     }
 }
+.validation-summary-valid {
+    display: none;
+}
+
+.validation-summary-errors {
+    display: block;
+}

@@ -1,11 +1,16 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using WebAndMobile;
 using WebAndMobile.Models;
 
-var builder =
-    WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
+var builder =
+    WebApplication.CreateBuilder(
+        args
+    );
+
+builder.Services
+    .AddControllersWithViews();
 
 builder.Services.AddDbContext<DB>(
     options =>
@@ -22,7 +27,22 @@ builder.Services.AddScoped<
     PasswordHasher<User>
 >();
 
-var app = builder.Build();
+builder.Services.AddScoped<
+    GmailServiceHelper
+>();
+
+var app =
+    builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler(
+        "/Home/Error"
+    );
+
+    app.UseHsts();
+}
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();

@@ -65,3 +65,7 @@ body {
 .btn-login:hover {
     background: #15803d;
 }
+.btn-timetable {
+    background: #16a34a;
+    color: white;
+}
