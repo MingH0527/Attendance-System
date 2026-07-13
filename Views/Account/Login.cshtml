@@ -1,24 +1,147 @@
-﻿<h1>Login</h1>
-
-@if (ViewBag.Message != null)
-{
-    <p style="color:green">@ViewBag.Message</p>
+﻿@{
+    ViewData["Title"] = "Login";
 }
 
-@if (ViewBag.Error != null)
-{
-    <p style="color:red">@ViewBag.Error</p>
-}
+<link rel="stylesheet"
+      href="~/css/login.css"
+      asp-append-version="true" />
 
-<form method="post">
-    <label>Username</label><br />
-    <input type="text" name="username" /><br /><br />
+<div class="login-page">
 
-    <label>Password</label><br />
-    <input type="password" name="password" /><br /><br />
+    <div class="login-card">
 
-    <button type="submit">Login</button>
-</form>
+        <!-- Back Button -->
+        <a href="/"
+           class="back-link">
+            <span class="back-icon">↩</span>
+            BACK
+        </a>
 
-<br />
-<a href="/Account/Register">Register</a>
+        <h1 class="login-title">LOGIN</h1>
+
+        @if (ViewBag.Message != null)
+        {
+            <div class="login-message success-message">
+                @ViewBag.Message
+            </div>
+        }
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="login-message error-message">
+                @ViewBag.Error
+            </div>
+        }
+
+        <form asp-controller="Account"
+              asp-action="Login"
+              method="post"
+              id="loginForm">
+
+            @Html.AntiForgeryToken()
+
+            <!-- Username -->
+            <div class="form-group">
+
+                <label for="username"
+                       class="form-label">
+                    <span class="label-icon username-icon">👤</span>
+                    Username
+                </label>
+
+                <input type="text"
+                       id="username"
+                       name="username"
+                       class="form-input"
+                       placeholder="Please enter your name"
+                       autocomplete="username"
+                       required />
+
+                <span class="field-error"
+                      id="usernameError"></span>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+
+                <label for="password"
+                       class="form-label">
+                    <span class="label-icon">🔒</span>
+                    Password
+                </label>
+
+                <div class="password-container">
+
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="form-input password-input"
+                           placeholder="Please enter your password"
+                           autocomplete="current-password"
+                           required />
+
+                    <button type="button"
+                            class="password-toggle"
+                            id="passwordToggle"
+                            aria-label="Show password">
+                        🙈
+                    </button>
+
+                </div>
+
+                <span class="field-error"
+                      id="passwordError"></span>
+            </div>
+
+            <!-- Remember Me and Forgot Password -->
+            <div class="login-options">
+
+                <label class="remember-container">
+
+                    <input type="checkbox"
+                           id="rememberMe"
+                           name="rememberMe"
+                           value="true" />
+
+                    <span class="custom-checkbox"></span>
+
+                    <span class="remember-text">
+                        Remember me
+                    </span>
+
+                </label>
+
+                <a asp-controller="Account"
+                   asp-action="ForgotPassword"
+                   class="forgot-link">
+                    Forgot password?
+                </a>
+
+            </div>
+
+            <!-- Login Button -->
+            <button type="submit"
+                    class="login-button"
+                    id="loginButton">
+                LOGIN
+            </button>
+
+        </form>
+
+        <!-- Register Link -->
+        <p class="register-text">
+            Don't have an account?
+
+            <a asp-controller="Account"
+               asp-action="Register"
+               class="register-link">
+                Register Now!
+            </a>
+        </p>
+
+    </div>
+
+</div>
+
+<script src="~/js/login.js"
+        asp-append-version="true"></script>

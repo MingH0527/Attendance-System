@@ -12,8 +12,8 @@ using WebAndMobile.Models;
 namespace WebAndMobile.Migrations
 {
     [DbContext(typeof(DB))]
-    [Migration("20260711154208_AddOtpFields")]
-    partial class AddOtpFields
+    [Migration("20260713113929_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

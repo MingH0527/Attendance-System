@@ -563,7 +563,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    window.registerInitialStep = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(firstErrorStep));
+    window.registerInitialStep = @firstErrorStep;
 </script>
 
 <script src="~/js/register.js"
