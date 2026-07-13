@@ -25,8 +25,6 @@ public class User
     [MaxLength(500)]
     public string Address { get; set; } = "";
 
-    // GOAL 3 from the PHP register page: address is picked on a map,
-    // so we persist the coordinates alongside the free-text address.
     public double? Latitude { get; set; }
 
     public double? Longitude { get; set; }
@@ -35,12 +33,10 @@ public class User
     [MaxLength(10)]
     public string Gender { get; set; } = "";
 
-    // Stores the HASHED password (via IPasswordHasher<User>), never plaintext.
     [Required]
     [MaxLength(255)]
     public string Password { get; set; } = "";
 
-    // Only used for form validation - never saved to the database.
     [NotMapped]
     public string ConfirmPassword { get; set; } = "";
 
@@ -51,8 +47,25 @@ public class User
     [MaxLength(255)]
     public string Avatar { get; set; } = "default.png";
 
+    [Required]
     [MaxLength(20)]
-    public string Status { get; set; } = "Active";
+    public string Status { get; set; } = "Pending";
 
-    public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedDate { get; set; } =
+        DateTime.UtcNow;
+
+    // OTP verification fields
+
+    public bool IsEmailVerified { get; set; } =
+        false;
+
+    [MaxLength(500)]
+    public string? OtpHash { get; set; }
+
+    public DateTime? OtpExpiresAt { get; set; }
+
+    public DateTime? OtpLastSentAt { get; set; }
+
+    public int OtpAttemptCount { get; set; } =
+        0;
 }

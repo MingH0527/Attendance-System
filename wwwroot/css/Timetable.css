@@ -1,0 +1,255 @@
+﻿.tt-page {
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.tt-tabs {
+    margin-bottom: 12px;
+}
+
+.tt-tab {
+    padding: 8px 16px;
+    border: 1px solid #ccc;
+    background: #f4f4f4;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+}
+
+    .tt-tab.active {
+        background: #2c6fbb;
+        color: #fff;
+        border-color: #2c6fbb;
+    }
+
+.tt-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.tt-layout {
+    display: flex;
+    gap: 20px;
+}
+
+.tt-teacher-panel {
+    width: 200px;
+    flex-shrink: 0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    background: #fafafa;
+}
+
+.tt-hint {
+    font-size: 12px;
+    color: #777;
+}
+
+.tt-teacher-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+    .tt-teacher-list li {
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        background: #2c6fbb;
+        color: #fff;
+        border-radius: 4px;
+        cursor: grab;
+        font-size: 14px;
+    }
+
+        .tt-teacher-list li:active {
+            cursor: grabbing;
+        }
+
+.tt-grid-wrapper {
+    flex: 1;
+    overflow-x: auto;
+}
+
+.tt-grid {
+    border-collapse: collapse;
+    width: 100%;
+    background: #fff;
+}
+
+    .tt-grid th, .tt-grid td {
+        border: 1px solid #ddd;
+        padding: 0;
+        text-align: center;
+        vertical-align: top;
+    }
+
+    .tt-grid th {
+        background: #eef3fa;
+        padding: 8px 4px;
+        font-size: 13px;
+    }
+
+.tt-day-label {
+    background: #eef3fa;
+    font-weight: bold;
+    width: 90px;
+    font-size: 13px;
+}
+
+.tt-cell {
+    min-width: 100px;
+    height: 60px;
+    position: relative;
+}
+
+    .tt-cell.drag-over {
+        background: #dff0d8;
+    }
+
+.tt-lesson-block {
+    background: #4caf50;
+    color: #fff;
+    font-size: 11px;
+    height: 100%;
+    padding: 4px;
+    box-sizing: border-box;
+    cursor: pointer;
+    text-align: left;
+    overflow: hidden;
+}
+
+    .tt-lesson-block .course {
+        font-weight: bold;
+        display: block;
+    }
+
+/* Modal */
+.tt-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.tt-modal {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    width: 380px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+    .tt-modal label {
+        display: block;
+        margin-top: 10px;
+        margin-bottom: 4px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    .tt-modal input, .tt-modal select {
+        width: 100%;
+        padding: 6px;
+        box-sizing: border-box;
+    }
+
+.tt-time-row {
+    display: flex;
+    gap: 10px;
+}
+
+    .tt-time-row > div {
+        flex: 1;
+    }
+
+.tt-modal-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.tt-btn-primary {
+    background: #2c6fbb;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tt-btn-secondary {
+    background: #ccc;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tt-btn-danger {
+    background: #d9534f;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: auto;
+}
+
+.tt-error {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.tt-lookup-columns {
+    display: flex;
+    gap: 16px;
+}
+
+    .tt-lookup-columns > div {
+        flex: 1;
+    }
+
+.tt-lookup-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px 0;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+    .tt-lookup-list li {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 6px;
+        font-size: 13px;
+        border-bottom: 1px solid #eee;
+    }
+
+        .tt-lookup-list li button {
+            border: none;
+            background: none;
+            color: #d9534f;
+            cursor: pointer;
+        }
+
+.tt-lookup-add {
+    display: flex;
+    gap: 4px;
+}
+
+    .tt-lookup-add input {
+        flex: 1;
+        padding: 4px;
+    }

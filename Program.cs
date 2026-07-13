@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using WebAndMobile;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,13 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
+builder.Services.AddScoped<GmailServiceHelper>();
+
+builder.Services.AddScoped<
+    ITimetableValidationService,
+    TimetableValidationService
+>();
 
 var app = builder.Build();
 

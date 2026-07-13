@@ -3,12 +3,21 @@
 @{
     ViewData["Title"] = "Create Account";
 
-    var firstErrorStep = ViewData.ModelState.IsValid
-        ? 1
-        : (ViewData.ModelState["Password"] != null ||
-           ViewData.ModelState["ConfirmPassword"] != null
-            ? 3
-            : (ViewData.ModelState["Address"] != null ? 2 : 1));
+    var firstErrorStep =
+        ViewData["RegisterStep"] is int forcedStep
+            ? forcedStep
+            : ViewData.ModelState.IsValid
+                ? 1
+                : (
+                    ViewData.ModelState["Password"] != null ||
+                    ViewData.ModelState["ConfirmPassword"] != null
+                        ? 3
+                        : (
+                            ViewData.ModelState["Address"] != null
+                                ? 2
+                                : 1
+                        )
+                );
 }
 
 <link rel="stylesheet"
@@ -57,13 +66,17 @@
                   asp-controller="Account"
                   asp-action="Register"
                   method="post"
+                  data-initial-step="@firstErrorStep"
                   novalidate>
 
                 @Html.AntiForgeryToken()
 
-               <div asp-validation-summary="ModelOnly"
-                     class="form-alert">
-                </div>
+                @if (!string.IsNullOrWhiteSpace(ViewBag.Error as string))
+                {
+                    <div class="form-alert">
+                        @ViewBag.Error
+                    </div>
+                }
 
                 <header class="form-header">
 

@@ -1,10 +1,13 @@
 ﻿(() => {
     "use strict";
 
+    console.log("Register JS loaded");
+
     const form =
         document.getElementById("multiStepForm");
 
     if (!form) {
+        console.log("Register JS: #multiStepForm not found on this page.");
         return;
     }
 
@@ -966,6 +969,20 @@
     form.addEventListener(
         "submit",
         event => {
+            console.log("Create account clicked / form submit triggered");
+            console.log("Current step:", currentStep);
+
+            console.log("===== RAW DOM VALUES AT SUBMIT TIME =====");
+            console.log("username.value:", JSON.stringify(username?.value));
+            console.log("email.value:", JSON.stringify(email?.value));
+            console.log("phone.value:", JSON.stringify(phone?.value));
+            console.log("address.value:", JSON.stringify(address?.value));
+            console.log("latitude.value:", JSON.stringify(latitude?.value));
+            console.log("longitude.value:", JSON.stringify(longitude?.value));
+            console.log("password.value length:", (password?.value || "").length);
+            console.log("confirmPassword.value length:", (confirmPassword?.value || "").length);
+            console.log("==========================================");
+
             const step1Valid =
                 validateStep1();
 
@@ -980,7 +997,15 @@
                 step2Valid &&
                 step3Valid;
 
+            console.log(
+                "Client validation -> step1:", step1Valid,
+                "step2:", step2Valid,
+                "step3:", step3Valid
+            );
+
             if (!allValid) {
+                console.log("Client validation failed. Submission blocked, staying client-side.");
+
                 event.preventDefault();
 
                 if (!step1Valid) {
@@ -994,6 +1019,16 @@
                 }
 
                 return;
+            }
+
+            console.log("Client validation passed. Submitting form to server (POST /Account/Register)...");
+
+            const formData = new FormData(form);
+
+            console.log("===== FINAL FORM DATA =====");
+
+            for (const [key, value] of formData.entries()) {
+                console.log(key, value);
             }
 
             closeLocationModal();
