@@ -30,7 +30,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseSession();   // 必须在 UseRouting 后
+app.UseSession(); // 必须在 UseRouting 后
 
 app.UseAuthorization();
 
