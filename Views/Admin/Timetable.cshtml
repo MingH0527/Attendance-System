@@ -1,1 +1,55 @@
-﻿
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+    <header>
+        <h1>Timetable</h1>
+        <p class="hint">Click to add subject and teacher</p>
+    </header>
+
+    <div class="table-wrapper">
+        <table id="timetable">
+            <thead>
+                <tr id="headerRow">
+                    <th class="time-col">时间</th>
+                    <
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+      
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 弹出编辑框 -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <div class="modal">
+            <h2 id="modalTitle">Edit</h2>
+            <label>
+                Teacher
+                <input type="text" id="teacherInput" placeholder="Example：Mr Wong">
+            </label>
+            <label>
+                科目
+                <input type="text" id="subjectInput" placeholder="Example：Mathematics">
+            </label>
+            <div class="modal-buttons">
+                <button id="clearBtn" class="btn btn-danger">Clear</button>
+                <button id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                <button id="saveBtn" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/timetable.js"></script>
+</body>
+</html>
