@@ -66,6 +66,7 @@
                   asp-controller="Account"
                   asp-action="Register"
                   method="post"
+                  autocomplete="off"
                   data-initial-step="@firstErrorStep"
                   novalidate>
 
@@ -157,7 +158,7 @@
                                        id="usernameInput"
                                        placeholder="Enter your username"
                                        maxlength="30"
-                                       autocomplete="username" />
+                                       autocomplete="off" />
 
                             </div>
 
@@ -183,7 +184,7 @@
                                        id="emailInput"
                                        placeholder="example@gmail.com"
                                        maxlength="100"
-                                       autocomplete="email" />
+                                       autocomplete="off" />
 
                             </div>
 
@@ -215,7 +216,7 @@
                                        placeholder="0123456789"
                                        maxlength="11"
                                        inputmode="numeric"
-                                       autocomplete="tel" />
+                                       autocomplete="off" />
 
                             </div>
 
@@ -345,8 +346,16 @@
                         </span>
 
                         <span class="field-error"
-                              id="clientLocationError">
+                              id="clientLocationError"
+                              role="status"
+                              aria-live="polite">
                         </span>
+
+                        <small class="field-hint"
+                               id="locationAccuracyInfo"
+                               role="status"
+                               aria-live="polite">
+                        </small>
 
                     </div>
 

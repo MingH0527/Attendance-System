@@ -3,17 +3,24 @@
 
     console.log("Register JS loaded");
 
+    // ==================================================
+    // FORM
+    // ==================================================
+
     const form =
         document.getElementById("multiStepForm");
 
     if (!form) {
-        console.log("Register JS: #multiStepForm not found on this page.");
+        console.log(
+            "Register JS: #multiStepForm not found."
+        );
+
         return;
     }
 
-    // ==============================
-    // Form steps
-    // ==============================
+    // ==================================================
+    // FORM STEPS
+    // ==================================================
 
     const steps = [
         ...document.querySelectorAll(".form-step")
@@ -23,16 +30,16 @@
         ...document.querySelectorAll(".step-node")
     ];
 
-    const title =
+    const stepTitle =
         document.getElementById("stepTitle");
 
-    const count =
+    const stepCount =
         document.getElementById("stepCount");
 
     const progressFill =
         document.getElementById("progressFill");
 
-    const titles = [
+    const stepTitles = [
         "Profile details",
         "Location details",
         "Account security"
@@ -41,9 +48,9 @@
     let currentStep =
         Number(window.registerInitialStep || 1);
 
-    // ==============================
-    // Inputs
-    // ==============================
+    // ==================================================
+    // INPUTS
+    // ==================================================
 
     const username =
         document.getElementById("usernameInput");
@@ -64,23 +71,34 @@
         document.getElementById("longitudeInput");
 
     const locationError =
-        document.getElementById("clientLocationError");
+        document.getElementById(
+            "clientLocationError"
+        );
+
+    const locationAccuracyInfo =
+        document.getElementById(
+            "locationAccuracyInfo"
+        );
 
     const password =
         document.getElementById("passwordInput");
 
     const confirmPassword =
-        document.getElementById("confirmPasswordInput");
+        document.getElementById(
+            "confirmPasswordInput"
+        );
 
     const confirmError =
-        document.getElementById("confirmClientError");
+        document.getElementById(
+            "confirmClientError"
+        );
 
     const submitButton =
         document.getElementById("submitButton");
 
-    // ==============================
-    // Buttons
-    // ==============================
+    // ==================================================
+    // BUTTONS
+    // ==================================================
 
     const nextStep1Button =
         document.getElementById("nextStep1");
@@ -101,9 +119,9 @@
             "skipLocationButton"
         );
 
-    // ==============================
-    // Location modal
-    // ==============================
+    // ==================================================
+    // LOCATION MODAL
+    // ==================================================
 
     const locationModal =
         document.getElementById(
@@ -111,29 +129,27 @@
         );
 
     function openLocationModal() {
-        if (!locationModal) {
-            return;
+        if (locationModal) {
+            locationModal.hidden = false;
         }
-
-        locationModal.hidden = false;
     }
 
     function closeLocationModal() {
-        if (!locationModal) {
-            return;
+        if (locationModal) {
+            locationModal.hidden = true;
         }
-
-        locationModal.hidden = true;
     }
 
-    // Always hide modal when Register first loads
     closeLocationModal();
 
-    // ==============================
-    // Custom validation error
-    // ==============================
+    // ==================================================
+    // GENERAL ERROR HELPERS
+    // ==================================================
 
-    function setCustomError(input, message) {
+    function setCustomError(
+        input,
+        message
+    ) {
         if (!input) {
             return;
         }
@@ -143,23 +159,53 @@
         );
 
         const field =
-            input.closest(".field, fieldset");
+            input.closest(
+                ".field, fieldset"
+            );
 
-        const error =
-            field?.querySelector(".field-error");
+        const errorElement =
+            field?.querySelector(
+                ".field-error"
+            );
 
         if (
-            error &&
-            !error.dataset.serverError
+            errorElement &&
+            !errorElement.dataset.serverError
         ) {
-            error.textContent =
+            errorElement.textContent =
                 message || "";
         }
     }
 
-    // ==============================
-    // Show selected step
-    // ==============================
+    function setLocationMessage(
+        message,
+        isError = false
+    ) {
+        if (!locationError) {
+            return;
+        }
+
+        locationError.textContent =
+            message || "";
+
+        locationError.classList.toggle(
+            "location-danger",
+            Boolean(message && isError)
+        );
+
+        locationError.classList.toggle(
+            "location-warning",
+            Boolean(message && !isError)
+        );
+    }
+
+    function clearLocationMessage() {
+        setLocationMessage("");
+    }
+
+    // ==================================================
+    // SHOW STEP
+    // ==================================================
 
     function showStep(number) {
         currentStep =
@@ -169,12 +215,12 @@
             );
 
         steps.forEach(step => {
-            const stepNumber =
+            const numberOfStep =
                 Number(step.dataset.step);
 
             step.classList.toggle(
                 "active",
-                stepNumber === currentStep
+                numberOfStep === currentStep
             );
         });
 
@@ -193,19 +239,21 @@
             );
         });
 
-        if (title) {
-            title.textContent =
-                titles[currentStep - 1];
+        if (stepTitle) {
+            stepTitle.textContent =
+                stepTitles[currentStep - 1];
         }
 
-        if (count) {
-            count.textContent =
+        if (stepCount) {
+            stepCount.textContent =
                 `Step ${currentStep} of 3`;
         }
 
         if (progressFill) {
             progressFill.style.width =
-                `${((currentStep - 1) / 2) * 100}%`;
+                `${((currentStep - 1) / 2) *
+                100
+                }%`;
         }
 
         window.scrollTo({
@@ -213,8 +261,6 @@
             behavior: "smooth"
         });
 
-        // Leaflet map needs resizing after
-        // its hidden step becomes visible
         if (currentStep === 2) {
             setTimeout(() => {
                 map?.invalidateSize();
@@ -222,9 +268,9 @@
         }
     }
 
-    // ==============================
-    // Step 1 validation
-    // ==============================
+    // ==================================================
+    // STEP 1 VALIDATION
+    // ==================================================
 
     function validateStep1() {
         let valid = true;
@@ -239,7 +285,6 @@
         setCustomError(email, "");
         setCustomError(phone, "");
 
-        // Username
         if (!username?.value.trim()) {
             setCustomError(
                 username,
@@ -247,8 +292,8 @@
             );
 
             valid = false;
-
-        } else if (
+        }
+        else if (
             username.value.trim().length > 30
         ) {
             setCustomError(
@@ -259,7 +304,6 @@
             valid = false;
         }
 
-        // Email
         if (!email?.value.trim()) {
             setCustomError(
                 email,
@@ -267,8 +311,8 @@
             );
 
             valid = false;
-
-        } else if (
+        }
+        else if (
             !gmailPattern.test(
                 email.value.trim()
             )
@@ -281,7 +325,6 @@
             valid = false;
         }
 
-        // Phone
         if (!phone?.value.trim()) {
             setCustomError(
                 phone,
@@ -289,8 +332,8 @@
             );
 
             valid = false;
-
-        } else if (
+        }
+        else if (
             !phonePattern.test(
                 phone.value.trim()
             )
@@ -303,7 +346,6 @@
             valid = false;
         }
 
-        // Gender
         const gender =
             form.querySelector(
                 'input[name="Gender"]:checked'
@@ -321,8 +363,8 @@
             }
 
             valid = false;
-
-        } else if (genderError) {
+        }
+        else if (genderError) {
             genderError.textContent = "";
         }
 
@@ -334,38 +376,51 @@
         return valid;
     }
 
-    // ==============================
-    // Step 2 validation
-    // ==============================
+    // ==================================================
+    // STEP 2 VALIDATION
+    // ==================================================
 
     function validateStep2() {
-        const hasAddress =
-            Boolean(address?.value.trim());
+        const addressValue =
+            address?.value.trim() || "";
 
-        const hasLatitude =
-            Boolean(latitude?.value);
+        const latitudeValue =
+            latitude?.value.trim() || "";
 
-        const hasLongitude =
-            Boolean(longitude?.value);
+        const longitudeValue =
+            longitude?.value.trim() || "";
+
+        const invalidAddressValues = [
+            "Finding address…",
+            "Invalid location",
+            "Address not found",
+            "Error fetching address"
+        ];
 
         const valid =
-            hasAddress &&
-            hasLatitude &&
-            hasLongitude;
+            Boolean(addressValue) &&
+            Boolean(latitudeValue) &&
+            Boolean(longitudeValue) &&
+            !invalidAddressValues.includes(
+                addressValue
+            );
 
-        if (locationError) {
-            locationError.textContent =
-                valid
-                    ? ""
-                    : "Please choose a location on the map before continuing.";
+        if (!valid) {
+            setLocationMessage(
+                "Please select a valid residential or building location before continuing.",
+                true
+            );
+        }
+        else {
+            clearLocationMessage();
         }
 
         return valid;
     }
 
-    // ==============================
-    // Password rules
-    // ==============================
+    // ==================================================
+    // PASSWORD RULES
+    // ==================================================
 
     const passwordRules = {
         length: value =>
@@ -387,19 +442,24 @@
         const value =
             password?.value || "";
 
-        Object.entries(passwordRules)
-            .forEach(([name, test]) => {
+        Object.entries(
+            passwordRules
+        ).forEach(([name, test]) => {
+            const ruleElement =
                 document.querySelector(
                     `[data-rule="${name}"]`
-                )?.classList.toggle(
-                    "valid",
-                    test(value)
                 );
-            });
+
+            ruleElement?.classList.toggle(
+                "valid",
+                test(value)
+            );
+        });
 
         const allValid =
-            Object.values(passwordRules)
-                .every(test => test(value));
+            Object.values(
+                passwordRules
+            ).every(test => test(value));
 
         if (!value) {
             setCustomError(password, "");
@@ -416,9 +476,9 @@
         return allValid;
     }
 
-    // ==============================
-    // Step 3 validation
-    // ==============================
+    // ==================================================
+    // STEP 3 VALIDATION
+    // ==================================================
 
     function validateStep3() {
         let valid = true;
@@ -436,8 +496,8 @@
             );
 
             valid = false;
-
-        } else if (!updatePasswordRules()) {
+        }
+        else if (!updatePasswordRules()) {
             valid = false;
         }
 
@@ -452,8 +512,8 @@
             }
 
             valid = false;
-
-        } else if (
+        }
+        else if (
             confirmValue !== passwordValue
         ) {
             if (confirmError) {
@@ -467,9 +527,9 @@
         return valid;
     }
 
-    // ==============================
-    // Input events
-    // ==============================
+    // ==================================================
+    // INPUT EVENTS
+    // ==================================================
 
     phone?.addEventListener(
         "input",
@@ -529,8 +589,8 @@
                     confirmError.textContent =
                         "Passwords do not match.";
                 }
-
-            } else if (confirmError) {
+            }
+            else if (confirmError) {
                 confirmError.textContent = "";
             }
         }
@@ -556,9 +616,9 @@
         }
     );
 
-    // ==============================
-    // Step navigation
-    // ==============================
+    // ==================================================
+    // STEP NAVIGATION
+    // ==================================================
 
     nextStep1Button?.addEventListener(
         "click",
@@ -567,13 +627,8 @@
                 return;
             }
 
-            // Enter Step 2 first
             showStep(2);
 
-            /*
-             * Only show the location popup
-             * after the user reaches Step 2.
-             */
             if (
                 !latitude?.value ||
                 !longitude?.value
@@ -596,25 +651,26 @@
         }
     );
 
-    document.querySelectorAll("[data-back]")
-        .forEach(button => {
-            button.addEventListener(
-                "click",
-                () => {
-                    closeLocationModal();
+    document.querySelectorAll(
+        "[data-back]"
+    ).forEach(button => {
+        button.addEventListener(
+            "click",
+            () => {
+                closeLocationModal();
 
-                    showStep(
-                        Number(
-                            button.dataset.back
-                        )
-                    );
-                }
-            );
-        });
+                showStep(
+                    Number(
+                        button.dataset.back
+                    )
+                );
+            }
+        );
+    });
 
-    // ==============================
-    // Password show and hide
-    // ==============================
+    // ==================================================
+    // PASSWORD SHOW / HIDE
+    // ==================================================
 
     document.querySelectorAll(
         "[data-toggle-password]"
@@ -632,22 +688,22 @@
                     return;
                 }
 
-                const showing =
+                const currentlyShowing =
                     input.type === "text";
 
                 input.type =
-                    showing
+                    currentlyShowing
                         ? "password"
                         : "text";
 
                 button.textContent =
-                    showing
+                    currentlyShowing
                         ? "Show"
                         : "Hide";
 
                 button.setAttribute(
                     "aria-label",
-                    showing
+                    currentlyShowing
                         ? "Show password"
                         : "Hide password"
                 );
@@ -655,54 +711,108 @@
         );
     });
 
-    // ==============================
-    // Map setup
-    // ==============================
+    // ==================================================
+    // MAP CONFIGURATION
+    // ==================================================
 
-    let map;
-    let marker;
+    const LOCATION_CONFIG = {
+        defaultLatitude: 5.4164,
+        defaultLongitude: 100.3327,
+        defaultZoom: 13,
+        selectedZoom: 17,
 
-    if (
-        window.L &&
-        document.getElementById("map")
-    ) {
-        const savedLat =
+        excellentAccuracy: 30,
+        acceptableAccuracy: 100,
+        maximumAcceptedAccuracy: 300,
+
+        minimumSamples: 3,
+        maximumSamples: 10,
+        watchTimeoutMs: 20000
+    };
+
+    let map = null;
+    let marker = null;
+    let accuracyCircle = null;
+    let locationWatchId = null;
+
+    /*
+     * Used to prevent an older reverse-geocoding
+     * request from overwriting a newer marker position.
+     */
+    let reverseGeocodeRequestNumber = 0;
+
+    // ==================================================
+    // MAP INITIALISATION
+    // ==================================================
+
+    function initialiseMap() {
+        const mapElement =
+            document.getElementById("map");
+
+        if (!mapElement) {
+            return;
+        }
+
+        if (!window.L) {
+            setLocationMessage(
+                "The map library failed to load. Please refresh the page.",
+                true
+            );
+
+            return;
+        }
+
+        const savedLatitude =
             Number(latitude?.value);
 
-        const savedLng =
+        const savedLongitude =
             Number(longitude?.value);
 
         const hasSavedLocation =
-            Number.isFinite(savedLat) &&
-            Number.isFinite(savedLng) &&
-            savedLat !== 0 &&
-            savedLng !== 0;
+            Number.isFinite(savedLatitude) &&
+            Number.isFinite(savedLongitude) &&
+            savedLatitude !== 0 &&
+            savedLongitude !== 0;
 
-        const start =
+        const startingPoint =
             hasSavedLocation
-                ? [savedLat, savedLng]
-                : [4.2105, 101.9758];
+                ? [
+                    savedLatitude,
+                    savedLongitude
+                ]
+                : [
+                    LOCATION_CONFIG
+                        .defaultLatitude,
 
-        map = L.map("map").setView(
-            start,
-            hasSavedLocation ? 15 : 6
-        );
+                    LOCATION_CONFIG
+                        .defaultLongitude
+                ];
+
+        map =
+            L.map("map").setView(
+                startingPoint,
+                hasSavedLocation
+                    ? LOCATION_CONFIG.selectedZoom
+                    : LOCATION_CONFIG.defaultZoom
+            );
 
         L.tileLayer(
             "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
             {
                 maxZoom: 19,
+
                 attribution:
                     "&copy; OpenStreetMap contributors"
             }
         ).addTo(map);
 
-        marker = L.marker(
-            start,
-            {
-                draggable: true
-            }
-        ).addTo(map);
+        marker =
+            L.marker(
+                startingPoint,
+                {
+                    draggable: true
+                }
+            ).addTo(map);
 
         if (!hasSavedLocation) {
             marker.setOpacity(0);
@@ -710,10 +820,14 @@
 
         map.on(
             "click",
-            event => {
-                setLocation(
+            async event => {
+                stopLocationWatch();
+
+                await setLocation(
                     event.latlng.lat,
                     event.latlng.lng,
+                    true,
+                    null,
                     true
                 );
             }
@@ -721,110 +835,608 @@
 
         marker.on(
             "dragend",
-            event => {
+            async event => {
+                stopLocationWatch();
+
                 const point =
                     event.target.getLatLng();
 
-                setLocation(
+                await setLocation(
                     point.lat,
                     point.lng,
+                    true,
+                    null,
                     true
                 );
             }
         );
     }
 
-    // ==============================
-    // Reverse geocoding
-    // ==============================
+    initialiseMap();
+
+    // ==================================================
+    // MAP HELPERS
+    // ==================================================
+
+    function clearAccuracyCircle() {
+        if (
+            accuracyCircle &&
+            map
+        ) {
+            map.removeLayer(
+                accuracyCircle
+            );
+        }
+
+        accuracyCircle = null;
+    }
+
+    function showAccuracyCircle(
+        lat,
+        lng,
+        accuracy
+    ) {
+        if (
+            !map ||
+            !Number.isFinite(
+                Number(accuracy)
+            )
+        ) {
+            return;
+        }
+
+        clearAccuracyCircle();
+
+        accuracyCircle =
+            L.circle(
+                [lat, lng],
+                {
+                    radius:
+                        Math.max(
+                            Number(accuracy),
+                            5
+                        ),
+
+                    weight: 1,
+                    fillOpacity: 0.08
+                }
+            ).addTo(map);
+    }
+
+    function setAccuracyMessage(
+        accuracy
+    ) {
+        if (!locationAccuracyInfo) {
+            return;
+        }
+
+        if (
+            !Number.isFinite(
+                Number(accuracy)
+            )
+        ) {
+            locationAccuracyInfo.textContent =
+                "";
+
+            return;
+        }
+
+        const roundedAccuracy =
+            Math.round(
+                Number(accuracy)
+            );
+
+        let quality;
+
+        if (
+            roundedAccuracy <=
+            LOCATION_CONFIG.excellentAccuracy
+        ) {
+            quality = "Excellent";
+        }
+        else if (
+            roundedAccuracy <=
+            LOCATION_CONFIG.acceptableAccuracy
+        ) {
+            quality = "Good";
+        }
+        else if (
+            roundedAccuracy <=
+            LOCATION_CONFIG.maximumAcceptedAccuracy
+        ) {
+            quality = "Fair";
+        }
+        else {
+            quality = "Poor";
+        }
+
+        locationAccuracyInfo.textContent =
+            `${quality} accuracy: approximately ${roundedAccuracy} metres.`;
+    }
+
+    function clearStoredLocation(
+        hideMarker = true
+    ) {
+        if (latitude) {
+            latitude.value = "";
+        }
+
+        if (longitude) {
+            longitude.value = "";
+        }
+
+        if (address) {
+            address.value = "";
+        }
+
+        if (hideMarker) {
+            marker?.setOpacity(0);
+        }
+
+        clearAccuracyCircle();
+    }
+    // ==================================================
+    // CALCULATE DISTANCE BETWEEN TWO COORDINATES
+    // ==================================================
+
+    function calculateDistanceMetres(
+        lat1,
+        lng1,
+        lat2,
+        lng2
+    ) {
+        const earthRadiusMetres = 6371000;
+
+        const toRadians =
+            degrees =>
+                degrees * Math.PI / 180;
+
+        const firstLatitude =
+            toRadians(lat1);
+
+        const secondLatitude =
+            toRadians(lat2);
+
+        const latitudeDifference =
+            toRadians(lat2 - lat1);
+
+        const longitudeDifference =
+            toRadians(lng2 - lng1);
+
+        const value =
+            Math.sin(
+                latitudeDifference / 2
+            ) ** 2 +
+            Math.cos(firstLatitude) *
+            Math.cos(secondLatitude) *
+            Math.sin(
+                longitudeDifference / 2
+            ) ** 2;
+
+        const angularDistance =
+            2 * Math.atan2(
+                Math.sqrt(value),
+                Math.sqrt(1 - value)
+            );
+
+        return (
+            earthRadiusMetres *
+            angularDistance
+        );
+    }
+    // ==================================================
+    // LOCATION VALIDATION
+    // ==================================================
+
+    function analyseLocationData(
+        data,
+        selectedLat,
+        selectedLng
+    ) {
+        if (
+            !data ||
+            data.error ||
+            !data.address
+        ) {
+            return {
+                valid: false,
+                reason:
+                    "No valid address was found."
+            };
+        }
+
+        const displayName =
+            (
+                data.display_name || ""
+            ).toLowerCase();
+
+        const locationType =
+            (
+                data.type || ""
+            ).toLowerCase();
+
+        const locationClass =
+            (
+                data.class || ""
+            ).toLowerCase();
+
+        const addressType =
+            (
+                data.addresstype || ""
+            ).toLowerCase();
+
+        const locationName =
+            (
+                data.name || ""
+            ).toLowerCase();
+
+        const addressDetails =
+            data.address || {};
+
+        const combinedText =
+            `
+            ${displayName}
+            ${locationName}
+            ${locationType}
+            ${locationClass}
+            ${addressType}
+        `.toLowerCase();
+
+        // ==================================================
+        // 1. BLOCK WATER / FOREST / INVALID AREAS
+        // ==================================================
+
+        const blockedKeywords = [
+            "ocean",
+            "sea",
+            "river",
+            "lake",
+            "strait",
+            "channel",
+            "reservoir",
+            "waterfall",
+            "waterway",
+            "forest",
+            "wood",
+            "woods",
+            "jungle",
+            "desert",
+            "wetland",
+            "swamp",
+            "marsh",
+            "bridge",
+            "islet",
+            "sandbank",
+            "bay",
+            "coastline"
+        ];
+
+        const blockedTypes = [
+            "water",
+            "river",
+            "sea",
+            "lake",
+            "reservoir",
+            "strait",
+            "forest",
+            "wood",
+            "desert",
+            "wetland",
+            "bay"
+        ];
+
+        const keywordBlocked =
+            blockedKeywords.some(
+                word =>
+                    combinedText.includes(word)
+            );
+
+        const typeBlocked =
+            blockedTypes.includes(
+                locationType
+            ) ||
+            blockedTypes.includes(
+                addressType
+            );
+
+        const naturalWithoutAddress =
+            locationClass === "natural" &&
+            !addressDetails.road &&
+            !addressDetails.house_number &&
+            !addressDetails.building &&
+            !addressDetails.residential &&
+            !addressDetails.neighbourhood &&
+            !addressDetails.suburb;
+
+        if (
+            keywordBlocked ||
+            typeBlocked ||
+            naturalWithoutAddress
+        ) {
+            return {
+                valid: false,
+
+                reason:
+                    "Sea, forest, river, lake and other non-residential locations are not allowed."
+            };
+        }
+
+        // ==================================================
+        // 2. CHECK DISTANCE BETWEEN SELECTED POINT
+        //    AND NOMINATIM RESULT
+        // ==================================================
+
+        const resultLatitude =
+            Number(data.lat);
+
+        const resultLongitude =
+            Number(data.lon);
+
+        if (
+            Number.isFinite(resultLatitude) &&
+            Number.isFinite(resultLongitude) &&
+            Number.isFinite(
+                Number(selectedLat)
+            ) &&
+            Number.isFinite(
+                Number(selectedLng)
+            )
+        ) {
+            const distanceMetres =
+                calculateDistanceMetres(
+                    Number(selectedLat),
+                    Number(selectedLng),
+                    resultLatitude,
+                    resultLongitude
+                );
+
+            console.log(
+                "Selected coordinate:",
+                selectedLat,
+                selectedLng
+            );
+
+            console.log(
+                "Nominatim result coordinate:",
+                resultLatitude,
+                resultLongitude
+            );
+
+            console.log(
+                "Distance from selected point to returned address:",
+                Math.round(distanceMetres),
+                "metres"
+            );
+
+            /*
+             * If Nominatim had to search too far for an address,
+             * the selected position is probably sea, forest,
+             * empty land or another unmapped location.
+             */
+            if (distanceMetres > 500) {
+                return {
+                    valid: false,
+
+                    reason:
+                        `No valid address exists at the selected point. The nearest recognised address is approximately ${Math.round(distanceMetres)} metres away. Please place the marker on a road or building.`
+                };
+            }
+        }
+
+        // ==================================================
+        // 3. BLOCK OVERLY BROAD LOCATIONS
+        // ==================================================
+
+        const broadAddressTypes = [
+            "country",
+            "state",
+            "region",
+            "province",
+            "county"
+        ];
+
+        const tooBroadType =
+            broadAddressTypes.includes(
+                addressType
+            );
+
+        const onlyCountryOrState =
+            Boolean(
+                addressDetails.country
+            ) &&
+            !addressDetails.road &&
+            !addressDetails.house_number &&
+            !addressDetails.building &&
+            !addressDetails.neighbourhood &&
+            !addressDetails.suburb &&
+            !addressDetails.residential &&
+            !addressDetails.village &&
+            !addressDetails.town &&
+            !addressDetails.city &&
+            !addressDetails.city_district;
+
+        if (
+            tooBroadType ||
+            onlyCountryOrState
+        ) {
+            return {
+                valid: false,
+
+                reason:
+                    "The selected location is too broad. Zoom in and select a road, building or residential area."
+            };
+        }
+
+        // ==================================================
+        // 4. REQUIRE LOCAL ADDRESS INFORMATION
+        // ==================================================
+
+        const hasUsefulLocalContext =
+            addressDetails.house_number ||
+            addressDetails.building ||
+            addressDetails.amenity ||
+            addressDetails.shop ||
+            addressDetails.office ||
+            addressDetails.tourism ||
+            addressDetails.road ||
+            addressDetails.pedestrian ||
+            addressDetails.residential ||
+            addressDetails.neighbourhood ||
+            addressDetails.suburb ||
+            addressDetails.quarter ||
+            addressDetails.village ||
+            addressDetails.town ||
+            addressDetails.city ||
+            addressDetails.city_district;
+
+        if (!hasUsefulLocalContext) {
+            return {
+                valid: false,
+
+                reason:
+                    "No detailed local address was found. Move the marker closer to a road or building."
+            };
+        }
+
+        return {
+            valid: true,
+            reason: "OK"
+        };
+    }
+
+    // ==================================================
+    // REVERSE GEOCODING
+    // ==================================================
 
     async function reverseGeocode(
         lat,
         lng
     ) {
-        try {
-            const url =
-                "https://nominatim.openstreetmap.org/reverse" +
-                "?format=jsonv2" +
-                `&lat=${encodeURIComponent(lat)}` +
-                `&lon=${encodeURIComponent(lng)}`;
+        const currentRequest =
+            ++reverseGeocodeRequestNumber;
 
-            const response =
-                await fetch(
-                    url,
-                    {
-                        headers: {
-                            "Accept-Language": "en"
-                        }
+        const url =
+            "https://nominatim.openstreetmap.org/reverse" +
+            "?format=jsonv2" +
+            `&lat=${encodeURIComponent(lat)}` +
+            `&lon=${encodeURIComponent(lng)}` +
+            "&zoom=18" +
+            "&addressdetails=1";
+
+        const response =
+            await fetch(
+                url,
+                {
+                    headers: {
+                        "Accept-Language":
+                            "en"
                     }
-                );
-
-            if (!response.ok) {
-                throw new Error(
-                    "Address lookup failed."
-                );
-            }
-
-            const result =
-                await response.json();
-
-            return (
-                result.display_name ||
-                `${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`
+                }
             );
 
-        } catch (error) {
-            console.error(
-                "Reverse geocoding error:",
-                error
-            );
-
-            return (
-                `${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`
+        if (!response.ok) {
+            throw new Error(
+                `Address lookup failed with HTTP ${response.status}.`
             );
         }
+
+        const result =
+            await response.json();
+
+        /*
+         * Ignore this result if the user already
+         * selected another newer location.
+         */
+        if (
+            currentRequest !==
+            reverseGeocodeRequestNumber
+        ) {
+            return {
+                cancelled: true
+            };
+        }
+
+        return {
+            cancelled: false,
+            data: result
+        };
     }
 
-    // ==============================
-    // Set selected location
-    // ==============================
+    // ==================================================
+    // SET LOCATION
+    // ==================================================
 
     async function setLocation(
         lat,
         lng,
-        moveMap
+        moveMap = true,
+        accuracy = null,
+        manualSelection = false
     ) {
+        const numericLat =
+            Number(lat);
+
+        const numericLng =
+            Number(lng);
+
         if (
-            !Number.isFinite(Number(lat)) ||
-            !Number.isFinite(Number(lng))
+            !Number.isFinite(numericLat) ||
+            !Number.isFinite(numericLng) ||
+            numericLat < -90 ||
+            numericLat > 90 ||
+            numericLng < -180 ||
+            numericLng > 180
         ) {
-            if (locationError) {
-                locationError.textContent =
-                    "The selected location is invalid.";
-            }
+            setLocationMessage(
+                "The selected coordinates are invalid.",
+                true
+            );
 
-            return;
-        }
-
-        if (latitude) {
-            latitude.value =
-                Number(lat).toFixed(7);
-        }
-
-        if (longitude) {
-            longitude.value =
-                Number(lng).toFixed(7);
+            return false;
         }
 
         marker
-            ?.setLatLng([lat, lng])
+            ?.setLatLng([
+                numericLat,
+                numericLng
+            ])
             .setOpacity(1);
 
         if (moveMap) {
             map?.setView(
-                [lat, lng],
-                16
+                [
+                    numericLat,
+                    numericLng
+                ],
+                LOCATION_CONFIG.selectedZoom
             );
+        }
+
+        if (
+            accuracy !== null &&
+            Number.isFinite(
+                Number(accuracy)
+            )
+        ) {
+            showAccuracyCircle(
+                numericLat,
+                numericLng,
+                accuracy
+            );
+
+            setAccuracyMessage(
+                accuracy
+            );
+        }
+        else {
+            clearAccuracyCircle();
+
+            if (locationAccuracyInfo) {
+                locationAccuracyInfo.textContent =
+                    manualSelection
+                        ? "Manual map selection — place the marker on your exact building or road."
+                        : "";
+            }
         }
 
         if (address) {
@@ -832,124 +1444,441 @@
                 "Finding address…";
         }
 
-        const foundAddress =
-            await reverseGeocode(
-                lat,
-                lng
+        setLocationMessage(
+            "Checking the selected address…"
+        );
+
+        try {
+            const result =
+                await reverseGeocode(
+                    numericLat,
+                    numericLng
+                );
+
+            if (result.cancelled) {
+                return false;
+            }
+
+            const analysis =
+                analyseLocationData(
+                    result.data,
+                    numericLat,
+                    numericLng
+                );
+
+            if (!analysis.valid) {
+                clearStoredLocation();
+
+                setLocationMessage(
+                    analysis.reason,
+                    true
+                );
+
+                return false;
+            }
+
+            if (latitude) {
+                latitude.value =
+                    numericLat.toFixed(7);
+            }
+
+            if (longitude) {
+                longitude.value =
+                    numericLng.toFixed(7);
+            }
+
+            if (address) {
+                address.value =
+                    result.data.display_name ||
+                    `${numericLat.toFixed(7)}, ${numericLng.toFixed(7)}`;
+            }
+
+            if (
+                accuracy !== null &&
+                Number(accuracy) >
+                LOCATION_CONFIG
+                    .maximumAcceptedAccuracy
+            ) {
+                setLocationMessage(
+                    `The detected location may be inaccurate by about ${Math.round(Number(accuracy))} metres. Drag the marker to your exact building before continuing.`,
+                    true
+                );
+            }
+            else if (
+                accuracy !== null &&
+                Number(accuracy) >
+                LOCATION_CONFIG
+                    .acceptableAccuracy
+            ) {
+                setLocationMessage(
+                    "The detected position is approximate. Check the marker and move it if necessary."
+                );
+            }
+            else {
+                clearLocationMessage();
+            }
+
+            return true;
+        }
+        catch (error) {
+            console.error(
+                "Reverse geocoding error:",
+                error
             );
 
-        if (address) {
-            address.value =
-                foundAddress;
-        }
+            clearStoredLocation();
 
-        if (locationError) {
-            locationError.textContent = "";
+            setLocationMessage(
+                "The address could not be verified. Check your internet connection and try again.",
+                true
+            );
+
+            return false;
         }
     }
 
-    // ==============================
-    // Browser location
-    // ==============================
+    // ==================================================
+    // LOCATION BUTTON STATE
+    // ==================================================
+
+    function setLocateButtonBusy(
+        busy
+    ) {
+        if (!locateMeButton) {
+            return;
+        }
+
+        if (busy) {
+            locateMeButton.dataset
+                .originalLabel =
+                locateMeButton.dataset
+                    .originalLabel ||
+                locateMeButton.textContent;
+
+            locateMeButton.disabled =
+                true;
+
+            locateMeButton.textContent =
+                "Improving location accuracy…";
+        }
+        else {
+            locateMeButton.disabled =
+                false;
+
+            locateMeButton.textContent =
+                locateMeButton.dataset
+                    .originalLabel ||
+                "◎ Use my location";
+        }
+    }
+
+    // ==================================================
+    // GEOLOCATION WATCH
+    // ==================================================
+
+    function stopLocationWatch() {
+        if (
+            locationWatchId !== null &&
+            navigator.geolocation
+        ) {
+            navigator.geolocation
+                .clearWatch(
+                    locationWatchId
+                );
+
+            locationWatchId = null;
+        }
+    }
 
     function useCurrentLocation() {
         closeLocationModal();
 
         if (!navigator.geolocation) {
-            if (locationError) {
-                locationError.textContent =
-                    "This browser does not support location access. Click the map instead.";
-            }
+            setLocationMessage(
+                "This browser does not support location access. Select your location manually on the map.",
+                true
+            );
 
             return;
         }
 
-        if (locationError) {
-            locationError.textContent =
-                "Getting your location…";
+        stopLocationWatch();
+
+        setLocateButtonBusy(true);
+
+        setLocationMessage(
+            "Collecting several readings to find the most accurate location…"
+        );
+
+        setAccuracyMessage(NaN);
+
+        const samples = [];
+
+        const startedAt =
+            Date.now();
+
+        let finished = false;
+
+        async function finishWithBestSample() {
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+
+            stopLocationWatch();
+
+            const validSamples =
+                samples
+                    .filter(sample =>
+                        Number.isFinite(
+                            sample.latitude
+                        ) &&
+                        Number.isFinite(
+                            sample.longitude
+                        ) &&
+                        Number.isFinite(
+                            sample.accuracy
+                        )
+                    )
+                    .sort(
+                        (first, second) =>
+                            first.accuracy -
+                            second.accuracy
+                    );
+
+            const bestSample =
+                validSamples[0];
+
+            if (!bestSample) {
+                setLocationMessage(
+                    "No location reading was received. Select your location manually on the map.",
+                    true
+                );
+
+                setLocateButtonBusy(false);
+
+                return;
+            }
+
+            await setLocation(
+                bestSample.latitude,
+                bestSample.longitude,
+                true,
+                bestSample.accuracy,
+                false
+            );
+
+            setLocateButtonBusy(false);
         }
 
-        navigator.geolocation
-            .getCurrentPosition(
-                position => {
-                    setLocation(
-                        position.coords.latitude,
-                        position.coords.longitude,
-                        true
-                    );
-                },
+        locationWatchId =
+            navigator.geolocation
+                .watchPosition(
+                    position => {
+                        const sample = {
+                            latitude:
+                                position.coords
+                                    .latitude,
 
-                error => {
-                    console.error(
-                        "Location error:",
-                        error
-                    );
+                            longitude:
+                                position.coords
+                                    .longitude,
 
-                    if (!locationError) {
-                        return;
+                            accuracy:
+                                Number(
+                                    position.coords
+                                        .accuracy
+                                ),
+
+                            timestamp:
+                                position.timestamp
+                        };
+
+                        samples.push(sample);
+
+                        /*
+                         * Keep only the most recent
+                         * maximum number of samples.
+                         */
+                        if (
+                            samples.length >
+                            LOCATION_CONFIG
+                                .maximumSamples
+                        ) {
+                            samples.shift();
+                        }
+
+                        const validAccuracyValues =
+                            samples
+                                .map(
+                                    item =>
+                                        item.accuracy
+                                )
+                                .filter(
+                                    value =>
+                                        Number.isFinite(
+                                            value
+                                        )
+                                );
+
+                        const bestAccuracy =
+                            validAccuracyValues.length
+                                ? Math.min(
+                                    ...validAccuracyValues
+                                )
+                                : NaN;
+
+                        setAccuracyMessage(
+                            bestAccuracy
+                        );
+
+                        map?.setView(
+                            [
+                                sample.latitude,
+                                sample.longitude
+                            ],
+                            LOCATION_CONFIG
+                                .selectedZoom
+                        );
+
+                        showAccuracyCircle(
+                            sample.latitude,
+                            sample.longitude,
+                            sample.accuracy
+                        );
+
+                        const enoughSamples =
+                            samples.length >=
+                            LOCATION_CONFIG
+                                .minimumSamples;
+
+                        const excellentReading =
+                            sample.accuracy <=
+                            LOCATION_CONFIG
+                                .excellentAccuracy;
+
+                        const acceptableBestReading =
+                            enoughSamples &&
+                            bestAccuracy <=
+                            LOCATION_CONFIG
+                                .acceptableAccuracy;
+
+                        const timedOut =
+                            Date.now() -
+                            startedAt >=
+                            LOCATION_CONFIG
+                                .watchTimeoutMs;
+
+                        if (
+                            excellentReading ||
+                            acceptableBestReading ||
+                            timedOut
+                        ) {
+                            finishWithBestSample();
+                        }
+                    },
+
+                    error => {
+                        console.error(
+                            "Location error:",
+                            error
+                        );
+
+                        if (
+                            samples.length > 0
+                        ) {
+                            finishWithBestSample();
+                            return;
+                        }
+
+                        stopLocationWatch();
+                        setLocateButtonBusy(false);
+
+                        if (
+                            error.code ===
+                            error.PERMISSION_DENIED
+                        ) {
+                            setLocationMessage(
+                                "Location permission was denied. Allow location access or select the point manually.",
+                                true
+                            );
+                        }
+                        else if (
+                            error.code ===
+                            error.POSITION_UNAVAILABLE
+                        ) {
+                            setLocationMessage(
+                                "Your device cannot determine its location. Select the point manually.",
+                                true
+                            );
+                        }
+                        else if (
+                            error.code ===
+                            error.TIMEOUT
+                        ) {
+                            setLocationMessage(
+                                "Location detection timed out. Try again or select the point manually.",
+                                true
+                            );
+                        }
+                        else {
+                            setLocationMessage(
+                                "Location detection failed. Select the point manually.",
+                                true
+                            );
+                        }
+                    },
+
+                    {
+                        enableHighAccuracy: true,
+                        timeout:
+                            LOCATION_CONFIG
+                                .watchTimeoutMs,
+
+                        maximumAge: 0
                     }
+                );
 
-                    if (
-                        error.code ===
-                        error.PERMISSION_DENIED
-                    ) {
-                        locationError.textContent =
-                            "Location permission was denied. Click the map to choose manually.";
-
-                    } else if (
-                        error.code ===
-                        error.POSITION_UNAVAILABLE
-                    ) {
-                        locationError.textContent =
-                            "Your location is currently unavailable. Click the map to choose manually.";
-
-                    } else if (
-                        error.code ===
-                        error.TIMEOUT
-                    ) {
-                        locationError.textContent =
-                            "Location request timed out. Try again or click the map.";
-
-                    } else {
-                        locationError.textContent =
-                            "Location access was unavailable. Click the map to choose manually.";
-                    }
-                },
-
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
+        /*
+         * Some browsers do not trigger the timeout
+         * callback reliably, so this is a fallback.
+         */
+        window.setTimeout(
+            () => {
+                if (!finished) {
+                    finishWithBestSample();
                 }
-            );
+            },
+            LOCATION_CONFIG
+                .watchTimeoutMs +
+            1000
+        );
     }
 
-    // Use Current Location button
+    // ==================================================
+    // LOCATION BUTTON EVENTS
+    // ==================================================
+
     locateMeButton?.addEventListener(
         "click",
-        () => {
-            useCurrentLocation();
-        }
+        useCurrentLocation
     );
 
-    // Allow Location button in modal
     allowLocationButton?.addEventListener(
         "click",
-        () => {
-            useCurrentLocation();
-        }
+        useCurrentLocation
     );
 
-    // Skip Location button in modal
     skipLocationButton?.addEventListener(
         "click",
         () => {
             closeLocationModal();
+            stopLocationWatch();
 
-            if (locationError) {
-                locationError.textContent =
-                    "Click the map to choose your location manually.";
-            }
+            setLocationMessage(
+                "Click the map or drag the marker to select your location manually."
+            );
 
             setTimeout(() => {
                 map?.invalidateSize();
@@ -957,31 +1886,74 @@
         }
     );
 
-    /*
-     * Clicking outside the modal does not close it.
-     * The user must choose Allow or Skip.
-     */
-
-    // ==============================
-    // Submit form
-    // ==============================
+    // ==================================================
+    // FORM SUBMIT
+    // ==================================================
 
     form.addEventListener(
         "submit",
         event => {
-            console.log("Create account clicked / form submit triggered");
-            console.log("Current step:", currentStep);
+            console.log(
+                "Create account clicked."
+            );
 
-            console.log("===== RAW DOM VALUES AT SUBMIT TIME =====");
-            console.log("username.value:", JSON.stringify(username?.value));
-            console.log("email.value:", JSON.stringify(email?.value));
-            console.log("phone.value:", JSON.stringify(phone?.value));
-            console.log("address.value:", JSON.stringify(address?.value));
-            console.log("latitude.value:", JSON.stringify(latitude?.value));
-            console.log("longitude.value:", JSON.stringify(longitude?.value));
-            console.log("password.value length:", (password?.value || "").length);
-            console.log("confirmPassword.value length:", (confirmPassword?.value || "").length);
-            console.log("==========================================");
+            console.log(
+                "Current step:",
+                currentStep
+            );
+
+            console.log(
+                "===== FORM VALUES ====="
+            );
+
+            console.log(
+                "Username:",
+                username?.value
+            );
+
+            console.log(
+                "Email:",
+                email?.value
+            );
+
+            console.log(
+                "Phone:",
+                phone?.value
+            );
+
+            console.log(
+                "Address:",
+                address?.value
+            );
+
+            console.log(
+                "Latitude:",
+                latitude?.value
+            );
+
+            console.log(
+                "Longitude:",
+                longitude?.value
+            );
+
+            console.log(
+                "Password length:",
+                (
+                    password?.value || ""
+                ).length
+            );
+
+            console.log(
+                "Confirm password length:",
+                (
+                    confirmPassword?.value ||
+                    ""
+                ).length
+            );
+
+            console.log(
+                "======================="
+            );
 
             const step1Valid =
                 validateStep1();
@@ -997,44 +1969,28 @@
                 step2Valid &&
                 step3Valid;
 
-            console.log(
-                "Client validation -> step1:", step1Valid,
-                "step2:", step2Valid,
-                "step3:", step3Valid
-            );
-
             if (!allValid) {
-                console.log("Client validation failed. Submission blocked, staying client-side.");
-
                 event.preventDefault();
 
                 if (!step1Valid) {
                     showStep(1);
-
-                } else if (!step2Valid) {
+                }
+                else if (!step2Valid) {
                     showStep(2);
-
-                } else {
+                }
+                else {
                     showStep(3);
                 }
 
                 return;
             }
 
-            console.log("Client validation passed. Submitting form to server (POST /Account/Register)...");
-
-            const formData = new FormData(form);
-
-            console.log("===== FINAL FORM DATA =====");
-
-            for (const [key, value] of formData.entries()) {
-                console.log(key, value);
-            }
-
             closeLocationModal();
+            stopLocationWatch();
 
             if (submitButton) {
-                submitButton.disabled = true;
+                submitButton.disabled =
+                    true;
 
                 submitButton.textContent =
                     "Creating account…";
@@ -1042,17 +1998,20 @@
         }
     );
 
-    // ==============================
-    // Initial page state
-    // ==============================
+    // ==================================================
+    // CLEAN UP WHEN PAGE CLOSES
+    // ==================================================
 
-    /*
-     * The modal stays hidden when the page
-     * initially loads.
-     *
-     * It only opens after the user completes
-     * Step 1 and enters Step 2.
-     */
+    window.addEventListener(
+        "beforeunload",
+        () => {
+            stopLocationWatch();
+        }
+    );
+
+    // ==================================================
+    // INITIAL STATE
+    // ==================================================
 
     showStep(currentStep);
 

@@ -287,7 +287,7 @@ public class GmailServiceHelper
                                 color: #4b5563;
                             ">
                                 This verification code will expire in
-                                <strong>5 minutes</strong>.
+                                <strong>1 minute</strong>.
                             </p>
 
                             <p style="
@@ -473,5 +473,14 @@ SMK HLIH
         await smtp.SendMailAsync(
             mail
         );
+    }
+
+    public Task SendPasswordResetOtpAsync(
+        string receiverEmail,
+        string username,
+        string otp
+    )
+    {
+        return SendOtpAsync(receiverEmail, username, otp);
     }
 }

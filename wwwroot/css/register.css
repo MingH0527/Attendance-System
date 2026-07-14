@@ -671,10 +671,29 @@ body {
         padding-inline: 10px;
     }
 }
+
 .validation-summary-valid {
     display: none;
 }
 
 .validation-summary-errors {
     display: block;
+}
+
+.location-warning {
+    color: #b45309 !important;
+}
+
+.location-danger {
+    color: var(--danger) !important;
+}
+
+#locationAccuracyInfo {
+    display: block;
+    min-height: 18px;
+    margin: 7px 2px 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.45;
 }

@@ -68,4 +68,20 @@ public class User
 
     public int OtpAttemptCount { get; set; } =
         0;
+
+    public int OtpResendCount { get; set; } = 0;
+
+    // ==================================================
+    // LOGIN LOCKOUT FIELDS
+    // ==================================================
+    //
+    // Applies only to Student and Teacher accounts, enforced in
+    // AccountController.Login (IsLockoutApplicable). Admin accounts
+    // are never locked by this feature. Stored on the database row so
+    // that refreshing, closing the browser, switching browsers, or
+    // disabling JavaScript cannot reset the counter.
+
+    public int FailedLoginAttempts { get; set; } = 0;
+
+    public DateTime? LockoutEnd { get; set; }
 }

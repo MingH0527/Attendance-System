@@ -160,6 +160,9 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("Gender")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -170,6 +173,9 @@ namespace WebAndMobile.Migrations
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("float");
+
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("datetime2");
 
                     b.Property<double?>("Longitude")
                         .HasColumnType("float");
@@ -186,6 +192,9 @@ namespace WebAndMobile.Migrations
 
                     b.Property<DateTime?>("OtpLastSentAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("OtpResendCount")
+                        .HasColumnType("int");
 
                     b.Property<string>("Password")
                         .IsRequired()

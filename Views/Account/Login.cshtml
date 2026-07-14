@@ -1,5 +1,19 @@
-﻿@{
+﻿@model WebAndMobile.Models.LoginViewModel
+
+@{
     ViewData["Title"] = "Login";
+
+    string? warningLevel =
+        ViewBag.LoginWarningLevel as string;
+
+    string errorClass = warningLevel switch
+    {
+        "yellow" => "login-message login-warning-yellow",
+        "orange" => "login-message login-warning-orange",
+        "red" => "login-message login-warning-red",
+        "locked" => "login-message login-warning-locked",
+        _ => "login-message error-message"
+    };
 }
 
 <link rel="stylesheet"
@@ -19,6 +33,10 @@
 
         <h1 class="login-title">LOGIN</h1>
 
+        <div asp-validation-summary="ModelOnly"
+             class="validation-summary-errors">
+        </div>
+
         @if (ViewBag.Message != null)
         {
             <div class="login-message success-message">
@@ -28,7 +46,7 @@
 
         @if (ViewBag.Error != null)
         {
-            <div class="login-message error-message">
+            <div class="@errorClass">
                 @ViewBag.Error
             </div>
         }
@@ -36,7 +54,8 @@
         <form asp-controller="Account"
               asp-action="Login"
               method="post"
-              id="loginForm">
+              id="loginForm"
+              autocomplete="off">
 
             @Html.AntiForgeryToken()
 
@@ -49,15 +68,15 @@
                     Username
                 </label>
 
-                <input type="text"
+                <input asp-for="Username"
                        id="username"
-                       name="username"
                        class="form-input"
                        placeholder="Please enter your name"
-                       autocomplete="username"
-                       required />
+                       autocomplete="off"
+                       aria-invalid="false" />
 
-                <span class="field-error"
+                <span asp-validation-for="Username"
+                      class="field-error"
                       id="usernameError"></span>
             </div>
 
@@ -72,13 +91,13 @@
 
                 <div class="password-container">
 
-                    <input type="password"
+                    <input asp-for="Password"
                            id="password"
-                           name="password"
+                           type="password"
                            class="form-input password-input"
                            placeholder="Please enter your password"
-                           autocomplete="current-password"
-                           required />
+                           autocomplete="new-password"
+                           aria-invalid="false" />
 
                     <button type="button"
                             class="password-toggle"
@@ -89,33 +108,43 @@
 
                 </div>
 
-                <span class="field-error"
+                <span asp-validation-for="Password"
+                      class="field-error"
                       id="passwordError"></span>
             </div>
 
-            <!-- Remember Me and Forgot Password -->
-            <div class="login-options">
-
-                <label class="remember-container">
-
-                    <input type="checkbox"
-                           id="rememberMe"
-                           name="rememberMe"
-                           value="true" />
-
-                    <span class="custom-checkbox"></span>
-
-                    <span class="remember-text">
-                        Remember me
-                    </span>
-
-                </label>
-
+            <div class="forgot-row">
                 <a asp-controller="Account"
                    asp-action="ForgotPassword"
                    class="forgot-link">
                     Forgot password?
                 </a>
+            </div>
+
+            <!-- Remember Me -->
+            <div class="login-options">
+
+                <div>
+
+                    <label class="remember-container">
+
+                        <input asp-for="RememberMe"
+                               id="rememberMe" />
+
+                        <span class="custom-checkbox"></span>
+
+                        <span class="remember-text">
+                            Remember me
+                        </span>
+
+                    </label>
+
+                    <small class="field-hint"
+                           id="rememberMeStatus">
+                        Remember Me is disabled. You will be signed out when the browser is closed.
+                    </small>
+
+                </div>
 
             </div>
 
