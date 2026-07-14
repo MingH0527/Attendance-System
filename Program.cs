@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using WebAndMobile;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,7 +49,8 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
-
+StripeConfiguration.ApiKey =
+    builder.Configuration["Stripe:SecretKey"];
 /*
  * Cookie authentication, added for the Remember Me login feature.
  * IsPersistent / ExpiresUtc are set per-login inside

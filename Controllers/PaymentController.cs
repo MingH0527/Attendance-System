@@ -1,81 +1,291 @@
-﻿
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Stripe.Checkout;
 using WebAndMobile.Models;
- 
-namespace WebAndMobile.Controllers
+
+namespace WebAndMobile.Controllers;
+
+public class PaymentController : Controller
 {
-    public class PaymentController : Controller
+    private readonly IConfiguration _configuration;
+
+    public PaymentController(IConfiguration configuration)
     {
-        // TODO: 换成从数据库读取，这里先用写死的清单做示范
-        private static readonly List<FeeItem> _fees = new()
+        _configuration = configuration;
+    }
+
+    private List<FeeItem> GetFeeItems()
+    {
+        return new List<FeeItem>
         {
-            new FeeItem { Id = 1, Name = "Semester Fee",     Description = "Tuition for current semester", Amount = 1200.00m, Category = "Tuition", AmountIsFixed = true },
-            new FeeItem { Id = 2, Name = "Library Fine",     Description = "Overdue book fine",             Amount = 15.00m,   Category = "Library", AmountIsFixed = true },
-            new FeeItem { Id = 3, Name = "Hostel Fee",       Description = "Monthly accommodation",         Amount = 800.00m,  Category = "Hostel",  AmountIsFixed = true },
-            new FeeItem { Id = 4, Name = "Course Textbook",  Description = "Purchase required textbook(s)", Amount = 45.00m,   Category = "Books",   AmountIsFixed = false },
+            new FeeItem
+            {
+                Id = 1,
+                Name = "Tuition Fee",
+                Description = "Monthly school tuition fee",
+                Amount = 500.00m,
+                Category = "Tuition",
+                AmountIsFixed = true
+            },
+
+            new FeeItem
+            {
+                Id = 2,
+                Name = "Library Fee",
+                Description = "Library membership and maintenance fee",
+                Amount = 50.00m,
+                Category = "Library",
+                AmountIsFixed = true
+            },
+
+            new FeeItem
+            {
+                Id = 3,
+                Name = "Hostel Fee",
+                Description = "Monthly student hostel fee",
+                Amount = 300.00m,
+                Category = "Hostel",
+                AmountIsFixed = true
+            },
+
+            new FeeItem
+            {
+                Id = 4,
+                Name = "Books and Materials",
+                Description = "Purchase books and learning materials",
+                Amount = 10.00m,
+                Category = "Books",
+                AmountIsFixed = false
+            }
+        };
+    }
+
+    [HttpGet]
+    public IActionResult SelectFee()
+    {
+        var fees = GetFeeItems();
+
+        return View(fees);
+    }
+
+    [HttpGet]
+    public IActionResult Pay(int feeId)
+    {
+        var selectedFee = GetFeeItems()
+            .FirstOrDefault(f => f.Id == feeId);
+
+        if (selectedFee == null)
+        {
+            return NotFound();
+        }
+
+        ViewBag.PublishableKey =
+            _configuration["Stripe:PublishableKey"];
+
+        return View(selectedFee);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateCheckoutSession(
+        int feeId,
+        decimal? customAmount)
+    {
+        var selectedFee = GetFeeItems()
+            .FirstOrDefault(f => f.Id == feeId);
+
+        if (selectedFee == null)
+        {
+            return NotFound();
+        }
+
+        decimal finalAmount;
+
+        if (selectedFee.AmountIsFixed)
+        {
+            finalAmount = selectedFee.Amount;
+        }
+        else
+        {
+            if (customAmount == null ||
+                customAmount <= 0)
+            {
+                ModelState.AddModelError(
+                    nameof(customAmount),
+                    "Please enter a valid amount."
+                );
+
+                ViewBag.PublishableKey =
+                    _configuration["Stripe:PublishableKey"];
+
+                return View(
+                    "Pay",
+                    selectedFee
+                );
+            }
+
+            finalAmount = customAmount.Value;
+        }
+
+        if (finalAmount <= 0)
+        {
+            return BadRequest(
+                "The payment amount must be greater than zero."
+            );
+        }
+
+        long amountInSen = Convert.ToInt64(
+            decimal.Round(
+                finalAmount * 100,
+                0,
+                MidpointRounding.AwayFromZero
+            )
+        );
+
+        string domain =
+            $"{Request.Scheme}://{Request.Host}";
+
+        var options = new SessionCreateOptions
+        {
+            Mode = "payment",
+
+            SuccessUrl =
+                $"{domain}/Payment/Success" +
+                $"?session_id={{CHECKOUT_SESSION_ID}}",
+
+            CancelUrl =
+                $"{domain}/Payment/Cancel",
+
+            LineItems = new List<SessionLineItemOptions>
+            {
+                new()
+                {
+                    Quantity = 1,
+
+                    PriceData =
+                        new SessionLineItemPriceDataOptions
+                        {
+                            Currency = "myr",
+
+                            UnitAmount = amountInSen,
+
+                            ProductData =
+                                new SessionLineItemPriceDataProductDataOptions
+                                {
+                                    Name = selectedFee.Name,
+
+                                    Description =
+                                        selectedFee.Description
+                                }
+                        }
+                }
+            },
+
+            Metadata = new Dictionary<string, string>
+            {
+                { "FeeId", selectedFee.Id.ToString() },
+                { "FeeName", selectedFee.Name }
+            }
         };
 
-        // GET: /Payment/SelectFee
-        // 费用清单页 - 学生点选要缴什么
-        [HttpGet]
-        public IActionResult SelectFee()
+        var service = new SessionService();
+
+        Session session;
+
+        try
         {
-            return View(_fees);
+            session = await service.CreateAsync(options);
+        }
+        catch (Stripe.StripeException ex)
+        {
+            return BadRequest(
+                $"Stripe error: {ex.Message}"
+            );
         }
 
-        // GET: /Payment/Pay?feeId=1
-        // 确认缴费页 - 学生信息从登录状态取, 不用再填
-        [HttpGet]
-        public IActionResult Pay(int feeId)
+        if (string.IsNullOrWhiteSpace(session.Url))
         {
-            var fee = _fees.FirstOrDefault(f => f.Id == feeId);
-            if (fee == null)
-            {
-                return RedirectToAction("SelectFee");
-            }
-
-            // TODO: 换成你项目实际的登录信息读取方式，例如：
-            //   - Session:      HttpContext.Session.GetString("StudentId")
-            //   - Claims/Identity: User.FindFirst("StudentId")?.Value
-            var studentId = HttpContext.Session.GetString("StudentId") ?? "";
-            var studentName = HttpContext.Session.GetString("StudentName") ?? "";
-
-            var model = new Payment
-            {
-                FeeId = fee.Id,
-                FeeName = fee.Name,
-                Amount = fee.Amount,
-                StudentId = studentId,
-                StudentName = studentName
-            };
-
-            return View(model);
+            return BadRequest(
+                "Stripe did not return a checkout URL."
+            );
         }
 
-        // POST: /Payment/Pay
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult Pay(Payment model)
+        return Redirect(session.Url);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Success(
+        string? session_id)
+    {
+        if (string.IsNullOrWhiteSpace(session_id))
         {
-            // 安全起见：学号/姓名一律以服务器 session 为准，不信任表单里带回来的隐藏字段
-            model.StudentId = HttpContext.Session.GetString("StudentId") ?? model.StudentId;
-            model.StudentName = HttpContext.Session.GetString("StudentName") ?? model.StudentName;
-
-            if (!ModelState.IsValid)
-            {
-                return View(model);
-            }
-
-            // TODO: 在这里把 model 存进数据库 / 呼叫真正的付款处理
-
-            return RedirectToAction("Success");
+            return RedirectToAction(
+                nameof(SelectFee)
+            );
         }
 
-        [HttpGet]
-        public IActionResult Success()
+        session_id = session_id.Trim(
+            '{',
+            '}',
+            ' ',
+            '"'
+        );
+
+        if (!session_id.StartsWith(
+                "cs_",
+                StringComparison.OrdinalIgnoreCase))
         {
-            return View();
+            return BadRequest(
+                "Invalid Stripe Checkout Session ID."
+            );
         }
+
+        var service = new SessionService();
+
+        Session session;
+
+        try
+        {
+            session = await service.GetAsync(
+                session_id
+            );
+        }
+        catch (Stripe.StripeException ex)
+        {
+            return BadRequest(
+                $"Unable to retrieve Stripe payment: {ex.Message}"
+            );
+        }
+
+        if (session.PaymentStatus != "paid")
+        {
+            return RedirectToAction(
+                nameof(Cancel)
+            );
+        }
+
+        ViewBag.SessionId =
+            session.Id;
+
+        ViewBag.PaymentStatus =
+            session.PaymentStatus;
+
+        ViewBag.CustomerEmail =
+            session.CustomerDetails?.Email;
+
+        ViewBag.AmountTotal =
+            session.AmountTotal.HasValue
+                ? session.AmountTotal.Value / 100m
+                : 0m;
+
+        ViewBag.Currency =
+            session.Currency?.ToUpperInvariant();
+
+        return View(session);
+    }
+
+    [HttpGet]
+    public IActionResult Cancel()
+    {
+        return View();
     }
 }
-
