@@ -106,6 +106,16 @@
     const nextStep2Button =
         document.getElementById("nextStep2");
 
+    const checkAvailabilityButton =
+        document.getElementById(
+            "checkAvailabilityButton"
+        );
+
+    const availabilityStatus =
+        document.getElementById(
+            "availabilityStatus"
+        );
+
     const locateMeButton =
         document.getElementById("locateMeBtn");
 
@@ -118,6 +128,560 @@
         document.getElementById(
             "skipLocationButton"
         );
+
+    // ==================================================
+    // AJAX DUPLICATE CHECK
+    // ==================================================
+
+    let availabilityChecked = false;
+    let checkedAvailabilityValues = null;
+    let availabilityRequestNumber = 0;
+    let availabilityHasDuplicate = false;
+
+    function getAvailabilityValues() {
+        return {
+            username:
+                username?.value.trim() || "",
+
+            email:
+                email?.value.trim()
+                    .toLowerCase() || "",
+
+            phone:
+                (phone?.value || "")
+                    .replace(/\D/g, "")
+        };
+    }
+
+    function sameAvailabilityValues(
+        first,
+        second
+    ) {
+        return Boolean(
+            first &&
+            second &&
+            first.username === second.username &&
+            first.email === second.email &&
+            first.phone === second.phone
+        );
+    }
+
+    function setAvailabilityStatus(
+        message,
+        state = "idle"
+    ) {
+        if (!availabilityStatus) {
+            return;
+        }
+
+        availabilityStatus.textContent =
+            message || "";
+
+        availabilityStatus.classList.remove(
+            "is-idle",
+            "is-checking",
+            "is-success",
+            "is-error"
+        );
+
+        availabilityStatus.classList.add(
+            `is-${state}`
+        );
+    }
+
+    function clearAvailabilityFieldState(
+        input
+    ) {
+        const inputBox =
+            input?.closest(".input-box");
+
+        inputBox?.classList.remove(
+            "ajax-valid",
+            "ajax-invalid",
+            "ajax-checking"
+        );
+    }
+
+    function setAvailabilityFieldState(
+        input,
+        available,
+        message
+    ) {
+        const inputBox =
+            input?.closest(".input-box");
+
+        if (!inputBox) {
+            return;
+        }
+
+        inputBox.classList.remove(
+            "ajax-valid",
+            "ajax-invalid",
+            "ajax-checking"
+        );
+
+        inputBox.classList.add(
+            available
+                ? "ajax-valid"
+                : "ajax-invalid"
+        );
+
+        setCustomError(
+            input,
+            available
+                ? ""
+                : message
+        );
+    }
+
+    // Check whether all three fields are complete
+    // and have the correct format.
+    function availabilityInputsAreComplete() {
+        const values =
+            getAvailabilityValues();
+
+        const gmailPattern =
+            /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+
+        const phonePattern =
+            /^(011\d{8}|01[2-9]\d{7})$/;
+
+        return (
+            values.username.length >= 1 &&
+            values.username.length <= 30 &&
+            gmailPattern.test(values.email) &&
+            phonePattern.test(values.phone)
+        );
+    }
+
+    // Control the Check availability button.
+    function updateAvailabilityButton() {
+        if (!checkAvailabilityButton) {
+            return;
+        }
+
+        const complete =
+            availabilityInputsAreComplete();
+
+        const currentValues =
+            getAvailabilityValues();
+
+        const alreadyChecked =
+            availabilityChecked &&
+            sameAvailabilityValues(
+                currentValues,
+                checkedAvailabilityValues
+            );
+
+        checkAvailabilityButton.classList.remove(
+            "availability-incomplete",
+            "availability-ready",
+            "availability-success",
+            "availability-duplicate"
+        );
+
+        if (!complete) {
+            checkAvailabilityButton.disabled = true;
+
+            checkAvailabilityButton.textContent =
+                "Complete all fields first";
+
+            checkAvailabilityButton.classList.add(
+                "availability-incomplete"
+            );
+
+            return;
+        }
+
+        if (alreadyChecked) {
+            checkAvailabilityButton.disabled = true;
+
+            checkAvailabilityButton.textContent =
+                "Availability checked";
+
+            checkAvailabilityButton.classList.add(
+                "availability-success"
+            );
+
+            return;
+        }
+
+        checkAvailabilityButton.disabled = false;
+
+        checkAvailabilityButton.textContent =
+            "Check availability";
+
+        checkAvailabilityButton.classList.add(
+            "availability-ready"
+        );
+        if (availabilityHasDuplicate) {
+            checkAvailabilityButton.disabled = true;
+
+            checkAvailabilityButton.textContent =
+                "Change duplicate details";
+
+            checkAvailabilityButton.classList.add(
+                "availability-duplicate"
+            );
+
+            return;
+        }
+    }
+    function invalidateAvailabilityCheck() {
+        availabilityChecked = false;
+        checkedAvailabilityValues = null;
+
+        [username, email, phone]
+            .forEach(input => {
+                clearAvailabilityFieldState(
+                    input
+                );
+            });
+
+        if (availabilityInputsAreComplete()) {
+            setAvailabilityStatus(
+                "Press Check availability to continue.",
+                "idle"
+            );
+        }
+        else {
+            setAvailabilityStatus(
+                "Complete the username, Gmail address and phone number first.",
+                "idle"
+            );
+        }
+
+        updateAvailabilityButton();
+    }
+
+    function validateAvailabilityInputs() {
+        let valid = true;
+
+        const gmailPattern =
+            /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+
+        const phonePattern =
+            /^(011\d{8}|01[2-9]\d{7})$/;
+
+        const usernameValue =
+            username?.value.trim() || "";
+
+        const emailValue =
+            email?.value.trim() || "";
+
+        const phoneValue =
+            (phone?.value || "")
+                .replace(/\D/g, "");
+
+        setCustomError(username, "");
+        setCustomError(email, "");
+        setCustomError(phone, "");
+
+        if (!usernameValue) {
+            setCustomError(
+                username,
+                "Username is required."
+            );
+
+            valid = false;
+        }
+        else if (
+            usernameValue.length > 30
+        ) {
+            setCustomError(
+                username,
+                "Username cannot exceed 30 characters."
+            );
+
+            valid = false;
+        }
+
+        if (!emailValue) {
+            setCustomError(
+                email,
+                "Gmail address is required."
+            );
+
+            valid = false;
+        }
+        else if (
+            !gmailPattern.test(emailValue)
+        ) {
+            setCustomError(
+                email,
+                "Use a valid Gmail address ending with @gmail.com."
+            );
+
+            valid = false;
+        }
+
+        if (!phoneValue) {
+            setCustomError(
+                phone,
+                "Phone number is required."
+            );
+
+            valid = false;
+        }
+        else if (
+            !phonePattern.test(phoneValue)
+        ) {
+            setCustomError(
+                phone,
+                "Enter a valid Malaysian phone number."
+            );
+
+            valid = false;
+        }
+
+        return valid;
+    }
+
+    async function checkRegistrationAvailability() {
+        if (!validateAvailabilityInputs()) {
+            availabilityChecked = false;
+            checkedAvailabilityValues = null;
+
+            setAvailabilityStatus(
+                "Complete all fields correctly before checking.",
+                "error"
+            );
+
+            updateAvailabilityButton();
+
+            form.querySelector(":invalid")
+                ?.reportValidity();
+
+            return;
+        }
+
+        const requestValues =
+            getAvailabilityValues();
+
+        const requestNumber =
+            ++availabilityRequestNumber;
+
+        [username, email, phone]
+            .forEach(input => {
+                clearAvailabilityFieldState(
+                    input
+                );
+
+                input
+                    ?.closest(".input-box")
+                    ?.classList.add(
+                        "ajax-checking"
+                    );
+            });
+
+        if (checkAvailabilityButton) {
+            checkAvailabilityButton.disabled =
+                true;
+
+            checkAvailabilityButton.textContent =
+                "Checking…";
+        }
+
+        setAvailabilityStatus(
+            "Checking the database…",
+            "checking"
+        );
+
+        const token =
+            form.querySelector(
+                'input[name="__RequestVerificationToken"]'
+            );
+
+        const body =
+            new FormData();
+
+        body.append(
+            "username",
+            requestValues.username
+        );
+
+        body.append(
+            "email",
+            requestValues.email
+        );
+
+        body.append(
+            "phone",
+            requestValues.phone
+        );
+
+        if (token?.value) {
+            body.append(
+                "__RequestVerificationToken",
+                token.value
+            );
+        }
+
+        try {
+            const response =
+                await fetch(
+                    window.registerAvailabilityUrl ||
+                    "/Account/CheckRegistrationAvailability",
+                    {
+                        method: "POST",
+
+                        body: body,
+
+                        headers: {
+                            "X-Requested-With":
+                                "XMLHttpRequest"
+                        }
+                    }
+                );
+
+            let result;
+
+            try {
+                result =
+                    await response.json();
+            }
+            catch {
+                throw new Error(
+                    "The server returned an invalid response."
+                );
+            }
+
+            if (
+                requestNumber !==
+                availabilityRequestNumber
+            ) {
+                return;
+            }
+
+            if (
+                !response.ok ||
+                !result.success
+            ) {
+                const fieldInput =
+                    result.field === "username"
+                        ? username
+                        : result.field === "email"
+                            ? email
+                            : result.field === "phone"
+                                ? phone
+                                : null;
+
+                if (fieldInput) {
+                    setAvailabilityFieldState(
+                        fieldInput,
+                        false,
+                        result.message
+                    );
+                }
+
+                availabilityChecked = false;
+                checkedAvailabilityValues = null;
+
+                setAvailabilityStatus(
+                    result.message ||
+                    "Unable to check the details.",
+                    "error"
+                );
+
+                return;
+            }
+
+            setAvailabilityFieldState(
+                username,
+                result.username.available,
+                result.username.message
+            );
+
+            setAvailabilityFieldState(
+                email,
+                result.email.available,
+                result.email.message
+            );
+
+            setAvailabilityFieldState(
+                phone,
+                result.phone.available,
+                result.phone.message
+            );
+
+            availabilityChecked =
+                Boolean(
+                    result.allAvailable
+                );
+
+            checkedAvailabilityValues =
+                availabilityChecked
+                    ? requestValues
+                    : null;
+
+            if (availabilityChecked) {
+                setAvailabilityStatus(
+                    "All details are available. You may continue.",
+                    "success"
+                );
+            }
+            else {
+                const duplicateMessages = [
+                    result.username,
+                    result.email,
+                    result.phone
+                ]
+                    .filter(item => !item.available)
+                    .map(item => item.message);
+
+                setAvailabilityStatus(
+                    duplicateMessages.join(" "),
+                    "error"
+                );
+
+                if (checkAvailabilityButton) {
+                    checkAvailabilityButton.disabled = true;
+
+                    checkAvailabilityButton.textContent =
+                        "Change duplicate details";
+
+                    checkAvailabilityButton.classList.remove(
+                        "availability-incomplete",
+                        "availability-ready",
+                        "availability-success"
+                    );
+
+                    checkAvailabilityButton.classList.add(
+                        "availability-duplicate"
+                    );
+                }
+            }
+        }
+        catch (error) {
+            console.error(
+                "Availability check error:",
+                error
+            );
+
+            availabilityChecked = false;
+            checkedAvailabilityValues = null;
+
+            [username, email, phone]
+                .forEach(input => {
+                    clearAvailabilityFieldState(
+                        input
+                    );
+                });
+
+            setAvailabilityStatus(
+                "Unable to check the database. Check your connection and try again.",
+                "error"
+            );
+        }
+        finally {
+            if (
+                requestNumber ===
+                availabilityRequestNumber
+            ) {
+                updateAvailabilityButton();
+            }
+        }
+    }
 
     // ==================================================
     // LOCATION MODAL
@@ -540,6 +1104,7 @@
                     .slice(0, 11);
 
             setCustomError(phone, "");
+            invalidateAvailabilityCheck();
         }
     );
 
@@ -547,6 +1112,7 @@
         "input",
         () => {
             setCustomError(username, "");
+            invalidateAvailabilityCheck();
         }
     );
 
@@ -554,8 +1120,15 @@
         "input",
         () => {
             setCustomError(email, "");
+            invalidateAvailabilityCheck();
         }
     );
+
+    checkAvailabilityButton
+        ?.addEventListener(
+            "click",
+            checkRegistrationAvailability
+        );
 
     form.querySelectorAll(
         'input[name="Gender"]'
@@ -624,6 +1197,25 @@
         "click",
         () => {
             if (!validateStep1()) {
+                return;
+            }
+
+            const currentValues =
+                getAvailabilityValues();
+
+            if (
+                !availabilityChecked ||
+                !sameAvailabilityValues(
+                    currentValues,
+                    checkedAvailabilityValues
+                )
+            ) {
+                setAvailabilityStatus(
+                    "Please press Check availability and pass the duplicate check before continuing.",
+                    "error"
+                );
+
+                checkAvailabilityButton?.focus();
                 return;
             }
 
@@ -1956,7 +2548,19 @@
             );
 
             const step1Valid =
-                validateStep1();
+                validateStep1() &&
+                availabilityChecked &&
+                sameAvailabilityValues(
+                    getAvailabilityValues(),
+                    checkedAvailabilityValues
+                );
+
+            if (!step1Valid) {
+                setAvailabilityStatus(
+                    "Please press Check availability and pass the duplicate check before creating the account.",
+                    "error"
+                );
+            }
 
             const step2Valid =
                 validateStep2();
@@ -2016,4 +2620,18 @@
     showStep(currentStep);
 
     updatePasswordRules();
+    updateAvailabilityButton();
+
+    if (availabilityInputsAreComplete()) {
+        setAvailabilityStatus(
+            "Press Check availability to continue.",
+            "idle"
+        );
+    }
+    else {
+        setAvailabilityStatus(
+            "Complete the username, Gmail address and phone number first.",
+            "idle"
+        );
+    }
 })();

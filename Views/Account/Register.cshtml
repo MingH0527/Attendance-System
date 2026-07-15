@@ -284,15 +284,32 @@
 
                     </div>
 
-                    <div class="form-actions single">
+                    <div class="availability-check-area">
 
-                        <button type="button"
-                                class="btn primary"
-                                id="nextStep1">
-                            Continue to location →
+                        <<button type="button"
+                                 id="checkAvailabilityButton"
+                                 disabled>
+                            Complete all fields first
                         </button>
 
-                    </div>
+    <p id="availabilityStatus"
+       class="availability-status is-idle"
+       role="status"
+       aria-live="polite">
+        Complete Username, Gmail and Phone, then press Check availability.
+    </p>
+
+</div>
+
+<div class="form-actions single">
+
+    <button type="button"
+            class="btn primary"
+            id="nextStep1">
+        Continue to location →
+    </button>
+
+</div>
 
                 </section>
 
@@ -363,12 +380,12 @@
                          aria-label="Location map">
                     </div>
 
-                    <input asp-for="Latitude"
-                           type="hidden"
+                    <input type="hidden"
+                           name="latitude"
                            id="latitudeInput" />
 
-                    <input asp-for="Longitude"
-                           type="hidden"
+                    <input type="hidden"
+                           name="longitude"
                            id="longitudeInput" />
 
                     <div class="form-actions">
