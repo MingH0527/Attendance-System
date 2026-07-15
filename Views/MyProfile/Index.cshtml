@@ -1,0 +1,106 @@
+﻿@{
+    ViewData["Title"] = "My Profile";
+}
+
+<link rel="stylesheet"
+      href="~/css/myprofile.css"
+      asp-append-version="true" />
+
+<div class="profile-page">
+
+    <main class="profile-container">
+
+        <div class="profile-card">
+
+            <div class="profile-header">
+
+                <a asp-controller="Student"
+                   asp-action="Index"
+                   class="back-button"
+                   title="Back to Student Home">
+
+                    ←
+
+                </a>
+
+                <div class="profile-avatar">
+                    👤
+                </div>
+
+                <p class="profile-system-name">
+                    Attendance System
+                </p>
+
+                <h1>My Profile</h1>
+
+                <p class="profile-description">
+                    Manage your account and security settings.
+                </p>
+
+            </div>
+
+            <div class="profile-section">
+
+                <p class="section-label">
+                    Account
+                </p>
+
+                <button type="button"
+                        class="profile-option disabled-option"
+                        disabled>
+
+                    <span class="option-icon">
+                        🪪
+                    </span>
+
+                    <span class="option-content">
+                        <strong>Personal Information</strong>
+
+                        <small>
+                            Profile information will be added later
+                        </small>
+                    </span>
+
+                    <span class="coming-soon">
+                        Coming Soon
+                    </span>
+
+                </button>
+
+            </div>
+
+            <div class="profile-section">
+
+                <p class="section-label">
+                    Security
+                </p>
+
+                <a asp-controller="MyProfile"
+                   asp-action="Passkey"
+                   class="profile-option passkey-option">
+
+                    <span class="option-icon">
+                        🔐
+                    </span>
+
+                    <span class="option-content">
+                        <strong>Passkeys</strong>
+
+                        <small>
+                            Manage fingerprint, Face ID and device login
+                        </small>
+                    </span>
+
+                    <span class="option-arrow">
+                        ›
+                    </span>
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>

@@ -201,6 +201,60 @@ namespace WebAndMobile.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.UserPasskey", b =>
+                {
+                    b.Property<int>("UserPasskeyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserPasskeyId"));
+
+                    b.Property<Guid>("AaGuid")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("CredentialId")
+                        .IsRequired()
+                        .HasColumnType("varbinary(900)");
+
+                    b.Property<string>("CredentialType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DeviceName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("PublicKey")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<long>("SignCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("UserHandle")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserPasskeyId");
+
+                    b.HasIndex("CredentialId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserPasskeys");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
                 {
                     b.HasOne("WebAndMobile.Models.ClassGroup", "ClassGroup")
@@ -231,6 +285,17 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Classroom");
 
                     b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.UserPasskey", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>

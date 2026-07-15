@@ -91,6 +91,19 @@ body {
         transform: translateY(-3px);
     }
 
+/* My Profile */
+.profile-button {
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #3730a3;
+}
+
+    .profile-button:hover {
+        border-color: #818cf8;
+        box-shadow: 0 12px 24px rgba(79, 70, 229, 0.15);
+    }
+
+/* Payment */
 .payment-button {
     border: 1px solid #bfdbfe;
     background: #eff6ff;
@@ -102,6 +115,7 @@ body {
         box-shadow: 0 12px 24px rgba(37, 99, 235, 0.15);
     }
 
+/* Logout */
 .logout-form {
     width: 100%;
     margin: 0;

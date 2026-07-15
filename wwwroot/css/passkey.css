@@ -1,0 +1,330 @@
+﻿* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+}
+
+.passkey-page {
+    min-height: 100vh;
+    padding: 40px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient( circle at top left, rgba(14, 165, 233, 0.16), transparent 34% ), linear-gradient( 135deg, #ecfeff 0%, #f8fafc 48%, #eef2ff 100% );
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.passkey-container {
+    width: 100%;
+    max-width: 610px;
+}
+
+.passkey-card {
+    padding: 38px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12), 0 8px 20px rgba(15, 23, 42, 0.06);
+    backdrop-filter: blur(15px);
+}
+
+.passkey-header {
+    position: relative;
+    padding-bottom: 24px;
+    text-align: center;
+}
+
+.back-button {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #bae6fd;
+    border-radius: 13px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 23px;
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+    .back-button:hover {
+        transform: translateX(-2px);
+        border-color: #38bdf8;
+        background: #f0f9ff;
+    }
+
+.passkey-icon {
+    width: 78px;
+    height: 78px;
+    margin: 0 auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 24px;
+    background: linear-gradient( 135deg, #0284c7, #4f46e5 );
+    box-shadow: 0 12px 30px rgba(2, 132, 199, 0.27);
+    font-size: 34px;
+}
+
+.system-name {
+    margin: 0 0 8px;
+    color: #0284c7;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.passkey-header h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 32px;
+    font-weight: 750;
+}
+
+.passkey-description {
+    max-width: 470px;
+    margin: 11px auto 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.passkey-information {
+    padding: 17px;
+    border: 1px solid #bae6fd;
+    border-radius: 17px;
+    background: #f0f9ff;
+}
+
+.information-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+}
+
+.information-icon {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 13px;
+    background: #ffffff;
+    font-size: 20px;
+}
+
+.information-row strong {
+    color: #0c4a6e;
+    font-size: 14px;
+}
+
+.information-row p {
+    margin: 5px 0 0;
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.passkey-limit {
+    margin-top: 18px;
+    padding: 17px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #e2e8f0;
+    border-radius: 17px;
+    background: #f8fafc;
+}
+
+.limit-label {
+    display: block;
+    margin-bottom: 4px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.limit-number {
+    color: #0f172a;
+    font-size: 21px;
+}
+
+.limit-status {
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.empty-passkey-list {
+    margin-top: 18px;
+    padding: 30px 18px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 18px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    background: #f1f5f9;
+    font-size: 27px;
+}
+
+.empty-passkey-list h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 18px;
+}
+
+.empty-passkey-list p {
+    max-width: 390px;
+    margin: 8px auto 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.register-passkey-button {
+    width: 100%;
+    min-height: 55px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient( 135deg, #0284c7, #4f46e5 );
+    box-shadow: 0 12px 24px rgba(2, 132, 199, 0.22);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .register-passkey-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 28px rgba(2, 132, 199, 0.28);
+    }
+
+    .register-passkey-button span {
+        font-size: 21px;
+        line-height: 1;
+    }
+
+.development-message {
+    margin: 13px 0 0;
+    color: #94a3b8;
+    font-size: 11px;
+    text-align: center;
+}
+
+@media (max-width: 576px) {
+    .passkey-page {
+        padding: 24px 16px;
+    }
+
+    .passkey-card {
+        padding: 30px 20px;
+        border-radius: 22px;
+    }
+
+    .passkey-header h1 {
+        font-size: 27px;
+    }
+
+    .passkey-limit {
+        padding: 15px;
+    }
+}
+.passkey-message {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+    .passkey-message.success {
+        border: 1px solid #86efac;
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+    .passkey-message.error {
+        border: 1px solid #fecaca;
+        background: #fff1f2;
+        color: #991b1b;
+    }
+
+.register-passkey-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+    box-shadow: none;
+}
+
+.registered-passkey-list {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.registered-passkey-item {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid #dbeafe;
+    border-radius: 17px;
+    background: #f8fafc;
+}
+
+.registered-passkey-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: #ffffff;
+    font-size: 22px;
+}
+
+.registered-passkey-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .registered-passkey-content strong {
+        color: #0f172a;
+        font-size: 15px;
+    }
+
+    .registered-passkey-content small {
+        color: #64748b;
+        font-size: 12px;
+    }

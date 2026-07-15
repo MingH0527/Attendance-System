@@ -5,6 +5,7 @@ using WebAndMobile;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
 using Stripe;
+using Fido2NetLib;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +71,16 @@ builder.Services
         options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
         options.Cookie.SameSite = SameSiteMode.Lax;
     });
+builder.Services.AddFido2(options =>
+{
+    options.ServerDomain = "localhost";
+    options.ServerName = "Attendance System";
+
+    options.Origins = new HashSet<string>
+    {
+        "https://localhost:7279"
+    };
+});
 
 builder.Services.AddScoped<GmailServiceHelper>();
 
