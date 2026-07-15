@@ -8,6 +8,29 @@
     const usernameError = document.getElementById("usernameError");
     const passwordError = document.getElementById("passwordError");
 
+    const rememberMeInput = document.getElementById("rememberMe");
+    const rememberMeStatus = document.getElementById("rememberMeStatus");
+
+    /*
+     * Remember Me only updates this explanatory message on the
+     * client. The server (AccountController.Login) still controls
+     * the real authentication cookie's IsPersistent/ExpiresUtc based
+     * on the submitted checkbox value.
+     */
+    function updateRememberMeStatus() {
+        if (!rememberMeStatus) {
+            return;
+        }
+
+        rememberMeStatus.textContent = rememberMeInput?.checked
+            ? "Remember Me is enabled. You will stay signed in for 30 days."
+            : "Remember Me is disabled. You will be signed out when the browser is closed.";
+    }
+
+    rememberMeInput?.addEventListener("change", updateRememberMeStatus);
+
+    updateRememberMeStatus();
+
     /*
      * Show or hide password
      */
@@ -95,11 +118,24 @@
 
     function showInputError(input, errorElement, message) {
         input.classList.add("input-error");
+        input.classList.remove("input-valid");
+        input.setAttribute("aria-invalid", "true");
         errorElement.textContent = message;
     }
 
     function clearInputError(input, errorElement) {
         input.classList.remove("input-error");
+        input.setAttribute("aria-invalid", "false");
         errorElement.textContent = "";
+
+        /*
+         * Only show the green "valid" state once the user has
+         * actually typed something — never on initial page load.
+         */
+        if (input.value.trim() !== "") {
+            input.classList.add("input-valid");
+        } else {
+            input.classList.remove("input-valid");
+        }
     }
 });

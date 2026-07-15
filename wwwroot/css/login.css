@@ -366,3 +366,106 @@ body {
         align-self: flex-end;
     }
 }
+
+/* ==================================================
+   VALIDATION UI (Part 3)
+   ================================================== */
+
+.field-hint {
+    display: block;
+    margin: 8px 0 0 20px;
+    color: #8a8a8a;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+/* Server-rendered validation classes from asp-validation-for /
+   asp-validation-summary. Kept alongside the existing .input-error /
+   .field-error classes already used by login.js. */
+
+.form-input.input-validation-error {
+    background-color: #fffafa;
+    border-color: #e87878;
+}
+
+.field-validation-error {
+    color: #d14343;
+}
+
+.validation-summary-errors {
+    margin-bottom: 18px;
+    padding: 0;
+    list-style: none;
+}
+
+    .validation-summary-errors ul {
+        margin: 0;
+        padding: 13px 16px;
+        border-radius: 12px;
+        list-style: none;
+        color: #b42318;
+        background-color: #fff1f0;
+        border: 1px solid #ffccc7;
+        font-size: 14px;
+    }
+
+    .validation-summary-errors:empty {
+        display: none;
+    }
+
+/* Valid field indicator (only ever added once the user has
+   interacted with a field; login.js/register.js control when this
+   class is toggled, never on initial render). */
+
+.form-input.input-valid {
+    border-color: #6fcf97;
+}
+
+/* Failed-login-attempt warnings, visually distinct from the plain
+   error-message styling used for "Invalid username or password." */
+
+.login-warning-yellow {
+    color: #7a5b00;
+    background-color: #fff8e1;
+    border: 1px solid #ffe08a;
+}
+
+.login-warning-orange {
+    color: #8a3b00;
+    background-color: #fff1e0;
+    border: 1px solid #ffc27a;
+}
+
+.login-warning-red {
+    color: #a3231d;
+    background-color: #ffe8e6;
+    border: 1px solid #ffb3ac;
+}
+
+.login-warning-locked {
+    color: #ffffff;
+    background-color: #4a0000;
+    border: 1px solid #7a0000;
+    font-weight: 700;
+}
+
+.login-message {
+    animation: loginMessageFadeIn 0.18s ease;
+}
+
+@keyframes loginMessageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.forgot-row {
+    text-align: right;
+    margin: -12px 10px 18px;
+}

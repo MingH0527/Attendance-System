@@ -1,5 +1,10 @@
-﻿using System.Security.Cryptography;
+﻿using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,49 +18,42 @@ public class AccountController : Controller
     private readonly IPasswordHasher<User> passwordHasher;
     private readonly GmailServiceHelper gmailServiceHelper;
 
-    /*
-     * Maps each wizard step to the model fields that live on it.
-     * Used both to decide which step to send an invalid submission
-     * back to, and to filter the on-screen error summary so it only
-     * shows messages relevant to the step being displayed.
-     */
-    private static readonly Dictionary<int, string[]> StepFields =
-        new()
-        {
-            [1] = new[]
-            {
-                nameof(WebAndMobile.Models.User.Username),
-                nameof(WebAndMobile.Models.User.Email),
-                nameof(WebAndMobile.Models.User.Phone),
-                nameof(WebAndMobile.Models.User.Gender)
-            },
+    private const string RegistrationDataKey = "Registration.Data";
+    private const string RegistrationOtpKey = "Registration.Otp";
+    private const string RegistrationOtpExpiryKey = "Registration.OtpExpiry";
+    private const string RegistrationOtpAttemptsKey = "Registration.OtpAttempts";
+    private const string RegistrationOtpResendsKey = "Registration.OtpResends";
 
-            [2] = new[]
-            {
-                nameof(WebAndMobile.Models.User.Address),
-                nameof(WebAndMobile.Models.User.Latitude),
-                nameof(WebAndMobile.Models.User.Longitude)
-            },
+    private const string PasswordResetDataKey = "PasswordReset.Data";
+    private const string PasswordResetOtpKey = "PasswordReset.Otp";
+    private const string PasswordResetOtpExpiryKey = "PasswordReset.OtpExpiry";
+    private const string PasswordResetOtpAttemptsKey = "PasswordReset.OtpAttempts";
+    private const string PasswordResetOtpResendsKey = "PasswordReset.OtpResends";
 
-            [3] = new[]
-            {
-                nameof(WebAndMobile.Models.User.Password),
-                nameof(WebAndMobile.Models.User.ConfirmPassword)
-            }
-        };
+    private const int MaximumOtpAttempts = 5;
+    private const int MaximumOtpResends = 3;
 
-    private static readonly Regex GmailOnlyRegex =
-        new(
-            @"^[a-zA-Z0-9._%+\-]+@gmail\.com$",
-            RegexOptions.IgnoreCase |
-            RegexOptions.Compiled
-        );
+    private static readonly Regex GmailOnlyRegex = new(
+        @"^[a-zA-Z0-9._%+\-]+@gmail\.com$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Dictionary<int, string[]> StepFields = new()
+    {
+        [1] =
+        [
+            nameof(WebAndMobile.Models.User.Username),
+            nameof(WebAndMobile.Models.User.Email),
+            nameof(WebAndMobile.Models.User.Phone),
+            nameof(WebAndMobile.Models.User.Gender)
+        ],
+        [2] = [nameof(WebAndMobile.Models.User.Address)],
+        [3] = [nameof(WebAndMobile.Models.User.Password), nameof(WebAndMobile.Models.User.ConfirmPassword)]
+    };
 
     public AccountController(
         DB db,
         IPasswordHasher<User> passwordHasher,
-        GmailServiceHelper gmailServiceHelper
-    )
+        GmailServiceHelper gmailServiceHelper)
     {
         this.db = db;
         this.passwordHasher = passwordHasher;
@@ -63,1173 +61,1015 @@ public class AccountController : Controller
     }
 
     // ==================================================
-    // REGISTER GET
+    // REGISTER
     // ==================================================
 
     [HttpGet]
     public IActionResult Register()
     {
-        ViewBag.Error =
-            TempData["Error"];
-
+        ClearRegistrationSession();
+        ViewBag.Error = TempData["Error"];
         return View(new User());
     }
 
-    // ==================================================
-    // REGISTER POST
-    // ==================================================
-
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(User model)
+    public async Task<IActionResult> Register(
+        User model,
+        double? latitude,
+        double? longitude)
     {
-        Console.WriteLine("========== REGISTER POST REACHED ==========");
-
-        Console.WriteLine("---- RAW Request.Form (what the browser actually sent) ----");
-
-        if (Request.HasFormContentType)
-        {
-            foreach (var pair in Request.Form)
-            {
-                Console.WriteLine($"  {pair.Key} = '{pair.Value}'");
-            }
-        }
-        else
-        {
-            Console.WriteLine(
-                $"  Request.HasFormContentType is FALSE. Content-Type was: '{Request.ContentType}'"
-            );
-        }
-
-        Console.WriteLine("-------------------------------------------------------------");
-
-        Console.WriteLine(
-            $"Bound values -> Username='{model.Username}', Email='{model.Email}', " +
-            $"Phone='{model.Phone}', Gender='{model.Gender}', Address='{model.Address}', " +
-            $"Latitude={model.Latitude}, Longitude={model.Longitude}, " +
-            $"PasswordLength={(model.Password ?? "").Length}, ConfirmPasswordLength={(model.ConfirmPassword ?? "").Length}"
-        );
-
-        /*
-         * Clear automatic ModelState validation because
-         * this controller performs its own validation below.
-         */
         ModelState.Clear();
 
-        model.Username =
-            (model.Username ?? "")
-            .Trim();
+        model.Username = (model.Username ?? "").Trim();
+        model.Email = (model.Email ?? "").Trim().ToLowerInvariant();
+        model.Phone = Regex.Replace(model.Phone ?? "", @"\D", "");
+        model.Address = (model.Address ?? "").Trim();
+        model.Gender = (model.Gender ?? "").Trim().ToLowerInvariant();
 
-        model.Email =
-            (model.Email ?? "")
-            .Trim()
-            .ToLowerInvariant();
+        string password = model.Password ?? "";
+        string confirmPassword = model.ConfirmPassword ?? "";
 
-        model.Phone =
-            Regex.Replace(
-                model.Phone ?? "",
-                @"\D",
-                ""
-            );
-
-        model.Address =
-            (model.Address ?? "")
-            .Trim();
-
-        model.Gender =
-            (model.Gender ?? "")
-            .Trim()
-            .ToLowerInvariant();
-
-        string password =
-            model.Password ?? "";
-
-        string confirmPassword =
-            model.ConfirmPassword ?? "";
-
-        // ==================================================
-        // USERNAME VALIDATION
-        // ==================================================
-
-        if (string.IsNullOrWhiteSpace(model.Username))
-        {
-            ModelState.AddModelError(
-                nameof(model.Username),
-                "Username is required."
-            );
-        }
-        else if (model.Username.Length > 30)
-        {
-            ModelState.AddModelError(
-                nameof(model.Username),
-                "Username cannot exceed 30 characters."
-            );
-        }
-
-        // ==================================================
-        // EMAIL VALIDATION
-        // ==================================================
-
-        if (string.IsNullOrWhiteSpace(model.Email))
-        {
-            ModelState.AddModelError(
-                nameof(model.Email),
-                "Email is required."
-            );
-        }
-        else if (!GmailOnlyRegex.IsMatch(model.Email))
-        {
-            ModelState.AddModelError(
-                nameof(model.Email),
-                "Use a valid Gmail address ending with @gmail.com."
-            );
-        }
-
-        // ==================================================
-        // PHONE VALIDATION
-        // ==================================================
-
-        if (string.IsNullOrWhiteSpace(model.Phone))
-        {
-            ModelState.AddModelError(
-                nameof(model.Phone),
-                "Phone number is required."
-            );
-        }
-        else if (!IsValidMalaysiaPhone(model.Phone))
-        {
-            ModelState.AddModelError(
-                nameof(model.Phone),
-                "Enter a valid Malaysian phone number."
-            );
-        }
-
-        // ==================================================
-        // GENDER VALIDATION
-        // ==================================================
-
-        if (model.Gender is not ("male" or "female"))
-        {
-            ModelState.AddModelError(
-                nameof(model.Gender),
-                "Please select a gender."
-            );
-        }
-
-        // ==================================================
-        // LOCATION VALIDATION
-        // ==================================================
-
-        if (
-            string.IsNullOrWhiteSpace(model.Address) ||
-            model.Latitude == null ||
-            model.Longitude == null
-        )
-        {
-            ModelState.AddModelError(
-                nameof(model.Address),
-                "Please choose your location on the map."
-            );
-        }
-        else if (
-            model.Latitude < -90 ||
-            model.Latitude > 90 ||
-            model.Longitude < -180 ||
-            model.Longitude > 180
-        )
-        {
-            ModelState.AddModelError(
-                nameof(model.Address),
-                "The selected map coordinates are invalid."
-            );
-        }
-
-        // ==================================================
-        // PASSWORD VALIDATION
-        // ==================================================
-
-        if (string.IsNullOrEmpty(password))
-        {
-            ModelState.AddModelError(
-                nameof(model.Password),
-                "Password is required."
-            );
-        }
-        else if (!IsPasswordValid(password))
-        {
-            ModelState.AddModelError(
-                nameof(model.Password),
-                "Use 8–15 characters with uppercase, lowercase, number and symbol."
-            );
-        }
-
-        // ==================================================
-        // CONFIRM PASSWORD VALIDATION
-        // ==================================================
-
-        if (string.IsNullOrEmpty(confirmPassword))
-        {
-            ModelState.AddModelError(
-                nameof(model.ConfirmPassword),
-                "Please confirm your password."
-            );
-        }
-        else if (password != confirmPassword)
-        {
-            ModelState.AddModelError(
-                nameof(model.ConfirmPassword),
-                "Passwords do not match."
-            );
-        }
-
-        // ==================================================
-        // DUPLICATE CHECK
-        // ==================================================
+        ValidateRegistration(model, password, confirmPassword, latitude, longitude);
 
         try
         {
-            if (
-                !string.IsNullOrWhiteSpace(model.Username) &&
-                await db.Users.AnyAsync(
-                    user =>
-                        user.Username.ToLower() ==
-                        model.Username.ToLower()
-                )
-            )
+            if (!string.IsNullOrWhiteSpace(model.Username) &&
+                await db.Users.AnyAsync(u => u.Username.ToLower() == model.Username.ToLower()))
             {
-                ModelState.AddModelError(
-                    nameof(model.Username),
-                    "Username already exists."
-                );
+                ModelState.AddModelError(nameof(model.Username), "Username already exists.");
             }
 
-            if (
-                !string.IsNullOrWhiteSpace(model.Email) &&
-                await db.Users.AnyAsync(
-                    user =>
-                        user.Email.ToLower() ==
-                        model.Email
-                )
-            )
+            if (!string.IsNullOrWhiteSpace(model.Email) &&
+                await db.Users.AnyAsync(u => u.Email.ToLower() == model.Email))
             {
-                ModelState.AddModelError(
-                    nameof(model.Email),
-                    "Email already exists."
-                );
+                ModelState.AddModelError(nameof(model.Email), "Email already exists.");
             }
 
-            if (
-                !string.IsNullOrWhiteSpace(model.Phone) &&
-                await db.Users.AnyAsync(
-                    user =>
-                        user.Phone == model.Phone
-                )
-            )
+            if (!string.IsNullOrWhiteSpace(model.Phone) &&
+                await db.Users.AnyAsync(u => u.Phone == model.Phone))
             {
-                ModelState.AddModelError(
-                    nameof(model.Phone),
-                    "Phone number already exists."
-                );
+                ModelState.AddModelError(nameof(model.Phone), "Phone number already exists.");
             }
         }
         catch (Exception exception)
         {
-            Console.WriteLine(
-                "========== DATABASE CHECK ERROR =========="
-            );
-
-            Console.WriteLine(exception.ToString());
-
-            Console.WriteLine(
-                "=========================================="
-            );
-
-            string message =
-                "Unable to check existing accounts. " +
-                GetRealExceptionMessage(exception);
-
-            ModelState.AddModelError("", message);
-
-            /*
-             * Redundant, guaranteed-visible fallback in case the
-             * asp-validation-summary tag helper does not render.
-             */
-            ViewBag.Error = message;
+            ModelState.AddModelError(
+                "",
+                "Unable to check existing accounts. " + GetRealExceptionMessage(exception));
         }
-
-        // ==================================================
-        // RETURN VALIDATION ERROR
-        // ==================================================
 
         if (!ModelState.IsValid)
         {
-            Console.WriteLine("========== REGISTER MODELSTATE INVALID ==========");
-
-            foreach (var entry in ModelState)
-            {
-                foreach (var error in entry.Value.Errors)
-                {
-                    string key =
-                        string.IsNullOrEmpty(entry.Key)
-                            ? "(form-level)"
-                            : entry.Key;
-
-                    Console.WriteLine(
-                        $"  Field '{key}': {error.ErrorMessage}"
-                    );
-                }
-            }
-
-            Console.WriteLine("==================================================");
-
-            /*
-             * Send the user back to the EARLIEST step that has a
-             * problem (not the step they submitted from). This must
-             * run before building the on-screen summary below, since
-             * the summary is filtered down to only that step's fields.
-             */
             SetRegisterErrorStep();
-
-            int visibleStep = (int)ViewData["RegisterStep"]!;
-
-            string[] relevantFields =
-                StepFields.TryGetValue(visibleStep, out var fields)
-                    ? fields
-                    : Array.Empty<string>();
-
-            /*
-             * Only surface errors that belong to the step the user is
-             * actually looking at. Form-level errors (empty key, e.g.
-             * the duplicate-check database exception above) are always
-             * shown, since there is no field to attach them to.
-             */
-            List<string> visibleErrorMessages = new();
-
-            foreach (var entry in ModelState)
-            {
-                bool belongsToVisibleStep =
-                    string.IsNullOrEmpty(entry.Key) ||
-                    relevantFields.Contains(entry.Key);
-
-                if (!belongsToVisibleStep)
-                {
-                    continue;
-                }
-
-                foreach (var error in entry.Value.Errors)
-                {
-                    visibleErrorMessages.Add(error.ErrorMessage);
-                }
-            }
-
-            /*
-             * Guaranteed-visible summary banner for the current step.
-             * (The view no longer also renders
-             * asp-validation-summary="All" for this, since having both
-             * produced a duplicate/empty box.)
-             */
-            ViewBag.Error =
-                string.Join(" ", visibleErrorMessages);
-
-            /*
-             * Do not send passwords back to the browser.
-             * Other fields remain inside model.
-             */
+            SetVisibleRegisterError();
             model.Password = "";
             model.ConfirmPassword = "";
-
             return View(model);
         }
 
-        Console.WriteLine("ModelState is valid. Proceeding with registration.");
+        User hashingUser = new()
+        {
+            Username = model.Username,
+            Email = model.Email
+        };
 
-        // ==================================================
-        // CREATE OTP
-        // ==================================================
+        PendingRegistration pending = new()
+        {
+            Username = model.Username,
+            Email = model.Email,
+            Phone = model.Phone,
+            Address = model.Address,
+            Gender = model.Gender,
+            PasswordHash = passwordHasher.HashPassword(hashingUser, password)
+        };
 
         string otp = GenerateOtp();
 
-        User newUser =
-            new()
-            {
-                Username = model.Username,
-                Email = model.Email,
-                Phone = model.Phone,
-                Address = model.Address,
+        try
+        {
+            await gmailServiceHelper.SendOtpAsync(
+                pending.Email,
+                pending.Username,
+                otp);
+        }
+        catch (Exception exception)
+        {
+            ViewBag.Error =
+                "The OTP email could not be sent. " +
+                GetRealExceptionMessage(exception);
 
-                Latitude = model.Latitude,
-                Longitude = model.Longitude,
+            ViewData["RegisterStep"] = 3;
+            model.Password = "";
+            model.ConfirmPassword = "";
+            return View(model);
+        }
 
-                Gender = model.Gender,
+        ClearRegistrationSession();
+        HttpContext.Session.SetString(
+            RegistrationDataKey,
+            JsonSerializer.Serialize(pending));
+        HttpContext.Session.SetString(RegistrationOtpKey, otp);
+        HttpContext.Session.SetString(
+            RegistrationOtpExpiryKey,
+            DateTime.UtcNow.AddMinutes(1).ToString("O"));
+        HttpContext.Session.SetInt32(RegistrationOtpAttemptsKey, 0);
+        HttpContext.Session.SetInt32(RegistrationOtpResendsKey, 0);
 
-                Position = "Student",
-                Avatar = "default.png",
+        TempData["Message"] = "A 6-digit OTP has been sent to your Gmail.";
+        return RedirectToAction(nameof(VerifyOtp));
+    }
 
-                Status = "Pending",
-                IsEmailVerified = false,
+    [HttpGet]
+    public IActionResult VerifyOtp()
+    {
+        PendingRegistration? pending = GetPendingRegistration();
 
-                CreatedDate = DateTime.UtcNow,
+        if (pending == null)
+        {
+            TempData["Error"] = "Your registration session expired. Please register again.";
+            return RedirectToAction(nameof(Register));
+        }
 
-                OtpExpiresAt =
-                    DateTime.UtcNow.AddMinutes(5),
+        SetRegistrationOtpViewData(pending);
+        ViewBag.Message = TempData["Message"];
+        ViewBag.Error = TempData["Error"];
+        return View();
+    }
 
-                OtpLastSentAt =
-                    DateTime.UtcNow,
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> VerifyOtp(string otp)
+    {
+        PendingRegistration? pending = GetPendingRegistration();
 
-                OtpAttemptCount = 0
-            };
+        if (pending == null)
+        {
+            TempData["Error"] = "Your registration session expired. Please register again.";
+            return RedirectToAction(nameof(Register));
+        }
 
-        newUser.Password =
-            passwordHasher.HashPassword(
-                newUser,
-                password
-            );
+        SetRegistrationOtpViewData(pending);
+        otp = Regex.Replace(otp ?? "", @"\D", "");
 
-        newUser.OtpHash =
-            passwordHasher.HashPassword(
-                newUser,
-                otp
-            );
+        if (!ValidateSessionOtp(
+                otp,
+                RegistrationOtpKey,
+                RegistrationOtpExpiryKey,
+                RegistrationOtpAttemptsKey,
+                out string error))
+        {
+            ViewBag.Error = error;
+            return View();
+        }
 
-        // ==================================================
-        // SAVE USER FIRST
-        // ==================================================
+        bool duplicateExists = await db.Users.AnyAsync(u =>
+            u.Username.ToLower() == pending.Username.ToLower() ||
+            u.Email.ToLower() == pending.Email.ToLower() ||
+            u.Phone == pending.Phone);
 
-        Console.WriteLine("Attempting to save pending user to the database...");
+        if (duplicateExists)
+        {
+            ClearRegistrationSession();
+            TempData["Error"] =
+                "This username, Gmail, or phone number has already been registered.";
+            return RedirectToAction(nameof(Register));
+        }
+
+        User newUser = new()
+        {
+            Username = pending.Username,
+            Email = pending.Email,
+            Phone = pending.Phone,
+            Address = pending.Address,
+            Gender = pending.Gender,
+            Password = pending.PasswordHash,
+            Position = "Student",
+            Avatar = "default.png",
+            Status = "Active"
+        };
 
         try
         {
             db.Users.Add(newUser);
-
             await db.SaveChangesAsync();
-
-            Console.WriteLine(
-                $"User saved. UserId: {newUser.UserId}"
-            );
         }
         catch (DbUpdateException exception)
         {
-            Console.WriteLine(
-                "========== DATABASE SAVE ERROR =========="
-            );
-
-            Console.WriteLine(exception.ToString());
-
-            Console.WriteLine(
-                "========================================="
-            );
-
-            /*
-             * Remove entity tracking so another submit
-             * does not try to insert it again.
-             */
-            db.Entry(newUser).State =
-                EntityState.Detached;
-
-            string message =
-                "Account could not be saved. " +
+            ViewBag.Error =
+                "Account could not be created. " +
                 GetRealExceptionMessage(exception);
-
-            ModelState.AddModelError("", message);
-
-            /*
-             * Redundant, guaranteed-visible fallback in case the
-             * asp-validation-summary tag helper does not render.
-             */
-            ViewBag.Error = message;
-
-            ViewData["RegisterStep"] = 3;
-
-            model.Password = "";
-            model.ConfirmPassword = "";
-
-            return View(model);
+            return View();
         }
-        catch (Exception exception)
+
+        ClearRegistrationSession();
+        TempData["Message"] =
+            "Email verified and account created successfully. Please log in.";
+        return RedirectToAction(nameof(Login));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResendOtp()
+    {
+        PendingRegistration? pending = GetPendingRegistration();
+
+        if (pending == null)
         {
-            Console.WriteLine(
-                "========== GENERAL SAVE ERROR =========="
-            );
-
-            Console.WriteLine(exception.ToString());
-
-            Console.WriteLine(
-                "========================================"
-            );
-
-            db.Entry(newUser).State =
-                EntityState.Detached;
-
-            string message =
-                "An error occurred while creating the account. " +
-                GetRealExceptionMessage(exception);
-
-            ModelState.AddModelError("", message);
-
-            ViewBag.Error = message;
-
-            ViewData["RegisterStep"] = 3;
-
-            model.Password = "";
-            model.ConfirmPassword = "";
-
-            return View(model);
+            TempData["Error"] = "Your registration session expired. Please register again.";
+            return RedirectToAction(nameof(Register));
         }
 
-        // ==================================================
-        // SEND OTP EMAIL
-        // ==================================================
+        int resendCount =
+            HttpContext.Session.GetInt32(RegistrationOtpResendsKey) ?? 0;
 
-        Console.WriteLine($"OTP generated. Starting OTP email send to {newUser.Email}...");
+        if (resendCount >= MaximumOtpResends)
+        {
+            TempData["Error"] =
+                "You have used all resend attempts. Please register again.";
+            return RedirectToAction(nameof(VerifyOtp));
+        }
+
+        DateTime? currentExpiry = GetSessionDateTime(RegistrationOtpExpiryKey);
+        if (currentExpiry.HasValue && currentExpiry.Value > DateTime.UtcNow)
+        {
+            TempData["Error"] = "Please wait until the current OTP expires.";
+            return RedirectToAction(nameof(VerifyOtp));
+        }
+
+        string otp = GenerateOtp();
 
         try
         {
             await gmailServiceHelper.SendOtpAsync(
-                newUser.Email,
-                newUser.Username,
-                otp
-            );
-
-            Console.WriteLine(
-                $"OTP email sent successfully to {newUser.Email}"
-            );
+                pending.Email,
+                pending.Username,
+                otp);
         }
         catch (Exception exception)
         {
-            Console.WriteLine(
-                "========== OTP EMAIL ERROR =========="
-            );
-
-            Console.WriteLine(exception.ToString());
-
-            Console.WriteLine(
-                "====================================="
-            );
-
-            /*
-             * The user cannot complete registration without
-             * receiving an OTP, so remove the pending account.
-             */
-            try
-            {
-                User? savedUser =
-                    await db.Users.FindAsync(
-                        newUser.UserId
-                    );
-
-                if (savedUser != null)
-                {
-                    db.Users.Remove(savedUser);
-
-                    await db.SaveChangesAsync();
-                }
-            }
-            catch (Exception deleteException)
-            {
-                Console.WriteLine(
-                    "Unable to remove failed pending user:"
-                );
-
-                Console.WriteLine(
-                    deleteException.ToString()
-                );
-            }
-
-            string message =
-                "The account was not completed because the OTP email could not be sent. " +
-                GetRealExceptionMessage(exception);
-
-            ModelState.AddModelError("", message);
-
-            /*
-             * Redundant, guaranteed-visible fallback in case the
-             * asp-validation-summary tag helper does not render.
-             */
-            ViewBag.Error = message;
-
-            ViewData["RegisterStep"] = 3;
-
-            model.Password = "";
-            model.ConfirmPassword = "";
-
-            return View(model);
+            TempData["Error"] =
+                "OTP could not be sent. " + GetRealExceptionMessage(exception);
+            return RedirectToAction(nameof(VerifyOtp));
         }
 
-        // ==================================================
-        // REDIRECT TO VERIFY OTP
-        // ==================================================
+        HttpContext.Session.SetString(RegistrationOtpKey, otp);
+        HttpContext.Session.SetString(
+            RegistrationOtpExpiryKey,
+            DateTime.UtcNow.AddMinutes(1).ToString("O"));
+        HttpContext.Session.SetInt32(RegistrationOtpAttemptsKey, 0);
+        HttpContext.Session.SetInt32(RegistrationOtpResendsKey, resendCount + 1);
 
-        Console.WriteLine($"Redirecting to VerifyOtp for UserId: {newUser.UserId}");
-
-        TempData["Message"] =
-            "A 6-digit OTP has been sent to your Gmail.";
-
-        return RedirectToAction(
-            nameof(VerifyOtp),
-            new
-            {
-                userId = newUser.UserId
-            }
-        );
+        TempData["Message"] = "A new one-minute OTP has been sent.";
+        return RedirectToAction(nameof(VerifyOtp));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult CancelOtp()
+    {
+        ClearRegistrationSession();
+        TempData["Error"] =
+            "Registration was cancelled. Please check your information and try again.";
+        return RedirectToAction(nameof(Register));
+    }
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckRegistrationAvailability(
+    string username,
+    string email,
+    string phone)
+    {
+        username = (username ?? "").Trim();
+        email = (email ?? "").Trim().ToLowerInvariant();
+        phone = Regex.Replace(phone ?? "", @"\D", "");
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                field = "username",
+                message = "Username is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                field = "email",
+                message = "Email is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                field = "phone",
+                message = "Phone number is required."
+            });
+        }
+
+        try
+        {
+            bool usernameExists = await db.Users.AnyAsync(u =>
+                u.Username.ToLower() == username.ToLower());
+
+            bool emailExists = await db.Users.AnyAsync(u =>
+                u.Email.ToLower() == email);
+
+            bool phoneExists = await db.Users.AnyAsync(u =>
+                u.Phone == phone);
+
+            return Json(new
+            {
+                success = true,
+
+                username = new
+                {
+                    available = !usernameExists,
+                    message = usernameExists
+                        ? "Username already exists."
+                        : "Username is available."
+                },
+
+                email = new
+                {
+                    available = !emailExists,
+                    message = emailExists
+                        ? "Gmail address already exists."
+                        : "Gmail address is available."
+                },
+
+                phone = new
+                {
+                    available = !phoneExists,
+                    message = phoneExists
+                        ? "Phone number already exists."
+                        : "Phone number is available."
+                },
+
+                allAvailable =
+                    !usernameExists &&
+                    !emailExists &&
+                    !phoneExists
+            });
+        }
+        catch (Exception exception)
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                message =
+                    "Unable to check the database. " +
+                    GetRealExceptionMessage(exception)
+            });
+        }
+    }
     // ==================================================
-    // VERIFY OTP GET
+    // FORGOT PASSWORD
+    // All OTP/reset temporary data is stored in Session.
+    // No OTP columns are required in dbo.Users.
     // ==================================================
 
     [HttpGet]
-    public async Task<IActionResult> VerifyOtp(int userId)
+    public IActionResult ForgotPassword()
     {
-        User? user =
-            await db.Users.FindAsync(userId);
-
-        if (user == null)
-        {
-            TempData["Error"] =
-                "Account not found.";
-
-            return RedirectToAction(
-                nameof(Register)
-            );
-        }
-
-        if (user.IsEmailVerified)
-        {
-            TempData["Message"] =
-                "Email has already been verified.";
-
-            return RedirectToAction(
-                nameof(Login)
-            );
-        }
-
-        ViewBag.UserId = user.UserId;
-
-        ViewBag.Email =
-            MaskEmail(user.Email);
-
-        ViewBag.Message =
-            TempData["Message"];
-
-        ViewBag.Error =
-            TempData["Error"];
-
+        ViewBag.Error = TempData["Error"];
+        ViewBag.Message = TempData["Message"];
         return View();
     }
 
-    // ==================================================
-    // VERIFY OTP POST
-    // ==================================================
-
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> VerifyOtp(
-        int userId,
-        string otp
-    )
+    public async Task<IActionResult> ForgotPassword(
+        string username,
+        string password,
+        string confirmPassword)
     {
-        otp =
-            Regex.Replace(
-                otp ?? "",
-                @"\D",
-                ""
-            );
+        username = (username ?? "").Trim();
+        password ??= "";
+        confirmPassword ??= "";
+        ViewBag.Username = username;
 
-        User? user =
-            await db.Users.FindAsync(userId);
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            ViewBag.Error = "Username is required.";
+            return View();
+        }
+
+        if (!IsPasswordValid(password))
+        {
+            ViewBag.Error =
+                "Use 8–15 characters with uppercase, lowercase, number and symbol.";
+            return View();
+        }
+
+        if (password != confirmPassword)
+        {
+            ViewBag.Error = "Passwords do not match.";
+            return View();
+        }
+
+        User? user = await db.Users.FirstOrDefaultAsync(u =>
+            u.Username.ToLower() == username.ToLower());
 
         if (user == null)
         {
-            TempData["Error"] =
-                "Account not found.";
-
-            return RedirectToAction(
-                nameof(Register)
-            );
-        }
-
-        ViewBag.UserId = user.UserId;
-
-        ViewBag.Email =
-            MaskEmail(user.Email);
-
-        if (user.IsEmailVerified)
-        {
-            TempData["Message"] =
-                "Email has already been verified.";
-
-            return RedirectToAction(
-                nameof(Login)
-            );
-        }
-
-        if (otp.Length != 6)
-        {
-            ViewBag.Error =
-                "Please enter the complete 6-digit OTP.";
-
+            ViewBag.Error = "User cannot be found.";
             return View();
         }
 
-        if (
-            user.OtpExpiresAt == null ||
-            user.OtpExpiresAt < DateTime.UtcNow
-        )
-        {
-            ViewBag.Error =
-                "OTP has expired. Please request a new OTP.";
-
-            return View();
-        }
-
-        if (user.OtpAttemptCount >= 5)
-        {
-            ViewBag.Error =
-                "Too many incorrect attempts. Please request a new OTP.";
-
-            return View();
-        }
-
-        if (string.IsNullOrWhiteSpace(user.OtpHash))
-        {
-            ViewBag.Error =
-                "No active OTP was found.";
-
-            return View();
-        }
-
-        PasswordVerificationResult result =
-            passwordHasher.VerifyHashedPassword(
-                user,
-                user.OtpHash,
-                otp
-            );
-
-        if (result == PasswordVerificationResult.Failed)
-        {
-            user.OtpAttemptCount++;
-
-            await db.SaveChangesAsync();
-
-            int remainingAttempts =
-                Math.Max(
-                    0,
-                    5 - user.OtpAttemptCount
-                );
-
-            ViewBag.Error =
-                $"Incorrect OTP. {remainingAttempts} attempt(s) remaining.";
-
-            return View();
-        }
-
-        user.IsEmailVerified = true;
-        user.Status = "Active";
-
-        user.OtpHash = null;
-        user.OtpExpiresAt = null;
-        user.OtpLastSentAt = null;
-        user.OtpAttemptCount = 0;
-
-        await db.SaveChangesAsync();
-
-        TempData["Message"] =
-            "Email verified successfully. Please log in.";
-
-        return RedirectToAction(
-            nameof(Login)
-        );
-    }
-
-    // ==================================================
-    // RESEND OTP
-    // ==================================================
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResendOtp(
-        int userId
-    )
-    {
-        User? user =
-            await db.Users.FindAsync(userId);
-
-        if (user == null)
-        {
-            TempData["Error"] =
-                "Account not found.";
-
-            return RedirectToAction(
-                nameof(Register)
-            );
-        }
-
-        if (user.IsEmailVerified)
-        {
-            TempData["Message"] =
-                "Email has already been verified.";
-
-            return RedirectToAction(
-                nameof(Login)
-            );
-        }
-
-        if (
-            user.OtpLastSentAt.HasValue &&
-            user.OtpLastSentAt.Value
-                .AddSeconds(60) >
-            DateTime.UtcNow
-        )
-        {
-            int secondsRemaining =
-                (int)Math.Ceiling(
-                    (
-                        user.OtpLastSentAt.Value
-                            .AddSeconds(60) -
-                        DateTime.UtcNow
-                    ).TotalSeconds
-                );
-
-            TempData["Error"] =
-                $"Please wait {secondsRemaining} seconds before requesting another OTP.";
-
-            return RedirectToAction(
-                nameof(VerifyOtp),
-                new
-                {
-                    userId
-                }
-            );
-        }
-
-        string newOtp = GenerateOtp();
-
-        user.OtpHash =
-            passwordHasher.HashPassword(
-                user,
-                newOtp
-            );
-
-        user.OtpExpiresAt =
-            DateTime.UtcNow.AddMinutes(5);
-
-        user.OtpLastSentAt =
-            DateTime.UtcNow;
-
-        user.OtpAttemptCount = 0;
+        string otp = GenerateOtp();
+        string newPasswordHash = passwordHasher.HashPassword(user, password);
 
         try
         {
-            await db.SaveChangesAsync();
-
-            await gmailServiceHelper.SendOtpAsync(
+            await gmailServiceHelper.SendPasswordResetOtpAsync(
                 user.Email,
                 user.Username,
-                newOtp
-            );
+                otp);
         }
         catch (Exception exception)
         {
-            Console.WriteLine(
-                "========== RESEND OTP ERROR =========="
-            );
-
-            Console.WriteLine(exception.ToString());
-
-            Console.WriteLine(
-                "======================================"
-            );
-
-            TempData["Error"] =
-                "OTP could not be sent. " +
+            ViewBag.Error =
+                "The password reset OTP could not be sent. " +
                 GetRealExceptionMessage(exception);
-
-            return RedirectToAction(
-                nameof(VerifyOtp),
-                new
-                {
-                    userId
-                }
-            );
+            return View();
         }
 
-        TempData["Message"] =
-            "A new OTP has been sent.";
+        ClearPasswordResetSession();
+        PasswordResetData pending = new()
+        {
+            UserId = user.UserId,
+            MaskedEmail = MaskEmail(user.Email),
+            NewPasswordHash = newPasswordHash
+        };
 
-        return RedirectToAction(
-            nameof(VerifyOtp),
-            new
-            {
-                userId
-            }
-        );
+        HttpContext.Session.SetString(
+            PasswordResetDataKey,
+            JsonSerializer.Serialize(pending));
+        HttpContext.Session.SetString(PasswordResetOtpKey, otp);
+        HttpContext.Session.SetString(
+            PasswordResetOtpExpiryKey,
+            DateTime.UtcNow.AddMinutes(1).ToString("O"));
+        HttpContext.Session.SetInt32(PasswordResetOtpAttemptsKey, 0);
+        HttpContext.Session.SetInt32(PasswordResetOtpResendsKey, 0);
+
+        TempData["Message"] = "A password reset OTP has been sent to your Gmail.";
+        return RedirectToAction(nameof(ResetPassword));
+    }
+
+    // This GET displays your current ResetPassword.cshtml OTP page.
+    [HttpGet]
+    public IActionResult ResetPassword()
+    {
+        PasswordResetData? pending = GetPasswordResetData();
+        if (pending == null)
+        {
+            TempData["Error"] = "Your password reset session expired. Please try again.";
+            return RedirectToAction(nameof(ForgotPassword));
+        }
+
+        SetPasswordResetOtpViewData(pending);
+        ViewBag.Message = TempData["Message"];
+        ViewBag.Error = TempData["Error"];
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPasswordOtp(int userId, string otp)
+    {
+        PasswordResetData? pending = GetPasswordResetData();
+
+        if (pending == null || pending.UserId != userId)
+        {
+            TempData["Error"] = "Your password reset session expired. Please try again.";
+            return RedirectToAction(nameof(ForgotPassword));
+        }
+
+        if (!ValidateSessionOtp(
+                Regex.Replace(otp ?? "", @"\D", ""),
+                PasswordResetOtpKey,
+                PasswordResetOtpExpiryKey,
+                PasswordResetOtpAttemptsKey,
+                out string error))
+        {
+            TempData["Error"] = error;
+            return RedirectToAction(nameof(ResetPassword));
+        }
+
+        User? user = await db.Users.FindAsync(pending.UserId);
+        if (user == null)
+        {
+            ClearPasswordResetSession();
+            TempData["Error"] = "User cannot be found.";
+            return RedirectToAction(nameof(ForgotPassword));
+        }
+
+        user.Password = pending.NewPasswordHash;
+        await db.SaveChangesAsync();
+
+        ClearPasswordResetSession();
+        TempData["Message"] = "Password updated successfully. Please log in.";
+        return RedirectToAction(nameof(Login));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResendForgotPasswordOtp(int userId)
+    {
+        PasswordResetData? pending = GetPasswordResetData();
+
+        if (pending == null || pending.UserId != userId)
+        {
+            TempData["Error"] = "Your password reset session expired. Please try again.";
+            return RedirectToAction(nameof(ForgotPassword));
+        }
+
+        int resendCount =
+            HttpContext.Session.GetInt32(PasswordResetOtpResendsKey) ?? 0;
+
+        if (resendCount >= MaximumOtpResends)
+        {
+            TempData["Error"] = "No resend attempts remain.";
+            return RedirectToAction(nameof(ResetPassword));
+        }
+
+        DateTime? expiry = GetSessionDateTime(PasswordResetOtpExpiryKey);
+        if (expiry.HasValue && expiry.Value > DateTime.UtcNow)
+        {
+            TempData["Error"] = "Please wait until the current OTP expires.";
+            return RedirectToAction(nameof(ResetPassword));
+        }
+
+        User? user = await db.Users.FindAsync(pending.UserId);
+        if (user == null)
+        {
+            ClearPasswordResetSession();
+            TempData["Error"] = "User cannot be found.";
+            return RedirectToAction(nameof(ForgotPassword));
+        }
+
+        string otp = GenerateOtp();
+
+        try
+        {
+            await gmailServiceHelper.SendPasswordResetOtpAsync(
+                user.Email,
+                user.Username,
+                otp);
+        }
+        catch (Exception exception)
+        {
+            TempData["Error"] =
+                "OTP could not be sent. " + GetRealExceptionMessage(exception);
+            return RedirectToAction(nameof(ResetPassword));
+        }
+
+        HttpContext.Session.SetString(PasswordResetOtpKey, otp);
+        HttpContext.Session.SetString(
+            PasswordResetOtpExpiryKey,
+            DateTime.UtcNow.AddMinutes(1).ToString("O"));
+        HttpContext.Session.SetInt32(PasswordResetOtpAttemptsKey, 0);
+        HttpContext.Session.SetInt32(PasswordResetOtpResendsKey, resendCount + 1);
+
+        TempData["Message"] = "A new OTP has been sent.";
+        return RedirectToAction(nameof(ResetPassword));
     }
 
     // ==================================================
-    // LOGIN GET
+    // LOGIN
+    // Login-attempt data is stored in Session, not dbo.Users.
     // ==================================================
 
     [HttpGet]
     public IActionResult Login()
     {
-        ViewBag.Message =
-            TempData["Message"];
-
-        ViewBag.Error =
-            TempData["Error"];
-
-        return View();
+        ViewBag.Message = TempData["Message"];
+        ViewBag.Error = TempData["Error"];
+        return View(new LoginViewModel());
     }
-
-    // ==================================================
-    // LOGIN POST
-    // ==================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(
-        string username,
-        string password
-    )
+    public async Task<IActionResult> Login(LoginViewModel model)
     {
-        username =
-            (username ?? "")
-            .Trim();
+        model.Username = (model.Username ?? "").Trim();
+        model.Password ??= "";
 
-        password ??= "";
+        if (string.IsNullOrWhiteSpace(model.Username) ||
+            string.IsNullOrEmpty(model.Password))
+        {
+            ViewBag.Error = "Please enter your username and password.";
+            return View(model);
+        }
 
-        User? user =
-            await db.Users.FirstOrDefaultAsync(
-                user =>
-                    user.Username.ToLower() ==
-                    username.ToLower()
-            );
+        string attemptKey = GetLoginAttemptsKey(model.Username);
+        string lockoutKey = GetLoginLockoutKey(model.Username);
+        DateTime? lockoutEnd = GetSessionDateTime(lockoutKey);
+
+        if (lockoutEnd.HasValue && lockoutEnd.Value > DateTime.UtcNow)
+        {
+            TimeSpan remaining = lockoutEnd.Value - DateTime.UtcNow;
+            ViewBag.Error =
+                $"Login attempts have been used up. Try again after " +
+                $"{remaining.Minutes} minute(s) and {remaining.Seconds} second(s).";
+            ViewBag.LoginWarningLevel = "locked";
+            return View(model);
+        }
+
+        if (lockoutEnd.HasValue)
+        {
+            HttpContext.Session.Remove(lockoutKey);
+            HttpContext.Session.Remove(attemptKey);
+        }
+
+        User? user = await db.Users.FirstOrDefaultAsync(u =>
+            u.Username.ToLower() == model.Username.ToLower());
 
         if (user == null)
         {
-            ViewBag.Error =
-                "Invalid username or password.";
-
-            return View();
+            ViewBag.Error = "Invalid username or password.";
+            return View(model);
         }
 
         PasswordVerificationResult result =
-            passwordHasher.VerifyHashedPassword(
-                user,
-                user.Password,
-                password
-            );
+            passwordHasher.VerifyHashedPassword(user, user.Password, model.Password);
 
         if (result == PasswordVerificationResult.Failed)
         {
-            ViewBag.Error =
-                "Invalid username or password.";
+            if (IsLockoutApplicable(user))
+            {
+                int attempts =
+                    (HttpContext.Session.GetInt32(attemptKey) ?? 0) + 1;
+                HttpContext.Session.SetInt32(attemptKey, attempts);
 
-            return View();
-        }
-
-        if (
-            !user.IsEmailVerified ||
-            user.Status == "Pending"
-        )
-        {
-            TempData["Error"] =
-                "Please verify your Gmail before logging in.";
-
-            return RedirectToAction(
-                nameof(VerifyOtp),
-                new
+                if (attempts >= 4)
                 {
-                    userId = user.UserId
+                    DateTime end = DateTime.UtcNow.AddMinutes(15);
+                    HttpContext.Session.SetString(lockoutKey, end.ToString("O"));
+                    ViewBag.Error = "Login attempts have been used up.";
+                    ViewBag.LoginWarningLevel = "locked";
+                    return View(model);
                 }
-            );
+
+                int remainingAttempts = 4 - attempts;
+                ViewBag.Error =
+                    $"Password incorrect. You have {remainingAttempts} attempt(s) remaining.";
+                ViewBag.LoginWarningLevel = remainingAttempts switch
+                {
+                    3 => "yellow",
+                    2 => "orange",
+                    _ => "red"
+                };
+                return View(model);
+            }
+
+            ViewBag.Error = "Invalid username or password.";
+            return View(model);
         }
 
-        if (user.Status != "Active")
+        HttpContext.Session.Remove(attemptKey);
+        HttpContext.Session.Remove(lockoutKey);
+
+        if (!string.Equals(user.Status, "Active", StringComparison.OrdinalIgnoreCase))
         {
-            ViewBag.Error =
-                "This account is not active.";
-
-            return View();
+            ViewBag.Error = "This account is not active.";
+            return View(model);
         }
+
+        List<Claim> claims =
+        [
+            new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Position)
+        ];
+
+        ClaimsIdentity identity = new(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        AuthenticationProperties properties = new()
+        {
+            IsPersistent = model.RememberMe,
+            ExpiresUtc = model.RememberMe
+                ? DateTimeOffset.UtcNow.AddDays(30)
+                : null,
+            AllowRefresh = true
+        };
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity),
+            properties);
 
         return user.Position switch
         {
-            "Admin" =>
-                RedirectToAction(
-                    "Index",
-                    "Admin"
-                ),
-
-            "Teacher" =>
-                RedirectToAction(
-                    "Index",
-                    "Teacher"
-                ),
-
-            _ =>
-                RedirectToAction(
-                    "Index",
-                    "Student"
-                )
+            "Admin" => RedirectToAction("Index", "Admin"),
+            "Teacher" => RedirectToAction("Index", "Teacher"),
+            _ => RedirectToAction("Index", "Student")
         };
     }
 
-    // ==================================================
-    // REGISTER ERROR STEP
-    // ==================================================
-
-    private void SetRegisterErrorStep()
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
     {
-        /*
-         * Check Step 1 first, then 2, then 3, so the user lands on the
-         * EARLIEST step that actually has a problem. The previous order
-         * checked Step 3 first, so a submission with errors on both
-         * Step 1 and Step 3 would land on Step 3 while the summary still
-         * listed the Step 1 errors too — showing "Email is required"
-         * etc. on a screen with no email field on it.
-         */
-        if (
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Username)) ||
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Email)) ||
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Phone)) ||
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Gender))
-        )
-        {
-            ViewData["RegisterStep"] = 1;
-        }
-        else if (
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Address)) ||
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Latitude)) ||
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Longitude))
-        )
-        {
-            ViewData["RegisterStep"] = 2;
-        }
-        else if (
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Password)) ||
-            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.ConfirmPassword))
-        )
-        {
-            ViewData["RegisterStep"] = 3;
-        }
-        else
-        {
-            /*
-             * No field-specific error was added (e.g. the duplicate-check
-             * database call threw and its message was added under the
-             * empty "" key). Stay on Step 3, where Create Account was
-             * clicked from, since nothing the user entered was actually
-             * invalid.
-             */
-            ViewData["RegisterStep"] = 3;
-        }
+        await HttpContext.SignOutAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToAction(nameof(Login));
     }
 
     // ==================================================
     // HELPERS
     // ==================================================
 
-    private static string GenerateOtp()
+    private void ValidateRegistration(
+        User model,
+        string password,
+        string confirmPassword,
+        double? latitude,
+        double? longitude)
     {
-        int number =
-            RandomNumberGenerator.GetInt32(
-                100000,
-                1000000
-            );
+        if (string.IsNullOrWhiteSpace(model.Username))
+            ModelState.AddModelError(nameof(model.Username), "Username is required.");
+        else if (model.Username.Length > 30)
+            ModelState.AddModelError(nameof(model.Username), "Username cannot exceed 30 characters.");
 
-        return number.ToString();
+        if (string.IsNullOrWhiteSpace(model.Email))
+            ModelState.AddModelError(nameof(model.Email), "Email is required.");
+        else if (!GmailOnlyRegex.IsMatch(model.Email))
+            ModelState.AddModelError(nameof(model.Email), "Use a valid Gmail address ending with @gmail.com.");
+
+        if (string.IsNullOrWhiteSpace(model.Phone))
+            ModelState.AddModelError(nameof(model.Phone), "Phone number is required.");
+        else if (!IsValidMalaysiaPhone(model.Phone))
+            ModelState.AddModelError(nameof(model.Phone), "Enter a valid Malaysian phone number.");
+
+        if (model.Gender is not ("male" or "female"))
+            ModelState.AddModelError(nameof(model.Gender), "Please select a gender.");
+
+        if (string.IsNullOrWhiteSpace(model.Address) ||
+            latitude == null || longitude == null)
+        {
+            ModelState.AddModelError(nameof(model.Address), "Please choose your location on the map.");
+        }
+        else if (latitude < -90 || latitude > 90 ||
+                 longitude < -180 || longitude > 180)
+        {
+            ModelState.AddModelError(nameof(model.Address), "The selected map coordinates are invalid.");
+        }
+
+        if (string.IsNullOrEmpty(password))
+            ModelState.AddModelError(nameof(model.Password), "Password is required.");
+        else if (!IsPasswordValid(password))
+            ModelState.AddModelError(nameof(model.Password), "Use 8–15 characters with uppercase, lowercase, number and symbol.");
+
+        if (string.IsNullOrEmpty(confirmPassword))
+            ModelState.AddModelError(nameof(model.ConfirmPassword), "Please confirm your password.");
+        else if (password != confirmPassword)
+            ModelState.AddModelError(nameof(model.ConfirmPassword), "Passwords do not match.");
     }
 
-    private static string MaskEmail(
-        string email
-    )
+    private bool ValidateSessionOtp(
+        string otp,
+        string otpKey,
+        string expiryKey,
+        string attemptsKey,
+        out string error)
     {
-        string[] parts =
-            email.Split('@');
+        error = "";
 
-        if (parts.Length != 2)
+        if (otp.Length != 6)
         {
-            return email;
+            error = "Please enter the complete 6-digit OTP.";
+            return false;
         }
 
-        string name = parts[0];
-
-        string maskedName;
-
-        if (name.Length <= 1)
+        DateTime? expiry = GetSessionDateTime(expiryKey);
+        if (expiry == null || expiry <= DateTime.UtcNow)
         {
-            maskedName =
-                name + "***";
+            error = "OTP has expired. Please request a new OTP.";
+            return false;
         }
-        else if (name.Length == 2)
+
+        int attempts = HttpContext.Session.GetInt32(attemptsKey) ?? 0;
+        if (attempts >= MaximumOtpAttempts)
         {
-            maskedName =
-                name[0] + "***";
+            error = "Too many incorrect attempts. Please request a new OTP.";
+            return false;
+        }
+
+        string? savedOtp = HttpContext.Session.GetString(otpKey);
+        if (string.IsNullOrWhiteSpace(savedOtp))
+        {
+            error = "No active OTP was found. Please request a new OTP.";
+            return false;
+        }
+
+        bool matches = CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(savedOtp),
+            Encoding.UTF8.GetBytes(otp));
+
+        if (matches)
+            return true;
+
+        attempts++;
+        HttpContext.Session.SetInt32(attemptsKey, attempts);
+        error = $"Incorrect OTP. {Math.Max(0, MaximumOtpAttempts - attempts)} attempt(s) remaining.";
+        return false;
+    }
+
+    private void SetRegisterErrorStep()
+    {
+        if (ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Username)) ||
+            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Email)) ||
+            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Phone)) ||
+            ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Gender)))
+        {
+            ViewData["RegisterStep"] = 1;
+        }
+        else if (ModelState.ContainsKey(nameof(WebAndMobile.Models.User.Address)))
+        {
+            ViewData["RegisterStep"] = 2;
         }
         else
         {
-            maskedName =
-                name[0] +
-                "***" +
-                name[^1];
+            ViewData["RegisterStep"] = 3;
+        }
+    }
+
+    private void SetVisibleRegisterError()
+    {
+        int step = (int)(ViewData["RegisterStep"] ?? 1);
+        string[] relevantFields = StepFields.GetValueOrDefault(step, []);
+        List<string> messages = [];
+
+        foreach ((string key, var value) in ModelState)
+        {
+            if (!string.IsNullOrEmpty(key) && !relevantFields.Contains(key))
+                continue;
+
+            messages.AddRange(value.Errors.Select(e => e.ErrorMessage));
         }
 
-        return
-            $"{maskedName}@{parts[1]}";
+        ViewBag.Error = string.Join(" ", messages);
     }
 
-    private static bool IsValidMalaysiaPhone(
-        string phone
-    )
+    private static bool IsLockoutApplicable(User user) =>
+        user.Position == "Student" || user.Position == "Teacher";
+
+    private static string GetLoginAttemptsKey(string username) =>
+        "Login.Attempts." + username.ToLowerInvariant();
+
+    private static string GetLoginLockoutKey(string username) =>
+        "Login.Lockout." + username.ToLowerInvariant();
+
+    private static string GenerateOtp() =>
+        RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+
+    private static bool IsValidMalaysiaPhone(string phone) =>
+        Regex.IsMatch(phone, @"^(011\d{8}|01[2-9]\d{7})$");
+
+    private static bool IsPasswordValid(string value) =>
+        value.Length is >= 8 and <= 15 &&
+        Regex.IsMatch(value, "[A-Z]") &&
+        Regex.IsMatch(value, "[a-z]") &&
+        Regex.IsMatch(value, @"\d") &&
+        Regex.IsMatch(value, "[@$!%*?&]");
+
+    private static string MaskEmail(string email)
     {
-        return Regex.IsMatch(
-            phone,
-            @"^(011\d{8}|01[2-9]\d{7})$"
-        );
+        string[] parts = email.Split('@');
+        if (parts.Length != 2) return email;
+
+        string name = parts[0];
+        string masked = name.Length switch
+        {
+            <= 1 => name + "***",
+            2 => name[0] + "***",
+            _ => name[0] + "***" + name[^1]
+        };
+
+        return $"{masked}@{parts[1]}";
     }
 
-    private static bool IsPasswordValid(
-        string value
-    )
-    {
-        return
-            value.Length >= 8 &&
-            value.Length <= 15 &&
-
-            Regex.IsMatch(
-                value,
-                "[A-Z]"
-            ) &&
-
-            Regex.IsMatch(
-                value,
-                "[a-z]"
-            ) &&
-
-            Regex.IsMatch(
-                value,
-                @"\d"
-            ) &&
-
-            Regex.IsMatch(
-                value,
-                "[@$!%*?&]"
-            );
-    }
-
-    private static string GetRealExceptionMessage(
-        Exception exception
-    )
+    private static string GetRealExceptionMessage(Exception exception)
     {
         Exception current = exception;
-
         while (current.InnerException != null)
-        {
-            current =
-                current.InnerException;
-        }
-
+            current = current.InnerException;
         return current.Message;
+    }
+
+    private DateTime? GetSessionDateTime(string key)
+    {
+        string? value = HttpContext.Session.GetString(key);
+        return DateTime.TryParse(
+            value,
+            null,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out DateTime date)
+            ? date.ToUniversalTime()
+            : null;
+    }
+
+    private PendingRegistration? GetPendingRegistration() =>
+        DeserializeSession<PendingRegistration>(RegistrationDataKey);
+
+    private PasswordResetData? GetPasswordResetData() =>
+        DeserializeSession<PasswordResetData>(PasswordResetDataKey);
+
+    private T? DeserializeSession<T>(string key)
+    {
+        string? json = HttpContext.Session.GetString(key);
+        if (string.IsNullOrWhiteSpace(json)) return default;
+
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json);
+        }
+        catch (JsonException)
+        {
+            HttpContext.Session.Remove(key);
+            return default;
+        }
+    }
+
+    private void SetRegistrationOtpViewData(PendingRegistration pending)
+    {
+        int resendCount =
+            HttpContext.Session.GetInt32(RegistrationOtpResendsKey) ?? 0;
+        int remaining = Math.Max(0, MaximumOtpResends - resendCount);
+
+        ViewBag.Email = MaskEmail(pending.Email);
+        ViewBag.ResendRemaining = remaining;
+        ViewBag.OtpExpiresAtUtc =
+            GetSessionDateTime(RegistrationOtpExpiryKey)?.ToString("O");
+        ViewBag.ResendClass = GetResendClass(remaining);
+    }
+
+    private void SetPasswordResetOtpViewData(PasswordResetData pending)
+    {
+        int resendCount =
+            HttpContext.Session.GetInt32(PasswordResetOtpResendsKey) ?? 0;
+        int remaining = Math.Max(0, MaximumOtpResends - resendCount);
+
+        ViewBag.UserId = pending.UserId;
+        ViewBag.Email = pending.MaskedEmail;
+        ViewBag.ResendRemaining = remaining;
+        ViewBag.OtpExpiresAtUtc =
+            GetSessionDateTime(PasswordResetOtpExpiryKey)?.ToString("O");
+        ViewBag.ResendClass = GetResendClass(remaining);
+    }
+
+    private static string GetResendClass(int remaining) => remaining switch
+    {
+        3 => "resend-cyan",
+        2 => "resend-yellow",
+        1 => "resend-red",
+        _ => "resend-gray"
+    };
+
+    private void ClearRegistrationSession()
+    {
+        HttpContext.Session.Remove(RegistrationDataKey);
+        HttpContext.Session.Remove(RegistrationOtpKey);
+        HttpContext.Session.Remove(RegistrationOtpExpiryKey);
+        HttpContext.Session.Remove(RegistrationOtpAttemptsKey);
+        HttpContext.Session.Remove(RegistrationOtpResendsKey);
+    }
+
+    private void ClearPasswordResetSession()
+    {
+        HttpContext.Session.Remove(PasswordResetDataKey);
+        HttpContext.Session.Remove(PasswordResetOtpKey);
+        HttpContext.Session.Remove(PasswordResetOtpExpiryKey);
+        HttpContext.Session.Remove(PasswordResetOtpAttemptsKey);
+        HttpContext.Session.Remove(PasswordResetOtpResendsKey);
+    }
+
+    private sealed class PendingRegistration
+    {
+        public string Username { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string Gender { get; set; } = "";
+        public string PasswordHash { get; set; } = "";
+    }
+
+    private sealed class PasswordResetData
+    {
+        public int UserId { get; set; }
+        public string MaskedEmail { get; set; } = "";
+        public string NewPasswordHash { get; set; } = "";
     }
 }

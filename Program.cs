@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using WebAndMobile;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,6 @@ var databasePath = Path.Combine(
 var connectionString =
     $@"Server=(LocalDB)\MSSQLLocalDB;
        AttachDbFilename={databasePath};
-       Initial Catalog=WebAndMobileDB;
        Integrated Security=True;
        MultipleActiveResultSets=True;
        TrustServerCertificate=True;";
@@ -49,6 +49,27 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+StripeConfiguration.ApiKey =
+    builder.Configuration["Stripe:SecretKey"];
+/*
+ * Cookie authentication, added for the Remember Me login feature.
+ * IsPersistent / ExpiresUtc are set per-login inside
+ * AccountController.Login based on the RememberMe checkbox; this
+ * registration only supplies the shared defaults and cookie security
+ * settings.
+ */
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromDays(30);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    });
 
 /*
  * Cookie authentication, added for the Remember Me login feature.

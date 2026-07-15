@@ -25,9 +25,12 @@ public class User
     [MaxLength(500)]
     public string Address { get; set; } = "";
 
-    public double? Latitude { get; set; }
+    [MaxLength(255)]
+    public string Avatar { get; set; } = "default.png";
 
-    public double? Longitude { get; set; }
+    [Required]
+    [MaxLength(20)]
+    public string Status { get; set; } = "Active";
 
     [Required]
     [MaxLength(10)]
@@ -38,34 +41,10 @@ public class User
     public string Password { get; set; } = "";
 
     [NotMapped]
+    [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
     public string ConfirmPassword { get; set; } = "";
 
     [Required]
     [MaxLength(20)]
     public string Position { get; set; } = "Student";
-
-    [MaxLength(255)]
-    public string Avatar { get; set; } = "default.png";
-
-    [Required]
-    [MaxLength(20)]
-    public string Status { get; set; } = "Pending";
-
-    public DateTime CreatedDate { get; set; } =
-        DateTime.UtcNow;
-
-    // OTP verification fields
-
-    public bool IsEmailVerified { get; set; } =
-        false;
-
-    [MaxLength(500)]
-    public string? OtpHash { get; set; }
-
-    public DateTime? OtpExpiresAt { get; set; }
-
-    public DateTime? OtpLastSentAt { get; set; }
-
-    public int OtpAttemptCount { get; set; } =
-        0;
 }

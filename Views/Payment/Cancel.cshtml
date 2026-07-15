@@ -1,0 +1,21 @@
+﻿@{
+    ViewData["Title"] = "Payment Cancelled";
+}
+
+<div class="payment-container">
+    <div class="payment-card">
+
+        <h1>Payment Cancelled</h1>
+
+        <p>
+            No payment was charged. You may try again.
+        </p>
+
+        <a asp-controller="Payment"
+           asp-action="Pay"
+           class="payment-link">
+            Try Again
+        </a>
+
+    </div>
+</div>

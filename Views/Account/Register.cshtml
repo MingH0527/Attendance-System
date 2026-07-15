@@ -66,6 +66,7 @@
                   asp-controller="Account"
                   asp-action="Register"
                   method="post"
+                  autocomplete="off"
                   data-initial-step="@firstErrorStep"
                   novalidate>
 
@@ -157,7 +158,7 @@
                                        id="usernameInput"
                                        placeholder="Enter your username"
                                        maxlength="30"
-                                       autocomplete="username" />
+                                       autocomplete="off" />
 
                             </div>
 
@@ -183,7 +184,7 @@
                                        id="emailInput"
                                        placeholder="example@gmail.com"
                                        maxlength="100"
-                                       autocomplete="email" />
+                                       autocomplete="off" />
 
                             </div>
 
@@ -215,7 +216,7 @@
                                        placeholder="0123456789"
                                        maxlength="11"
                                        inputmode="numeric"
-                                       autocomplete="tel" />
+                                       autocomplete="off" />
 
                             </div>
 
@@ -283,15 +284,32 @@
 
                     </div>
 
-                    <div class="form-actions single">
+                    <div class="availability-check-area">
 
-                        <button type="button"
-                                class="btn primary"
-                                id="nextStep1">
-                            Continue to location →
+                        <<button type="button"
+                                 id="checkAvailabilityButton"
+                                 disabled>
+                            Complete all fields first
                         </button>
 
-                    </div>
+    <p id="availabilityStatus"
+       class="availability-status is-idle"
+       role="status"
+       aria-live="polite">
+        Complete Username, Gmail and Phone, then press Check availability.
+    </p>
+
+</div>
+
+<div class="form-actions single">
+
+    <button type="button"
+            class="btn primary"
+            id="nextStep1">
+        Continue to location →
+    </button>
+
+</div>
 
                 </section>
 
@@ -345,8 +363,16 @@
                         </span>
 
                         <span class="field-error"
-                              id="clientLocationError">
+                              id="clientLocationError"
+                              role="status"
+                              aria-live="polite">
                         </span>
+
+                        <small class="field-hint"
+                               id="locationAccuracyInfo"
+                               role="status"
+                               aria-live="polite">
+                        </small>
 
                     </div>
 
@@ -354,12 +380,12 @@
                          aria-label="Location map">
                     </div>
 
-                    <input asp-for="Latitude"
-                           type="hidden"
+                    <input type="hidden"
+                           name="latitude"
                            id="latitudeInput" />
 
-                    <input asp-for="Longitude"
-                           type="hidden"
+                    <input type="hidden"
+                           name="longitude"
                            id="longitudeInput" />
 
                     <div class="form-actions">
