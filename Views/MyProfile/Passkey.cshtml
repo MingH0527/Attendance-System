@@ -1,0 +1,192 @@
+﻿@model List<WebAndMobile.Models.UserPasskey>
+
+@{
+    ViewData["Title"] = "Manage Passkeys";
+
+    int passkeyCount =
+        ViewBag.PasskeyCount ?? 0;
+
+    int maximumPasskeys =
+        ViewBag.MaximumPasskeys ?? 3;
+
+    bool limitReached =
+        passkeyCount >= maximumPasskeys;
+}
+
+<link rel="stylesheet"
+      href="~/css/passkey.css"
+      asp-append-version="true" />
+
+<div class="passkey-page">
+
+    <main class="passkey-container">
+
+        <div class="passkey-card">
+
+            <div class="passkey-header">
+
+                <a asp-controller="MyProfile"
+                   asp-action="Index"
+                   class="back-button"
+                   title="Back to My Profile">
+                    ←
+                </a>
+
+                <div class="passkey-icon">
+                    🔐
+                </div>
+
+                <p class="system-name">
+                    Security
+                </p>
+
+                <h1>Manage Passkeys</h1>
+
+                <p class="passkey-description">
+                    Use fingerprint, Face ID or your device screen lock
+                    to securely access your account.
+                </p>
+
+            </div>
+
+            <div id="passkeyMessage"
+                 class="passkey-message"
+                 hidden>
+            </div>
+
+            <div class="passkey-information">
+
+                <div class="information-row">
+
+                    <span class="information-icon">
+                        🛡️
+                    </span>
+
+                    <div>
+                        <strong>
+                            Your biometric information stays on your device
+                        </strong>
+
+                        <p>
+                            This website only stores your passkey public
+                            credential. It does not receive your fingerprint
+                            or facial information.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="passkey-limit">
+
+                <div>
+
+                    <span class="limit-label">
+                        Registered passkeys
+                    </span>
+
+                    <strong class="limit-number"
+                            id="passkeyCount">
+
+                        @passkeyCount / @maximumPasskeys
+
+                    </strong>
+
+                </div>
+
+                <span class="limit-status"
+                      id="passkeyStatus">
+
+                    @(limitReached ? "Full" : "Available")
+
+                </span>
+
+            </div>
+
+            <div id="passkeyList">
+
+                @if (Model == null || Model.Count == 0)
+                {
+                    <div class="empty-passkey-list"
+                         id="emptyPasskeyList">
+
+                        <div class="empty-icon">
+                            📱
+                        </div>
+
+                        <h2>No passkeys registered</h2>
+
+                        <p>
+                            Register your phone, tablet or computer
+                            as a trusted login device.
+                        </p>
+
+                    </div>
+                }
+                else
+                {
+                    <div class="registered-passkey-list">
+
+                        @foreach (var passkey in Model)
+                        {
+                            <div class="registered-passkey-item">
+
+                                <span class="registered-passkey-icon">
+                                    🔑
+                                </span>
+
+                                <div class="registered-passkey-content">
+
+                                    <strong>
+                                        @passkey.DeviceName
+                                    </strong>
+
+                                    <small>
+                                        Registered @(passkey.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
+                                    </small>
+
+                                </div>
+
+                            </div>
+                        }
+
+                    </div>
+                }
+
+            </div>
+
+            <form id="passkeyTokenForm">
+                @Html.AntiForgeryToken()
+            </form>
+
+            <button type="button"
+                    id="registerPasskeyButton"
+                    class="register-passkey-button"
+                    disabled="@limitReached">
+
+                <span>＋</span>
+
+                <span id="registerButtonText">
+                    @(limitReached
+                        ? "Maximum Passkeys Reached"
+                        : "Register Passkey")
+                </span>
+
+            </button>
+
+            <p class="development-message">
+                Maximum 3 passkeys per account.
+            </p>
+
+        </div>
+
+    </main>
+
+</div>
+
+@section Scripts {
+    <script src="~/js/passkey.js"
+            asp-append-version="true">
+    </script>
+}

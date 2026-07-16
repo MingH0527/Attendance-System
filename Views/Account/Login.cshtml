@@ -3,17 +3,27 @@
 @{
     ViewData["Title"] = "Login";
 
-    string? warningLevel =
-        ViewBag.LoginWarningLevel as string;
+    string warningLevel =
+        ViewBag.LoginWarningLevel ?? "";
 
-    string errorClass = warningLevel switch
-    {
-        "yellow" => "login-message login-warning-yellow",
-        "orange" => "login-message login-warning-orange",
-        "red" => "login-message login-warning-red",
-        "locked" => "login-message login-warning-locked",
-        _ => "login-message error-message"
-    };
+    string errorClass =
+        warningLevel switch
+        {
+            "yellow" =>
+                "login-warning-yellow",
+
+            "orange" =>
+                "login-warning-orange",
+
+            "red" =>
+                "login-warning-red",
+
+            "locked" =>
+                "login-warning-locked",
+
+            _ =>
+                "error-message"
+        };
 }
 
 <link rel="stylesheet"
@@ -22,20 +32,23 @@
 
 <div class="login-page">
 
-    <div class="login-card">
+    <main class="login-card">
 
-        <!-- Back Button -->
-        <a href="/"
+        <a asp-controller="Home"
+           asp-action="Index"
            class="back-link">
-            <span class="back-icon">↩</span>
-            BACK
+
+            <span class="back-icon">
+                ←
+            </span>
+
+            Back to Home
+
         </a>
 
-        <h1 class="login-title">LOGIN</h1>
-
-        <div asp-validation-summary="ModelOnly"
-             class="validation-summary-errors">
-        </div>
+        <h1 class="login-title">
+            Welcome Back
+        </h1>
 
         @if (ViewBag.Message != null)
         {
@@ -46,92 +59,142 @@
 
         @if (ViewBag.Error != null)
         {
-            <div class="@errorClass">
+            <div class="login-message @errorClass">
                 @ViewBag.Error
             </div>
         }
 
-        <form asp-controller="Account"
-              asp-action="Login"
-              method="post"
-              id="loginForm"
-              autocomplete="off">
+        <div id="passkeyLoginMessage"
+             class="login-message"
+             hidden>
+        </div>
 
-            @Html.AntiForgeryToken()
+        <!-- Login Method Buttons -->
+        <div class="login-method-tabs">
 
-            <!-- Username -->
-            <div class="form-group">
+            <button type="button"
+                    id="usernameLoginTab"
+                    class="login-method-tab active">
 
-                <label for="username"
-                       class="form-label">
-                    <span class="label-icon username-icon">👤</span>
-                    Username
-                </label>
+                <span class="method-icon">
+                    👤
+                </span>
 
-                <input asp-for="Username"
-                       id="username"
-                       class="form-input"
-                       placeholder="Please enter your name"
-                       autocomplete="off"
-                       aria-invalid="false" />
+                <span>
+                    Login with Username
+                </span>
 
-                <span asp-validation-for="Username"
-                      class="field-error"
-                      id="usernameError"></span>
-            </div>
+            </button>
 
-            <!-- Password -->
-            <div class="form-group">
+            <button type="button"
+                    id="passkeyLoginTab"
+                    class="login-method-tab">
 
-                <label for="password"
-                       class="form-label">
-                    <span class="label-icon">🔒</span>
-                    Password
-                </label>
+                <span class="method-icon">
+                    🔐
+                </span>
 
-                <div class="password-container">
+                <span>
+                    Login with Passkey
+                </span>
 
-                    <input asp-for="Password"
-                           id="password"
-                           type="password"
-                           class="form-input password-input"
-                           placeholder="Please enter your password"
-                           autocomplete="new-password"
-                           aria-invalid="false" />
+            </button>
 
-                    <button type="button"
-                            class="password-toggle"
-                            id="passwordToggle"
-                            aria-label="Show password">
-                        🙈
-                    </button>
+        </div>
+
+        <!-- ==========================================
+             USERNAME LOGIN PANEL
+             ========================================== -->
+
+        <section id="usernameLoginPanel"
+                 class="login-panel">
+
+            <form asp-controller="Account"
+                  asp-action="Login"
+                  method="post"
+                  id="loginForm"
+                  novalidate>
+
+                @Html.AntiForgeryToken()
+
+                <div asp-validation-summary="ModelOnly">
+                </div>
+
+                <div class="form-group">
+
+                    <label asp-for="Username"
+                           class="form-label">
+
+                        <span class="label-icon username-icon">
+                            👤
+                        </span>
+
+                        Username
+
+                    </label>
+
+                    <input asp-for="Username"
+                           id="username"
+                           class="form-input"
+                           autocomplete="username"
+                           placeholder="Enter your username" />
+
+                    <span asp-validation-for="Username"
+                          id="usernameError"
+                          class="field-error">
+                    </span>
 
                 </div>
 
-                <span asp-validation-for="Password"
-                      class="field-error"
-                      id="passwordError"></span>
-            </div>
+                <div class="form-group">
 
-            <div class="forgot-row">
-                <a asp-controller="Account"
-                   asp-action="ForgotPassword"
-                   class="forgot-link">
-                    Forgot password?
-                </a>
-            </div>
+                    <label asp-for="Password"
+                           class="form-label">
 
-            <!-- Remember Me -->
-            <div class="login-options">
+                        <span class="label-icon">
+                            🔒
+                        </span>
 
-                <div>
+                        Password
+
+                    </label>
+
+                    <div class="password-container">
+
+                        <input asp-for="Password"
+                               id="password"
+                               type="password"
+                               class="form-input password-input"
+                               autocomplete="current-password"
+                               placeholder="Enter your password" />
+
+                        <button type="button"
+                                id="passwordToggle"
+                                class="password-toggle"
+                                aria-label="Show password">
+
+                            👁️
+
+                        </button>
+
+                    </div>
+
+                    <span asp-validation-for="Password"
+                          id="passwordError"
+                          class="field-error">
+                    </span>
+
+                </div>
+
+                <div class="login-options">
 
                     <label class="remember-container">
 
                         <input asp-for="RememberMe"
                                id="rememberMe" />
 
-                        <span class="custom-checkbox"></span>
+                        <span class="custom-checkbox">
+                        </span>
 
                         <span class="remember-text">
                             Remember me
@@ -139,38 +202,124 @@
 
                     </label>
 
-                    <small class="field-hint"
-                           id="rememberMeStatus">
-                        Remember Me is disabled. You will be signed out when the browser is closed.
-                    </small>
+                    <a asp-controller="Account"
+                       asp-action="ForgotPassword"
+                       class="forgot-link">
+
+                        Forgot Password?
+
+                    </a>
 
                 </div>
 
+                <button type="submit"
+                        id="loginButton"
+                        class="login-button">
+
+                    Login
+
+                </button>
+
+            </form>
+
+        </section>
+
+        <!-- ==========================================
+             PASSKEY LOGIN PANEL
+             ========================================== -->
+
+        <section id="passkeyLoginPanel"
+                 class="login-panel"
+                 hidden>
+
+            <div class="passkey-login-content">
+
+                <div class="passkey-login-icon">
+                    🔐
+                </div>
+
+                <h2>
+                    Login with Passkey
+                </h2>
+
+                <p>
+                    Use Windows Hello, fingerprint, Face ID,
+                    device PIN or another device.
+                </p>
+
+                <div class="passkey-feature-list">
+
+                    <div>
+                        <span>✓</span>
+                        No username or password required
+                    </div>
+
+                    <div>
+                        <span>✓</span>
+                        Your biometric data stays on your device
+                    </div>
+
+                    <div>
+                        <span>✓</span>
+                        Choose another device to display a QR code
+                    </div>
+
+                </div>
+
+                <button type="button"
+                        id="startPasskeyLoginButton"
+                        class="passkey-login-button">
+
+                    <span class="passkey-button-icon">
+                        🔑
+                    </span>
+
+                    <span id="passkeyLoginButtonText">
+                        Continue with Passkey
+                    </span>
+
+                </button>
+
+                <p class="passkey-help-text">
+                    Select “Use another device” to sign in
+                    using your phone.
+                </p>
+
             </div>
 
-            <!-- Login Button -->
-            <button type="submit"
-                    class="login-button"
-                    id="loginButton">
-                LOGIN
-            </button>
+        </section>
+
+        <!-- Token used by Passkey AJAX requests -->
+        <form id="passkeyLoginTokenForm"
+              method="post"
+              style="display: none;">
+
+            @Html.AntiForgeryToken()
 
         </form>
 
-        <!-- Register Link -->
         <p class="register-text">
+
             Don't have an account?
 
             <a asp-controller="Account"
                asp-action="Register"
                class="register-link">
-                Register Now!
+
+                Register
+
             </a>
+
         </p>
 
-    </div>
+    </main>
 
 </div>
 
-<script src="~/js/login.js"
-        asp-append-version="true"></script>
+@section Scripts {
+
+    <script src="~/js/login.js"
+            asp-append-version="true">
+    </script>
+
+}

@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 
 namespace WebAndMobile.Controllers;
 
@@ -14,12 +16,20 @@ public class StudentController : Controller
     // POST: /Student/Logout
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout()
     {
-        // clear the current loginSession
+        // Clear session data.
         HttpContext.Session.Clear();
 
-        // back to login page
-        return RedirectToAction("Login", "Account");
+        // Remove the authentication cookie.
+        await HttpContext.SignOutAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        // Return to login page.
+        return RedirectToAction(
+            "Login",
+            "Account"
+        );
     }
 }

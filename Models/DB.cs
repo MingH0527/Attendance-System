@@ -10,16 +10,23 @@ public class DB : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+
     public DbSet<Course> Courses => Set<Course>();
+
     public DbSet<ClassGroup> ClassGroups => Set<ClassGroup>();
+
     public DbSet<Classroom> Classrooms => Set<Classroom>();
+
     public DbSet<Timetable> Timetables => Set<Timetable>();
+
+    public DbSet<UserPasskey> UserPasskeys => Set<UserPasskey>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // User unique fields
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Username)
             .IsUnique();
@@ -32,40 +39,59 @@ public class DB : DbContext
             .HasIndex(u => u.Phone)
             .IsUnique();
 
+        // Course unique name
         modelBuilder.Entity<Course>()
             .HasIndex(c => c.CourseName)
             .IsUnique();
 
+        // Class group unique name
         modelBuilder.Entity<ClassGroup>()
             .HasIndex(c => c.ClassName)
             .IsUnique();
 
+        // Classroom unique name
         modelBuilder.Entity<Classroom>()
             .HasIndex(c => c.RoomName)
             .IsUnique();
 
+        // Timetable -> Course
         modelBuilder.Entity<Timetable>()
             .HasOne(t => t.Course)
             .WithMany(c => c.Timetables)
             .HasForeignKey(t => t.CourseId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Timetable -> ClassGroup
         modelBuilder.Entity<Timetable>()
             .HasOne(t => t.ClassGroup)
             .WithMany(c => c.Timetables)
             .HasForeignKey(t => t.ClassId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Timetable -> Classroom
         modelBuilder.Entity<Timetable>()
             .HasOne(t => t.Classroom)
             .WithMany(c => c.Timetables)
             .HasForeignKey(t => t.ClassroomId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Timetable -> Teacher
         modelBuilder.Entity<Timetable>()
             .HasOne<User>()
             .WithMany()
             .HasForeignKey(t => t.TeacherId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // CredentialId cannot be duplicated
+        modelBuilder.Entity<UserPasskey>()
+            .HasIndex(p => p.CredentialId)
+            .IsUnique();
+
+        // One user can have many passkeys
+        modelBuilder.Entity<UserPasskey>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
