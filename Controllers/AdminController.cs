@@ -21,7 +21,12 @@ public class AdminController : Controller
 
     public IActionResult Index()
     {
-        return Content("Welcome Admin");
+        return View();
+    }
+
+    public IActionResult CreateTeacher()
+    {
+        return View();
     }
 
     public IActionResult Timetable()
@@ -438,4 +443,50 @@ public class AdminController : Controller
                     .First()
                     .ErrorMessage);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetNonTeacherUsers()
+    {
+        var users = await _context.Users
+            .Where(u => u.Position != "Teacher")
+            .OrderBy(u => u.Username)
+            .Select(u => new TeacherLookupDto
+            {
+                TeacherId = u.UserId,
+                TeacherName = u.Username
+            })
+            .ToListAsync();
+
+        return Json(users);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> PromoteToTeacher(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
+
+        if (user is null)
+        {
+            return NotFound("User not found.");
+        }
+
+        if (user.Position == "Teacher")
+        {
+            return BadRequest("This user is already a teacher.");
+        }
+
+        user.Position = "Teacher";
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "User promoted to teacher.",
+            teacherId = user.UserId,
+            teacherName = user.Username
+        });
+    }
+
+
+
+
 }
