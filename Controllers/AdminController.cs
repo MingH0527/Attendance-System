@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
@@ -21,7 +23,7 @@ public class AdminController : Controller
 
     public IActionResult Index()
     {
-        return Content("Welcome Admin");
+        return View("Admin");
     }
 
     public IActionResult Timetable()
@@ -437,5 +439,19 @@ public class AdminController : Controller
                 item => item.Value!.Errors
                     .First()
                     .ErrorMessage);
+    }
+
+    // POST: /Admin/Logout
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        HttpContext.Session.Clear();
+
+        await HttpContext.SignOutAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        return RedirectToAction("Login", "Account");
     }
 }
