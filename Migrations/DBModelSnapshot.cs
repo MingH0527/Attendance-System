@@ -17,10 +17,52 @@ namespace WebAndMobile.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("WebAndMobile.Models.AdminSecurity", b =>
+                {
+                    b.Property<int>("AdminSecurityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AdminSecurityId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastVerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("PinEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PinHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("AdminSecurityId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("AdminSecurities");
+                });
 
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>
                 {
@@ -212,6 +254,18 @@ namespace WebAndMobile.Migrations
                     b.Property<Guid>("AaGuid")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AuthenticatorAttachment")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AuthenticatorTransports")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Browser")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -229,8 +283,16 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime?>("LastUsedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("OperatingSystem")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<byte[]>("PublicKey")
                         .IsRequired()
@@ -238,6 +300,10 @@ namespace WebAndMobile.Migrations
 
                     b.Property<long>("SignCount")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<byte[]>("UserHandle")
                         .HasColumnType("varbinary(max)");
@@ -253,6 +319,17 @@ namespace WebAndMobile.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserPasskeys");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AdminSecurity", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithOne("AdminSecurity")
+                        .HasForeignKey("WebAndMobile.Models.AdminSecurity", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
@@ -311,6 +388,11 @@ namespace WebAndMobile.Migrations
             modelBuilder.Entity("WebAndMobile.Models.Course", b =>
                 {
                     b.Navigation("Timetables");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.User", b =>
+                {
+                    b.Navigation("AdminSecurity");
                 });
 #pragma warning restore 612, 618
         }

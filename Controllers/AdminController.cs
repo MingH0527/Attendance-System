@@ -1,15 +1,20 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
 using WebAndMobile.ViewModels;
 
 namespace WebAndMobile.Controllers;
 
+[Authorize(Roles = "Admin")]
 public class AdminController : Controller
 {
     private readonly DB _context;
-    private readonly ITimetableValidationService _validationService;
+
+    private readonly ITimetableValidationService
+        _validationService;
 
     public AdminController(
         DB context,
@@ -19,11 +24,51 @@ public class AdminController : Controller
         _validationService = validationService;
     }
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return Content("Welcome Admin");
-    }
+        int? userId = GetCurrentUserId();
 
+        if (userId == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        User? user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                u => u.UserId == userId.Value
+            );
+
+        if (user == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        int passkeyCount =
+            await _context.UserPasskeys.CountAsync(
+                p => p.UserId == user.UserId
+            );
+
+        AdminSecurity? adminSecurity =
+            await _context.AdminSecurities
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    a => a.UserId == user.UserId
+                );
+
+        ViewBag.PasskeyCount = passkeyCount;
+
+        ViewBag.AdminPinEnabled =
+            adminSecurity?.PinEnabled == true;
+
+        return View(user);
+    }
     public IActionResult Timetable()
     {
         return View();
@@ -66,25 +111,33 @@ public class AdminController : Controller
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            return BadRequest("Course name is required.");
+            return BadRequest(
+                "Course name is required."
+            );
         }
 
-        string courseName = dto.Name.Trim();
+        string courseName =
+            dto.Name.Trim();
 
-        bool alreadyExists = await _context.Courses
-            .AnyAsync(c => c.CourseName == courseName);
+        bool alreadyExists =
+            await _context.Courses.AnyAsync(
+                c => c.CourseName == courseName
+            );
 
         if (alreadyExists)
         {
-            return BadRequest("This course already exists.");
+            return BadRequest(
+                "This course already exists."
+            );
         }
 
-        var course = new Course
+        Course course = new()
         {
             CourseName = courseName
         };
 
         _context.Courses.Add(course);
+
         await _context.SaveChangesAsync();
 
         return Json(new SimpleLookupDto
@@ -95,41 +148,54 @@ public class AdminController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DeleteCourse(int id)
+    public async Task<IActionResult> DeleteCourse(
+        int id)
     {
-        var course = await _context.Courses.FindAsync(id);
+        Course? course =
+            await _context.Courses.FindAsync(id);
 
-        if (course is null)
+        if (course == null)
         {
-            return NotFound("Course not found.");
+            return NotFound(
+                "Course not found."
+            );
         }
 
-        bool inUse = await _context.Timetables
-            .AnyAsync(t => t.CourseId == id);
+        bool inUse =
+            await _context.Timetables.AnyAsync(
+                t => t.CourseId == id
+            );
 
         if (inUse)
         {
             return BadRequest(
-                "Cannot delete this course because it is used in the timetable.");
+                "Cannot delete this course because " +
+                "it is used in the timetable."
+            );
         }
 
         _context.Courses.Remove(course);
+
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Course deleted." });
+        return Ok(new
+        {
+            message = "Course deleted."
+        });
     }
 
     [HttpGet]
     public async Task<IActionResult> GetClasses()
     {
-        var classes = await _context.ClassGroups
-            .OrderBy(c => c.ClassName)
-            .Select(c => new SimpleLookupDto
-            {
-                Id = c.ClassId,
-                Name = c.ClassName
-            })
-            .ToListAsync();
+        var classes =
+            await _context.ClassGroups
+                .OrderBy(c => c.ClassName)
+                .Select(c => new SimpleLookupDto
+                {
+                    Id = c.ClassId,
+                    Name = c.ClassName
+                })
+                .ToListAsync();
 
         return Json(classes);
     }
@@ -140,25 +206,33 @@ public class AdminController : Controller
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            return BadRequest("Class name is required.");
+            return BadRequest(
+                "Class name is required."
+            );
         }
 
-        string className = dto.Name.Trim();
+        string className =
+            dto.Name.Trim();
 
-        bool alreadyExists = await _context.ClassGroups
-            .AnyAsync(c => c.ClassName == className);
+        bool alreadyExists =
+            await _context.ClassGroups.AnyAsync(
+                c => c.ClassName == className
+            );
 
         if (alreadyExists)
         {
-            return BadRequest("This class already exists.");
+            return BadRequest(
+                "This class already exists."
+            );
         }
 
-        var classGroup = new ClassGroup
+        ClassGroup classGroup = new()
         {
             ClassName = className
         };
 
         _context.ClassGroups.Add(classGroup);
+
         await _context.SaveChangesAsync();
 
         return Json(new SimpleLookupDto
@@ -169,41 +243,54 @@ public class AdminController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DeleteClass(int id)
+    public async Task<IActionResult> DeleteClass(
+        int id)
     {
-        var classGroup = await _context.ClassGroups.FindAsync(id);
+        ClassGroup? classGroup =
+            await _context.ClassGroups.FindAsync(id);
 
-        if (classGroup is null)
+        if (classGroup == null)
         {
-            return NotFound("Class not found.");
+            return NotFound(
+                "Class not found."
+            );
         }
 
-        bool inUse = await _context.Timetables
-            .AnyAsync(t => t.ClassId == id);
+        bool inUse =
+            await _context.Timetables.AnyAsync(
+                t => t.ClassId == id
+            );
 
         if (inUse)
         {
             return BadRequest(
-                "Cannot delete this class because it is used in the timetable.");
+                "Cannot delete this class because " +
+                "it is used in the timetable."
+            );
         }
 
         _context.ClassGroups.Remove(classGroup);
+
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Class deleted." });
+        return Ok(new
+        {
+            message = "Class deleted."
+        });
     }
 
     [HttpGet]
     public async Task<IActionResult> GetClassrooms()
     {
-        var rooms = await _context.Classrooms
-            .OrderBy(c => c.RoomName)
-            .Select(c => new SimpleLookupDto
-            {
-                Id = c.ClassroomId,
-                Name = c.RoomName
-            })
-            .ToListAsync();
+        var rooms =
+            await _context.Classrooms
+                .OrderBy(c => c.RoomName)
+                .Select(c => new SimpleLookupDto
+                {
+                    Id = c.ClassroomId,
+                    Name = c.RoomName
+                })
+                .ToListAsync();
 
         return Json(rooms);
     }
@@ -214,25 +301,33 @@ public class AdminController : Controller
     {
         if (string.IsNullOrWhiteSpace(dto.Name))
         {
-            return BadRequest("Classroom name is required.");
+            return BadRequest(
+                "Classroom name is required."
+            );
         }
 
-        string roomName = dto.Name.Trim();
+        string roomName =
+            dto.Name.Trim();
 
-        bool alreadyExists = await _context.Classrooms
-            .AnyAsync(c => c.RoomName == roomName);
+        bool alreadyExists =
+            await _context.Classrooms.AnyAsync(
+                c => c.RoomName == roomName
+            );
 
         if (alreadyExists)
         {
-            return BadRequest("This classroom already exists.");
+            return BadRequest(
+                "This classroom already exists."
+            );
         }
 
-        var room = new Classroom
+        Classroom room = new()
         {
             RoomName = roomName
         };
 
         _context.Classrooms.Add(room);
+
         await _context.SaveChangesAsync();
 
         return Json(new SimpleLookupDto
@@ -243,32 +338,45 @@ public class AdminController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> DeleteClassroom(int id)
+    public async Task<IActionResult> DeleteClassroom(
+        int id)
     {
-        var room = await _context.Classrooms.FindAsync(id);
+        Classroom? room =
+            await _context.Classrooms.FindAsync(id);
 
-        if (room is null)
+        if (room == null)
         {
-            return NotFound("Classroom not found.");
+            return NotFound(
+                "Classroom not found."
+            );
         }
 
-        bool inUse = await _context.Timetables
-            .AnyAsync(t => t.ClassroomId == id);
+        bool inUse =
+            await _context.Timetables.AnyAsync(
+                t => t.ClassroomId == id
+            );
 
         if (inUse)
         {
             return BadRequest(
-                "Cannot delete this classroom because it is used in the timetable.");
+                "Cannot delete this classroom because " +
+                "it is used in the timetable."
+            );
         }
 
         _context.Classrooms.Remove(room);
+
         await _context.SaveChangesAsync();
 
-        return Ok(new { message = "Classroom deleted." });
+        return Ok(new
+        {
+            message = "Classroom deleted."
+        });
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTimetableGrid(string classType)
+    public async Task<IActionResult> GetTimetableGrid(
+        string classType)
     {
         if (!Enum.TryParse(
                 classType,
@@ -276,166 +384,293 @@ public class AdminController : Controller
                 out ClassType parsedType))
         {
             return BadRequest(
-                "Invalid class type. Use School or Tuition.");
+                "Invalid class type. " +
+                "Use School or Tuition."
+            );
         }
 
-        var entries = await _context.Timetables
-            .AsNoTracking()
-            .Where(t => t.ClassType == parsedType)
-            .Include(t => t.Course)
-            .Include(t => t.ClassGroup)
-            .Include(t => t.Classroom)
-            .OrderBy(t => t.DayOfWeek)
-            .ThenBy(t => t.StartTime)
-            .ToListAsync();
+        List<Timetable> entries =
+            await _context.Timetables
+                .AsNoTracking()
+                .Where(
+                    t => t.ClassType == parsedType
+                )
+                .Include(t => t.Course)
+                .Include(t => t.ClassGroup)
+                .Include(t => t.Classroom)
+                .OrderBy(t => t.DayOfWeek)
+                .ThenBy(t => t.StartTime)
+                .ToListAsync();
 
-        var teacherIds = entries
-            .Select(t => t.TeacherId)
-            .Distinct()
-            .ToList();
+        List<int> teacherIds =
+            entries
+                .Select(t => t.TeacherId)
+                .Distinct()
+                .ToList();
 
-        var teacherNames = await _context.Users
-            .Where(u => teacherIds.Contains(u.UserId))
-            .ToDictionaryAsync(
-                u => u.UserId,
-                u => u.Username);
+        Dictionary<int, string> teacherNames =
+            await _context.Users
+                .Where(
+                    u => teacherIds.Contains(
+                        u.UserId
+                    )
+                )
+                .ToDictionaryAsync(
+                    u => u.UserId,
+                    u => u.Username
+                );
 
-        var result = entries.Select(t => new TimetableSlotDto
-        {
-            TimetableId = t.TimetableId,
-            TeacherId = t.TeacherId,
-            TeacherName = teacherNames.GetValueOrDefault(
-                t.TeacherId,
-                "Unknown"),
-            CourseId = t.CourseId,
-            CourseName = t.Course?.CourseName ?? string.Empty,
-            ClassId = t.ClassId,
-            ClassName = t.ClassGroup?.ClassName ?? string.Empty,
-            ClassroomId = t.ClassroomId,
-            RoomName = t.Classroom?.RoomName,
-            DayOfWeek = t.DayOfWeek,
-            StartTime = t.StartTime.ToString(@"hh\:mm"),
-            EndTime = t.EndTime.ToString(@"hh\:mm"),
-            ClassType = t.ClassType
-        });
+        var result =
+            entries.Select(
+                t => new TimetableSlotDto
+                {
+                    TimetableId =
+                        t.TimetableId,
+
+                    TeacherId =
+                        t.TeacherId,
+
+                    TeacherName =
+                        teacherNames.GetValueOrDefault(
+                            t.TeacherId,
+                            "Unknown"
+                        ),
+
+                    CourseId =
+                        t.CourseId,
+
+                    CourseName =
+                        t.Course?.CourseName ??
+                        string.Empty,
+
+                    ClassId =
+                        t.ClassId,
+
+                    ClassName =
+                        t.ClassGroup?.ClassName ??
+                        string.Empty,
+
+                    ClassroomId =
+                        t.ClassroomId,
+
+                    RoomName =
+                        t.Classroom?.RoomName,
+
+                    DayOfWeek =
+                        t.DayOfWeek,
+
+                    StartTime =
+                        t.StartTime.ToString(
+                            @"hh\:mm"
+                        ),
+
+                    EndTime =
+                        t.EndTime.ToString(
+                            @"hh\:mm"
+                        ),
+
+                    ClassType =
+                        t.ClassType
+                }
+            );
 
         return Json(result);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateTimetableEntry(
-        [FromBody] TimetableRequest request)
+    public async Task<IActionResult>
+        CreateTimetableEntry(
+            [FromBody] TimetableRequest request)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(GetModelErrors());
+            return BadRequest(
+                GetModelErrors()
+            );
         }
 
         var validation =
-            await _validationService.ValidateAsync(request);
+            await _validationService
+                .ValidateAsync(request);
 
         if (!validation.IsValid)
         {
-            return BadRequest(validation.ErrorMessage);
+            return BadRequest(
+                validation.ErrorMessage
+            );
         }
 
-        var entry = new Timetable
+        Timetable entry = new()
         {
             TeacherId = request.TeacherId,
             CourseId = request.CourseId,
             ClassId = request.ClassId,
             ClassroomId = request.ClassroomId,
             DayOfWeek = request.DayOfWeek,
-            StartTime = TimeSpan.Parse(request.StartTime),
-            EndTime = TimeSpan.Parse(request.EndTime),
+
+            StartTime =
+                TimeSpan.Parse(
+                    request.StartTime
+                ),
+
+            EndTime =
+                TimeSpan.Parse(
+                    request.EndTime
+                ),
+
             ClassType = request.ClassType
         };
 
         _context.Timetables.Add(entry);
+
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Timetable entry created.",
-            timetableId = entry.TimetableId
+            message =
+                "Timetable entry created.",
+
+            timetableId =
+                entry.TimetableId
         });
     }
 
     [HttpPost]
-    public async Task<IActionResult> UpdateTimetableEntry(
-        [FromBody] TimetableRequest request)
+    public async Task<IActionResult>
+        UpdateTimetableEntry(
+            [FromBody] TimetableRequest request)
     {
         if (!request.TimetableId.HasValue)
         {
             return BadRequest(
-                "TimetableId is required for updates.");
+                "TimetableId is required for updates."
+            );
         }
 
         if (!ModelState.IsValid)
         {
-            return BadRequest(GetModelErrors());
+            return BadRequest(
+                GetModelErrors()
+            );
         }
 
-        var entry = await _context.Timetables
-            .FindAsync(request.TimetableId.Value);
+        Timetable? entry =
+            await _context.Timetables.FindAsync(
+                request.TimetableId.Value
+            );
 
-        if (entry is null)
+        if (entry == null)
         {
-            return NotFound("Timetable entry not found.");
+            return NotFound(
+                "Timetable entry not found."
+            );
         }
 
         var validation =
-            await _validationService.ValidateAsync(request);
+            await _validationService
+                .ValidateAsync(request);
 
         if (!validation.IsValid)
         {
-            return BadRequest(validation.ErrorMessage);
+            return BadRequest(
+                validation.ErrorMessage
+            );
         }
 
-        entry.TeacherId = request.TeacherId;
-        entry.CourseId = request.CourseId;
-        entry.ClassId = request.ClassId;
-        entry.ClassroomId = request.ClassroomId;
-        entry.DayOfWeek = request.DayOfWeek;
-        entry.StartTime = TimeSpan.Parse(request.StartTime);
-        entry.EndTime = TimeSpan.Parse(request.EndTime);
-        entry.ClassType = request.ClassType;
+        entry.TeacherId =
+            request.TeacherId;
+
+        entry.CourseId =
+            request.CourseId;
+
+        entry.ClassId =
+            request.ClassId;
+
+        entry.ClassroomId =
+            request.ClassroomId;
+
+        entry.DayOfWeek =
+            request.DayOfWeek;
+
+        entry.StartTime =
+            TimeSpan.Parse(
+                request.StartTime
+            );
+
+        entry.EndTime =
+            TimeSpan.Parse(
+                request.EndTime
+            );
+
+        entry.ClassType =
+            request.ClassType;
 
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Timetable entry updated."
+            message =
+                "Timetable entry updated."
         });
     }
 
     [HttpPost]
-    public async Task<IActionResult> DeleteTimetableEntry(int id)
+    public async Task<IActionResult>
+        DeleteTimetableEntry(
+            int id)
     {
-        var entry = await _context.Timetables.FindAsync(id);
+        Timetable? entry =
+            await _context.Timetables.FindAsync(id);
 
-        if (entry is null)
+        if (entry == null)
         {
-            return NotFound("Timetable entry not found.");
+            return NotFound(
+                "Timetable entry not found."
+            );
         }
 
         _context.Timetables.Remove(entry);
+
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Timetable entry deleted."
+            message =
+                "Timetable entry deleted."
         });
     }
 
-    private Dictionary<string, string> GetModelErrors()
+    private Dictionary<string, string>
+        GetModelErrors()
     {
         return ModelState
-            .Where(item => item.Value?.Errors.Count > 0)
+            .Where(
+                item =>
+                    item.Value?.Errors.Count > 0
+            )
             .ToDictionary(
                 item => item.Key,
-                item => item.Value!.Errors
-                    .First()
-                    .ErrorMessage);
+
+                item =>
+                    item.Value!
+                        .Errors
+                        .First()
+                        .ErrorMessage
+            );
+    }
+    private int? GetCurrentUserId()
+    {
+        string? userIdValue =
+            User.FindFirstValue(
+                System.Security.Claims
+                    .ClaimTypes.NameIdentifier
+            );
+
+        return int.TryParse(
+            userIdValue,
+            out int userId
+        )
+            ? userId
+            : null;
     }
 }

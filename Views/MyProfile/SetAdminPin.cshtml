@@ -1,0 +1,140 @@
+﻿@{
+    ViewData["Title"] = "Set Admin PIN";
+
+    bool pinAlreadyEnabled =
+        ViewBag.PinAlreadyEnabled ?? false;
+}
+
+<link rel="stylesheet" href="~/css/setadminpin.css" />
+
+<div class="pin-page">
+
+    <div class="pin-card">
+
+        <div class="pin-icon">
+            🔐
+        </div>
+
+        <p class="pin-label">
+            Administrator Security
+        </p>
+
+        <h1>
+            @(pinAlreadyEnabled
+                ? "Update Admin PIN"
+                : "Set Admin PIN")
+        </h1>
+
+        <p class="pin-description">
+            This six-digit PIN will be required
+            after Admin passkey verification.
+        </p>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="message error-message">
+                @ViewBag.Error
+            </div>
+        }
+
+        @if (ViewBag.Message != null)
+        {
+            <div class="message success-message">
+                @ViewBag.Message
+            </div>
+        }
+
+        <form asp-controller="MyProfile"
+              asp-action="SetAdminPin"
+              method="post"
+              id="adminPinForm"
+              autocomplete="off">
+
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+
+                <label for="pin">
+                    New 6-Digit PIN
+                </label>
+
+                <div class="pin-input-wrapper">
+
+                    <input id="pin"
+                           name="pin"
+                           type="password"
+                           inputmode="numeric"
+                           pattern="[0-9]{6}"
+                           maxlength="6"
+                           placeholder="Enter 6-digit PIN"
+                           autocomplete="new-password"
+                           required />
+
+                    <button type="button"
+                            class="toggle-button"
+                            data-target="pin">
+
+                        Show
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="confirmPin">
+                    Confirm PIN
+                </label>
+
+                <div class="pin-input-wrapper">
+
+                    <input id="confirmPin"
+                           name="confirmPin"
+                           type="password"
+                           inputmode="numeric"
+                           pattern="[0-9]{6}"
+                           maxlength="6"
+                           placeholder="Enter PIN again"
+                           autocomplete="new-password"
+                           required />
+
+                    <button type="button"
+                            class="toggle-button"
+                            data-target="confirmPin">
+
+                        Show
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div id="pinMessage"
+                 class="client-message"
+                 hidden>
+            </div>
+
+            <button type="submit"
+                    class="save-button">
+
+                @(pinAlreadyEnabled
+                    ? "Update Security PIN"
+                    : "Save Security PIN")
+
+            </button>
+
+        </form>
+
+        <a asp-controller="MyProfile"
+           asp-action="Passkey"
+           class="back-link">
+
+            Back to Passkey Management
+
+        </a>
+
+    </div>
+
+</div>
+<script src="~/js/setadminpin.js"></script>

@@ -21,6 +21,9 @@ public class DB : DbContext
 
     public DbSet<UserPasskey> UserPasskeys => Set<UserPasskey>();
 
+    public DbSet<AdminSecurity> AdminSecurities =>
+    Set<AdminSecurity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -92,6 +95,16 @@ public class DB : DbContext
             .HasOne(p => p.User)
             .WithMany()
             .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AdminSecurity>()
+            .HasIndex(a => a.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<AdminSecurity>()
+            .HasOne(a => a.User)
+            .WithOne(u => u.AdminSecurity)
+            .HasForeignKey<AdminSecurity>(a => a.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

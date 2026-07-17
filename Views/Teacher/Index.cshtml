@@ -1,0 +1,156 @@
+﻿@model WebAndMobile.Models.User
+
+@{
+    ViewData["Title"] = "Teacher Home";
+
+    int passkeyCount =
+        ViewBag.PasskeyCount ?? 0;
+
+    int timetableCount =
+        ViewBag.TimetableCount ?? 0;
+}
+
+<link rel="stylesheet" href="~/css/teacherhome.css" />
+
+<div class="teacher-dashboard">
+
+    <header class="teacher-header">
+
+        <div>
+            <p class="teacher-role">
+                Teacher Portal
+            </p>
+
+            <h1>
+                Welcome, @Model.Username
+            </h1>
+
+            <p>
+                View your timetable and manage
+                your profile security.
+            </p>
+        </div>
+
+        <div class="teacher-avatar">
+            @{
+                string avatar =
+                    string.IsNullOrWhiteSpace(
+                        Model.Avatar
+                    )
+                        ? "default.png"
+                        : Model.Avatar;
+            }
+
+            <img src="~/image/@avatar"
+                 alt="Teacher profile picture"
+                 onerror="this.src='/image/default.png'" />
+        </div>
+
+    </header>
+
+    <section class="teacher-summary">
+
+        <div class="summary-item">
+            <span>Account Role</span>
+            <strong>@Model.Position</strong>
+        </div>
+
+        <div class="summary-item">
+            <span>Registered Passkeys</span>
+            <strong>@passkeyCount / 3</strong>
+        </div>
+
+        <div class="summary-item">
+            <span>Timetable Entries</span>
+            <strong>@timetableCount</strong>
+        </div>
+
+    </section>
+
+    <section class="teacher-grid">
+
+        <a asp-controller="MyProfile"
+           asp-action="Index"
+           class="teacher-card">
+
+            <div class="teacher-icon">
+                👤
+            </div>
+
+            <div>
+                <h2>My Profile</h2>
+
+                <p>
+                    View your personal information
+                    and account settings.
+                </p>
+            </div>
+        </a>
+
+        <a asp-controller="MyProfile"
+           asp-action="Passkey"
+           class="teacher-card">
+
+            <div class="teacher-icon">
+                🔐
+            </div>
+
+            <div>
+                <h2>Passkey Management</h2>
+
+                <p>
+                    Register and manage passkeys
+                    for secure login.
+                </p>
+            </div>
+        </a>
+
+        <a asp-controller="Teacher"
+           asp-action="Timetable"
+           class="teacher-card">
+
+            <div class="teacher-icon">
+                📅
+            </div>
+
+            <div>
+                <h2>My Timetable</h2>
+
+                <p>
+                    View your scheduled classes
+                    and teaching sessions.
+                </p>
+            </div>
+        </a>
+
+        <div class="teacher-card logout-card">
+
+            <div class="teacher-icon">
+                🚪
+            </div>
+
+            <div>
+                <h2>Logout</h2>
+
+                <p>
+                    Safely end the current
+                    teacher session.
+                </p>
+
+                <form asp-controller="Account"
+                      asp-action="Logout"
+                      method="post">
+
+                    @Html.AntiForgeryToken()
+
+                    <button type="submit">
+                        Logout
+                    </button>
+                </form>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>

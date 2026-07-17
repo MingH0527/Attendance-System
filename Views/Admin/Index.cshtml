@@ -1,0 +1,180 @@
+﻿@model WebAndMobile.Models.User
+
+@{
+    ViewData["Title"] = "Admin Home";
+
+    int passkeyCount =
+        ViewBag.PasskeyCount ?? 0;
+
+    bool adminPinEnabled =
+        ViewBag.AdminPinEnabled ?? false;
+}
+
+<link rel="stylesheet" href="~/css/adminhome.css" />
+
+<div class="dashboard-page">
+
+    <header class="dashboard-header">
+        <div>
+            <p class="dashboard-role">
+                Administrator Portal
+            </p>
+
+            <h1>
+                Welcome, @Model.Username
+            </h1>
+
+            <p class="dashboard-subtitle">
+                Manage the attendance system,
+                timetable and account security.
+            </p>
+        </div>
+
+        <div class="avatar-box">
+            @{
+                string avatar =
+                    string.IsNullOrWhiteSpace(
+                        Model.Avatar
+                    )
+                        ? "default.png"
+                        : Model.Avatar;
+            }
+
+            <img src="~/image/@avatar"
+                 alt="Admin profile picture"
+                 onerror="this.src='/image/default.png'" />
+        </div>
+    </header>
+
+    <section class="security-summary">
+
+        <div class="summary-card">
+            <span class="summary-label">
+                Account Role
+            </span>
+
+            <strong>
+                @Model.Position
+            </strong>
+        </div>
+
+        <div class="summary-card">
+            <span class="summary-label">
+                Registered Passkeys
+            </span>
+
+            <strong>
+                @passkeyCount / 3
+            </strong>
+        </div>
+
+        <div class="summary-card">
+            <span class="summary-label">
+                Admin Security PIN
+            </span>
+
+            @if (adminPinEnabled)
+            {
+                <strong class="status-enabled">
+                    Enabled
+                </strong>
+            }
+            else
+            {
+                <strong class="status-warning">
+                    Not configured
+                </strong>
+            }
+        </div>
+
+    </section>
+
+    <section class="dashboard-grid">
+
+        <a asp-controller="MyProfile"
+           asp-action="Index"
+           class="dashboard-card">
+
+            <div class="card-icon">
+                👤
+            </div>
+
+            <div>
+                <h2>My Profile</h2>
+
+                <p>
+                    View your account information
+                    and security settings.
+                </p>
+            </div>
+        </a>
+
+        <a asp-controller="MyProfile"
+           asp-action="Passkey"
+           class="dashboard-card">
+
+            <div class="card-icon">
+                🔐
+            </div>
+
+            <div>
+                <h2>Passkey & PIN</h2>
+
+                <p>
+                    Register passkeys and configure
+                    the Admin Security PIN.
+                </p>
+            </div>
+        </a>
+
+        <a asp-controller="Admin"
+           asp-action="Timetable"
+           class="dashboard-card">
+
+            <div class="card-icon">
+                📅
+            </div>
+
+            <div>
+                <h2>Timetable</h2>
+
+                <p>
+                    Create, update and manage
+                    timetable entries.
+                </p>
+            </div>
+        </a>
+
+        <div class="dashboard-card logout-card">
+
+            <div class="card-icon">
+                🚪
+            </div>
+
+            <div>
+                <h2>Logout</h2>
+
+                <p>
+                    End the current administrator
+                    session securely.
+                </p>
+
+                <form asp-controller="Account"
+                      asp-action="Logout"
+                      method="post">
+
+                    @Html.AntiForgeryToken()
+
+                    <button type="submit"
+                            class="logout-button">
+
+                        Logout
+                    </button>
+                </form>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>

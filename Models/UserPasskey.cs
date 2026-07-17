@@ -38,4 +38,22 @@ public class UserPasskey
 
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
+
+    [MaxLength(100)]
+    public string? DeviceType { get; set; }
+
+    [MaxLength(100)]
+    public string? OperatingSystem { get; set; }
+
+    [MaxLength(100)]
+    public string? Browser { get; set; }
+
+    [MaxLength(50)]
+    public string? AuthenticatorAttachment { get; set; }
+
+    [MaxLength(200)]
+    public string? AuthenticatorTransports { get; set; }
+
+    [MaxLength(300)]
+    public string? UserAgent { get; set; }
 }

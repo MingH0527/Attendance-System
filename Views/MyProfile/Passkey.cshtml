@@ -11,7 +11,15 @@
 
     bool limitReached =
         passkeyCount >= maximumPasskeys;
+
+    bool isAdmin =
+        ViewBag.IsAdmin ?? false;
+
+    bool adminPinEnabled =
+        ViewBag.AdminPinEnabled ?? false;
 }
+
+<link rel="stylesheet" href="~/css/passkey.css" />
 
 <link rel="stylesheet"
       href="~/css/passkey.css"
@@ -43,16 +51,67 @@
                 <h1>Manage Passkeys</h1>
 
                 <p class="passkey-description">
-                    Use fingerprint, Face ID or your device screen lock
-                    to securely access your account.
+                    Use fingerprint, Face ID or your
+                    device screen lock to securely
+                    access your account.
                 </p>
 
             </div>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="passkey-message error">
+                    @ViewBag.Error
+                </div>
+            }
+
+            @if (ViewBag.Message != null)
+            {
+                <div class="passkey-message success">
+                    @ViewBag.Message
+                </div>
+            }
 
             <div id="passkeyMessage"
                  class="passkey-message"
                  hidden>
             </div>
+
+            @if (isAdmin)
+            {
+                <div class="admin-security-box">
+
+                    <div>
+                        <strong>
+                            Admin Security PIN
+                        </strong>
+
+                        @if (adminPinEnabled)
+                        {
+                            <p class="pin-enabled">
+                                Enabled
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="pin-not-enabled">
+                                Not configured
+                            </p>
+                        }
+                    </div>
+
+                    <a asp-controller="MyProfile"
+                       asp-action="SetAdminPin"
+                       class="admin-pin-button">
+
+                        @(adminPinEnabled
+                            ? "Update PIN"
+                            : "Set PIN")
+
+                    </a>
+
+                </div>
+            }
 
             <div class="passkey-information">
 
@@ -64,13 +123,15 @@
 
                     <div>
                         <strong>
-                            Your biometric information stays on your device
+                            Your biometric information
+                            stays on your device
                         </strong>
 
                         <p>
-                            This website only stores your passkey public
-                            credential. It does not receive your fingerprint
-                            or facial information.
+                            This website only stores
+                            your passkey public credential.
+                            It does not receive your
+                            fingerprint or facial data.
                         </p>
                     </div>
 
@@ -89,7 +150,8 @@
                     <strong class="limit-number"
                             id="passkeyCount">
 
-                        @passkeyCount / @maximumPasskeys
+                        @passkeyCount /
+                        @maximumPasskeys
 
                     </strong>
 
@@ -98,7 +160,9 @@
                 <span class="limit-status"
                       id="passkeyStatus">
 
-                    @(limitReached ? "Full" : "Available")
+                    @(limitReached
+                        ? "Full"
+                        : "Available")
 
                 </span>
 
@@ -106,7 +170,8 @@
 
             <div id="passkeyList">
 
-                @if (Model == null || Model.Count == 0)
+                @if (Model == null ||
+                     Model.Count == 0)
                 {
                     <div class="empty-passkey-list"
                          id="emptyPasskeyList">
@@ -115,11 +180,14 @@
                             📱
                         </div>
 
-                        <h2>No passkeys registered</h2>
+                        <h2>
+                            No passkeys registered
+                        </h2>
 
                         <p>
-                            Register your phone, tablet or computer
-                            as a trusted login device.
+                            Register your phone,
+                            tablet or computer as a
+                            trusted login device.
                         </p>
 
                     </div>
@@ -130,7 +198,8 @@
 
                         @foreach (var passkey in Model)
                         {
-                            <div class="registered-passkey-item">
+                            <div class="registered-passkey-item"
+                                 id="passkey-@passkey.UserPasskeyId">
 
                                 <span class="registered-passkey-icon">
                                     🔑
@@ -142,11 +211,54 @@
                                         @passkey.DeviceName
                                     </strong>
 
+                                    @if (!string.IsNullOrWhiteSpace(
+                                            passkey.OperatingSystem))
+                                    {
+                                        <small>
+                                            @passkey.OperatingSystem
+                                            @if (!string.IsNullOrWhiteSpace(
+                                                    passkey.Browser))
+                                            {
+                                                <text>
+                                                    · @passkey.Browser
+                                                </text>
+                                            }
+                                        </small>
+                                    }
+
                                     <small>
-                                        Registered @(passkey.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
+                                        Registered
+                                        @passkey.CreatedAt
+                                        .ToLocalTime()
+                                        .ToString(
+                                        "dd MMM yyyy, hh:mm tt"
+                                        )
                                     </small>
 
+                                    @if (passkey.LastUsedAt.HasValue)
+                                    {
+                                        <small>
+                                            Last used
+                                            @passkey.LastUsedAt.Value
+                                            .ToLocalTime()
+                                            .ToString(
+                                            "dd MMM yyyy, hh:mm tt"
+                                            )
+                                        </small>
+                                    }
+
                                 </div>
+
+                                <button type="button"
+                                        class="delete-passkey-button"
+                                        data-passkey-id="@passkey.UserPasskeyId"
+                                        data-device-name="@passkey.DeviceName"
+                                        data-is-last="@(Model.Count == 1 ? "true" : "false")"
+                                        data-is-admin="@(isAdmin ? "true" : "false")">
+
+                                    Delete
+
+                                </button>
 
                             </div>
                         }
@@ -179,14 +291,22 @@
                 Maximum 3 passkeys per account.
             </p>
 
+            <p class="delete-note">
+                Deleting a passkey here removes it
+                from this website. You may also need
+                to remove it from your phone or
+                password manager separately.
+            </p>
+
         </div>
 
     </main>
 
 </div>
 
+
+
 @section Scripts {
-    <script src="~/js/passkey.js"
-            asp-append-version="true">
-    </script>
+
 }
+<script src="~/js/passkey.js"></script>

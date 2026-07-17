@@ -30,11 +30,19 @@ if (string.IsNullOrWhiteSpace(connectionString))
     );
 }
 
-Console.WriteLine("Database path: " + databasePath);
-Console.WriteLine("Connection string: " + connectionString);
+Console.WriteLine(
+    "Database path: " + databasePath
+);
 
-builder.Services.AddDbContext<DB>(options =>
-    options.UseSqlServer(connectionString)
+Console.WriteLine(
+    "Connection string: " + connectionString
+);
+
+builder.Services.AddDbContext<DB>(
+    options =>
+        options.UseSqlServer(
+            connectionString
+        )
 );
 
 builder.Services.AddScoped<
@@ -42,47 +50,99 @@ builder.Services.AddScoped<
     PasswordHasher<User>
 >();
 
+builder.Services.AddScoped<
+    IPasswordHasher<AdminSecurity>,
+    PasswordHasher<AdminSecurity>
+>();
+
 builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.IdleTimeout =
+        TimeSpan.FromMinutes(30);
+
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
 StripeConfiguration.ApiKey =
-    builder.Configuration["Stripe:SecretKey"];
-/*
- * Cookie authentication, added for the Remember Me login feature.
- * IsPersistent / ExpiresUtc are set per-login inside
- * AccountController.Login based on the RememberMe checkbox; this
- * registration only supplies the shared defaults and cookie security
- * settings.
- */
+    builder.Configuration[
+        "Stripe:SecretKey"
+    ];
+
 builder.Services
-    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddAuthentication(
+        CookieAuthenticationDefaults
+            .AuthenticationScheme
+    )
     .AddCookie(options =>
     {
-        options.LoginPath = "/Account/Login";
-        options.AccessDeniedPath = "/Account/AccessDenied";
-        options.ExpireTimeSpan = TimeSpan.FromDays(30);
-        options.SlidingExpiration = true;
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-    });
-builder.Services.AddFido2(options =>
-{
-    options.ServerDomain = "localhost";
-    options.ServerName = "Attendance System";
+        options.LoginPath =
+            "/Account/Login";
 
-    options.Origins = new HashSet<string>
-    {
-        "https://localhost:7279"
-    };
+        options.AccessDeniedPath =
+            "/Account/AccessDenied";
+
+        options.ExpireTimeSpan =
+            TimeSpan.FromDays(30);
+
+        options.SlidingExpiration =
+            true;
+
+        options.Cookie.HttpOnly =
+            true;
+
+        options.Cookie.SecurePolicy =
+            CookieSecurePolicy.Always;
+
+        options.Cookie.SameSite =
+            SameSiteMode.Lax;
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        "AdminPasskeyAndPin",
+        policy =>
+        {
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireRole(
+                "Admin"
+            );
+
+            policy.RequireClaim(
+                "PasskeyVerified",
+                "true"
+            );
+
+            policy.RequireClaim(
+                "AdminPinVerified",
+                "true"
+            );
+        }
+    );
 });
 
-builder.Services.AddScoped<GmailServiceHelper>();
+builder.Services.AddFido2(options =>
+{
+    options.ServerDomain =
+        "localhost";
+
+    options.ServerName =
+        "Attendance System";
+
+    options.Origins =
+        new HashSet<string>
+        {
+            "https://localhost:7279"
+        };
+});
+
+builder.Services.AddScoped<
+    GmailServiceHelper
+>();
 
 builder.Services.AddScoped<
     ITimetableValidationService,
@@ -103,7 +163,8 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}"
+    pattern:
+        "{controller=Home}/{action=Index}/{id?}"
 );
 
 app.Run();

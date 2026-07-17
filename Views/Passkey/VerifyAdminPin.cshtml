@@ -1,0 +1,92 @@
+﻿@{
+    ViewData["Title"] = "Verify Admin PIN";
+}
+
+<link rel="stylesheet" href="~/css/verifyadminpin.css" />
+
+<div class="verify-pin-page">
+
+    <div class="verify-pin-card">
+
+        <div class="verify-pin-icon">
+            🔐
+        </div>
+
+        <p class="verify-label">
+            Step-Up Authentication
+        </p>
+
+        <h1>
+            Verify Admin PIN
+        </h1>
+
+        <p class="verify-description">
+            Your passkey was verified successfully.
+            Enter your six-digit Admin Security PIN
+            to continue to the Admin portal.
+        </p>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="message error-message">
+                @ViewBag.Error
+            </div>
+        }
+
+        <form asp-controller="Passkey"
+              asp-action="VerifyAdminPin"
+              method="post"
+              id="verifyAdminPinForm"
+              autocomplete="off">
+
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+
+                <label for="pin">
+                    Admin Security PIN
+                </label>
+
+                <div class="pin-input-wrapper">
+
+                    <input id="pin"
+                           name="pin"
+                           type="password"
+                           inputmode="numeric"
+                           pattern="[0-9]{6}"
+                           maxlength="6"
+                           placeholder="Enter 6-digit PIN"
+                           autocomplete="one-time-code"
+                           required />
+
+                    <button type="button"
+                            id="togglePinButton"
+                            class="toggle-pin-button">
+
+                        Show
+
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div id="clientError"
+                 class="message error-message"
+                 hidden>
+            </div>
+
+            <button type="submit"
+                    class="verify-button">
+
+                Verify and Continue
+
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script src="~/js/verifyadminpin.js"></script>

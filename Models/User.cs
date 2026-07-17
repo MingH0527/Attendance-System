@@ -47,4 +47,9 @@ public class User
     [Required]
     [MaxLength(20)]
     public string Position { get; set; } = "Student";
+
+    public AdminSecurity? AdminSecurity { get; set; }
 }
+
+
+   

@@ -1,0 +1,151 @@
+﻿.verify-pin-page {
+    min-height: calc(100vh - 80px);
+    padding: 40px 20px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #f5f8fb, #eaf1f7);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.verify-pin-card {
+    width: 100%;
+    max-width: 470px;
+    padding: 36px;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #e1e7ed;
+    border-radius: 24px;
+    box-shadow: 0 16px 42px rgba(25, 45, 70, 0.10);
+}
+
+.verify-pin-icon {
+    width: 74px;
+    height: 74px;
+    margin: 0 auto 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    background: #e7f6f7;
+    font-size: 34px;
+}
+
+.verify-label {
+    margin: 0 0 7px;
+    color: #078c95;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.verify-pin-card h1 {
+    margin: 0;
+    color: #1b3550;
+    font-size: 30px;
+}
+
+.verify-description {
+    margin: 14px 0 26px;
+    color: #5d6d7e;
+    line-height: 1.7;
+    font-size: 15px;
+}
+
+.form-group {
+    text-align: left;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 10px;
+        color: #2f4256;
+        font-weight: 600;
+    }
+
+.pin-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+    .pin-input-wrapper input {
+        flex: 1;
+        padding: 14px 16px;
+        border: 1px solid #ccd7e3;
+        border-radius: 14px;
+        font-size: 17px;
+        transition: .25s;
+    }
+
+        .pin-input-wrapper input:focus {
+            outline: none;
+            border-color: #00a5b5;
+            box-shadow: 0 0 0 4px rgba(0, 165, 181, .12);
+        }
+
+.toggle-pin-button {
+    padding: 13px 16px;
+    border: none;
+    border-radius: 12px;
+    background: #edf3f8;
+    color: #1b3550;
+    font-weight: 700;
+    cursor: pointer;
+    transition: .2s;
+}
+
+    .toggle-pin-button:hover {
+        background: #ddeaf4;
+    }
+
+.verify-button {
+    width: 100%;
+    margin-top: 26px;
+    padding: 15px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #00a5b5, #0077b6);
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: .25s;
+}
+
+    .verify-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(0, 119, 182, .25);
+    }
+
+.message {
+    margin-bottom: 18px;
+    padding: 12px 15px;
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+.error-message {
+    color: #b42318;
+    background: #fdecec;
+    border: 1px solid #f5b5b5;
+}
+
+@media (max-width:600px) {
+
+    .verify-pin-card {
+        padding: 28px 22px;
+    }
+
+        .verify-pin-card h1 {
+            font-size: 25px;
+        }
+
+    .pin-input-wrapper {
+        flex-direction: column;
+    }
+
+        .pin-input-wrapper input,
+        .toggle-pin-button {
+            width: 100%;
+        }
+}

@@ -1,106 +1,138 @@
-﻿@{
+﻿@using System.Security.Claims
+
+@{
     ViewData["Title"] = "My Profile";
+
+    string username =
+        User.Identity?.Name ??
+        "User";
+
+    string role =
+        User.FindFirstValue(
+            ClaimTypes.Role
+        ) ?? "User";
+
+    string email =
+        User.FindFirstValue(
+            ClaimTypes.Email
+        ) ?? "Not available";
+
+    string homeController =
+        role switch
+        {
+            "Admin" => "Admin",
+            "Teacher" => "Teacher",
+            _ => "Student"
+        };
 }
 
-<link rel="stylesheet"
-      href="~/css/myprofile.css"
-      asp-append-version="true" />
+<link rel="stylesheet" href="~/css/myprofile.css" />
 
 <div class="profile-page">
 
-    <main class="profile-container">
+    <div class="profile-container">
 
-        <div class="profile-card">
+        <div class="profile-header">
 
-            <div class="profile-header">
-
-                <a asp-controller="Student"
-                   asp-action="Index"
-                   class="back-button"
-                   title="Back to Student Home">
-
-                    ←
-
-                </a>
-
-                <div class="profile-avatar">
-                    👤
-                </div>
-
-                <p class="profile-system-name">
-                    Attendance System
-                </p>
-
-                <h1>My Profile</h1>
-
-                <p class="profile-description">
-                    Manage your account and security settings.
-                </p>
-
+            <div class="profile-avatar">
+                @username
+                .Substring(0, 1)
+                .ToUpper()
             </div>
 
-            <div class="profile-section">
-
-                <p class="section-label">
-                    Account
+            <div>
+                <p class="profile-label">
+                    My Profile
                 </p>
 
-                <button type="button"
-                        class="profile-option disabled-option"
-                        disabled>
+                <h1>@username</h1>
 
-                    <span class="option-icon">
-                        🪪
-                    </span>
-
-                    <span class="option-content">
-                        <strong>Personal Information</strong>
-
-                        <small>
-                            Profile information will be added later
-                        </small>
-                    </span>
-
-                    <span class="coming-soon">
-                        Coming Soon
-                    </span>
-
-                </button>
-
-            </div>
-
-            <div class="profile-section">
-
-                <p class="section-label">
-                    Security
-                </p>
-
-                <a asp-controller="MyProfile"
-                   asp-action="Passkey"
-                   class="profile-option passkey-option">
-
-                    <span class="option-icon">
-                        🔐
-                    </span>
-
-                    <span class="option-content">
-                        <strong>Passkeys</strong>
-
-                        <small>
-                            Manage fingerprint, Face ID and device login
-                        </small>
-                    </span>
-
-                    <span class="option-arrow">
-                        ›
-                    </span>
-
-                </a>
-
+                <span class="role-badge">
+                    @role
+                </span>
             </div>
 
         </div>
 
-    </main>
+        <div class="profile-information">
+
+            <div class="information-row">
+                <span>Username</span>
+                <strong>@username</strong>
+            </div>
+
+            <div class="information-row">
+                <span>Email</span>
+                <strong>@email</strong>
+            </div>
+
+            <div class="information-row">
+                <span>Role</span>
+                <strong>@role</strong>
+            </div>
+
+        </div>
+
+        <div class="profile-actions">
+
+            <a asp-controller="MyProfile"
+               asp-action="Passkey"
+               class="profile-button primary">
+
+                <span>🔐</span>
+
+                <div>
+                    <strong>
+                        Passkey Management
+                    </strong>
+
+                    <small>
+                        Register and manage
+                        secure login devices.
+                    </small>
+                </div>
+            </a>
+
+            @if (role == "Admin")
+            {
+                <a asp-controller="MyProfile"
+                   asp-action="SetAdminPin"
+                   class="profile-button security">
+
+                    <span>🔢</span>
+
+                    <div>
+                        <strong>
+                            Admin Security PIN
+                        </strong>
+
+                        <small>
+                            Create or update your
+                            six-digit Admin PIN.
+                        </small>
+                    </div>
+                </a>
+            }
+
+            <a asp-controller="@homeController"
+               asp-action="Index"
+               class="profile-button secondary">
+
+                <span>🏠</span>
+
+                <div>
+                    <strong>
+                        Back to Home
+                    </strong>
+
+                    <small>
+                        Return to your dashboard.
+                    </small>
+                </div>
+            </a>
+
+        </div>
+
+    </div>
 
 </div>
