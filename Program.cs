@@ -6,10 +6,12 @@ using WebAndMobile.Models;
 using WebAndMobile.Services;
 using Stripe;
 using Fido2NetLib;
+using WebAndMobile.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
 
 var databasePath = Path.Combine(
     builder.Environment.ContentRootPath,
@@ -160,6 +162,8 @@ app.UseSession();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapHub<ChatHub>("/chatHub");
 
 app.MapControllerRoute(
     name: "default",

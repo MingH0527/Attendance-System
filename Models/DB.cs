@@ -22,7 +22,11 @@ public class DB : DbContext
     public DbSet<UserPasskey> UserPasskeys => Set<UserPasskey>();
 
     public DbSet<AdminSecurity> AdminSecurities =>
-    Set<AdminSecurity>();
+        Set<AdminSecurity>();
+
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -106,5 +110,47 @@ public class DB : DbContext
             .WithOne(u => u.AdminSecurity)
             .HasForeignKey<AdminSecurity>(a => a.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // One student and one teacher can only have one conversation.
+        modelBuilder.Entity<Conversation>()
+            .HasIndex(c => new { c.StudentId, c.TeacherId })
+            .IsUnique();
+
+        modelBuilder.Entity<Conversation>()
+            .HasOne(c => c.Student)
+            .WithMany()
+            .HasForeignKey(c => c.StudentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Conversation>()
+            .HasOne(c => c.Teacher)
+            .WithMany()
+            .HasForeignKey(c => c.TeacherId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(m => m.Conversation)
+            .WithMany(c => c.Messages)
+            .HasForeignKey(m => m.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(m => m.Sender)
+            .WithMany()
+            .HasForeignKey(m => m.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ChatMessage>()
+            .HasOne(m => m.Receiver)
+            .WithMany()
+            .HasForeignKey(m => m.ReceiverId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ChatMessage>()
+            .HasIndex(m => new { m.ConversationId, m.ChatMessageId });
+
+        modelBuilder.Entity<ChatMessage>()
+            .HasIndex(m => new { m.ReceiverId, m.IsRead });
+
     }
 }

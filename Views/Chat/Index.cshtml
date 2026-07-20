@@ -1,0 +1,272 @@
+@model WebAndMobile.ViewModels.ChatIndexViewModel
+
+@{
+    ViewData["Title"] = "Chat";
+
+    string homeController =
+        Model.CurrentRole == "Teacher"
+            ? "Teacher"
+            : "Student";
+
+    string targetRole =
+        Model.CurrentRole == "Student"
+            ? "teacher"
+            : "student";
+}
+
+<link rel="stylesheet"
+      href="~/css/chat.css"
+      asp-append-version="true" />
+
+<div class="chat-app"
+     id="chatApp"
+     data-current-user-id="@Model.CurrentUserId"
+     data-selected-user-id="@(Model.SelectedUserId?.ToString() ?? "")">
+
+    <aside class="chat-sidebar">
+
+        <header class="chat-sidebar-header">
+
+            <a class="chat-back-link"
+               asp-controller="@homeController"
+               asp-action="Index"
+               aria-label="Return to home">
+
+                <span aria-hidden="true">←</span>
+                <span>Back</span>
+
+            </a>
+
+            <div class="sidebar-title-row">
+
+                <div>
+                    <h1>Chat</h1>
+
+                    <p>
+                        @(Model.CurrentRole == "Student"
+                            ? "Message your teachers"
+                            : "Message your students")
+                    </p>
+                </div>
+
+            </div>
+
+        </header>
+
+        <div class="chat-search-wrap">
+
+            <label class="visually-hidden"
+                   for="chatSearchInput">
+                Search @targetRole
+            </label>
+
+            <div class="chat-search-box">
+
+                <svg viewBox="0 0 24 24"
+                     aria-hidden="true">
+                    <path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" />
+                </svg>
+
+                <input id="chatSearchInput"
+                       type="search"
+                       maxlength="60"
+                       autocomplete="off"
+                       placeholder="Search @targetRole name" />
+
+            </div>
+
+            <div id="chatSearchResults"
+                 class="chat-search-results"
+                 hidden>
+            </div>
+
+        </div>
+
+        <div class="conversation-heading">
+
+            <span>Messages</span>
+
+            <span id="conversationCount">
+                @Model.Conversations.Count
+            </span>
+
+        </div>
+
+        <div id="conversationList"
+             class="conversation-list">
+
+            @if (Model.Conversations.Count == 0)
+            {
+                <div class="conversation-empty"
+                     id="conversationEmpty">
+
+                    No conversations yet.
+
+                </div>
+            }
+
+            @foreach (var item in Model.Conversations)
+            {
+                <button type="button"
+                        class="conversation-item"
+                        data-user-id="@item.OtherUserId"
+                        data-conversation-id="@item.ConversationId">
+
+                    <img src="~/image/@item.OtherAvatar"
+                         alt="@item.OtherUsername"
+                         onerror="this.src='/image/default.png'" />
+
+                    <span class="conversation-main">
+
+                        <span class="conversation-topline">
+
+                            <strong>@item.OtherUsername</strong>
+
+                            <time data-utc="@item.LastMessageAtUtc.ToString("O")">
+                            </time>
+
+                        </span>
+
+                        <span class="conversation-bottomline">
+
+                            <span class="conversation-preview">
+                                @item.LastMessage
+                            </span>
+
+                            @if (item.UnreadCount > 0)
+                            {
+                                <span class="unread-badge">
+                                    @item.UnreadCount
+                                </span>
+                            }
+
+                        </span>
+
+                    </span>
+
+                </button>
+            }
+
+        </div>
+
+    </aside>
+
+    <main class="chat-panel">
+
+        <section id="chatEmptyState"
+                 class="chat-empty-state">
+
+            <div class="empty-icon"
+                 aria-hidden="true">
+                💬
+            </div>
+
+            <h2>Select a conversation</h2>
+
+            <p>
+                Search for a @targetRole or open a previous conversation.
+            </p>
+
+        </section>
+
+        <section id="activeChat"
+                 class="active-chat"
+                 hidden>
+
+            <header class="active-chat-header">
+
+                <img id="activeChatAvatar"
+                     src="/image/default.png"
+                     alt="Profile" />
+
+                <div class="active-chat-person">
+
+                    <h2 id="activeChatName"></h2>
+
+                    <p id="activeChatInfo"></p>
+
+                </div>
+
+            </header>
+
+            <div id="messageArea"
+                 class="message-area">
+
+                <div class="message-column">
+
+                    <button id="loadOlderButton"
+                            class="load-older-button"
+                            type="button"
+                            hidden>
+
+                        Load older messages
+
+                    </button>
+
+                    <div id="messageList"
+                         class="message-list">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <footer class="message-composer">
+
+                <div id="chatError"
+                     class="chat-error"
+                     hidden>
+                </div>
+
+                <div class="composer-shell">
+
+                    <textarea id="messageInput"
+                              maxlength="400"
+                              rows="1"
+                              placeholder="Type a message"
+                              aria-label="Message"></textarea>
+
+                    <div class="composer-bottom-row">
+
+                        <span id="characterCount"
+                              class="character-count">
+                            0/400
+                        </span>
+
+                        <button id="sendMessageButton"
+                                class="send-message-button"
+                                type="button"
+                                aria-label="Send message"
+                                title="Send message"
+                                disabled>
+
+                            <svg viewBox="0 0 24 24"
+                                 aria-hidden="true">
+
+                                <path d="M3.4 20.4 21 12 3.4 3.6l-.1 6.5 11.7 1.9-11.7 1.9.1 6.5Z" />
+
+                            </svg>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <p class="composer-help">
+                    Enter to send · Shift + Enter for a new line
+                </p>
+
+            </footer>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/9.0.6/signalr.min.js"></script>
+
+<script src="~/js/chat.js"
+        asp-append-version="true">
+</script>

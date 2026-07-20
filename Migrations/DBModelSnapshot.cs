@@ -64,6 +64,48 @@ namespace WebAndMobile.Migrations
                     b.ToTable("AdminSecurities");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>
+                {
+                    b.Property<long>("ChatMessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ChatMessageId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ReceiverId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ChatMessageId");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("ConversationId", "ChatMessageId");
+
+                    b.HasIndex("ReceiverId", "IsRead");
+
+                    b.ToTable("ChatMessages");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>
                 {
                     b.Property<int>("ClassId")
@@ -104,6 +146,36 @@ namespace WebAndMobile.Migrations
                         .IsUnique();
 
                     b.ToTable("Classrooms");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.Conversation", b =>
+                {
+                    b.Property<int>("ConversationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("TeacherId");
+
+                    b.HasIndex("StudentId", "TeacherId")
+                        .IsUnique();
+
+                    b.ToTable("Conversations");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Course", b =>
@@ -332,6 +404,52 @@ namespace WebAndMobile.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "Receiver")
+                        .WithMany()
+                        .HasForeignKey("ReceiverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+
+                    b.Navigation("Receiver");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.Conversation", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Teacher");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
                 {
                     b.HasOne("WebAndMobile.Models.ClassGroup", "ClassGroup")
@@ -383,6 +501,11 @@ namespace WebAndMobile.Migrations
             modelBuilder.Entity("WebAndMobile.Models.Classroom", b =>
                 {
                     b.Navigation("Timetables");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.Conversation", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Course", b =>
