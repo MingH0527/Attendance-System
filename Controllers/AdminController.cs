@@ -674,11 +674,13 @@ public class AdminController : Controller
             : null;
     }
 
+
+
     [HttpGet]
     public async Task<IActionResult> GetNonTeacherUsers()
     {
         var users = await _context.Users
-            .Where(u => u.Position != "Teacher")
+            .Where(u => u.Position == "Student")
             .OrderBy(u => u.Username)
             .Select(u => new TeacherLookupDto
             {
@@ -690,12 +692,18 @@ public class AdminController : Controller
         return Json(users);
     }
 
+    [HttpGet]
+    public IActionResult Createteacher()
+    {
+        return View();
+    }
+
     [HttpPost]
     public async Task<IActionResult> PromoteToTeacher(int id)
     {
         var user = await _context.Users.FindAsync(id);
 
-        if (user is null)
+        if (user == null)
         {
             return NotFound("User not found.");
         }
@@ -704,19 +712,55 @@ public class AdminController : Controller
         {
             return BadRequest("This user is already a teacher.");
         }
+        if (user.Position == "Admin")
+        {
+            return BadRequest("Admin cannot be promoted to Teacher.");
+        }
 
         user.Position = "Teacher";
         await _context.SaveChangesAsync();
 
-        return Ok(new
-        {
-            message = "User promoted to teacher.",
-            teacherId = user.UserId,
-            teacherName = user.Username
-        });
+        return Ok();
+    }
+    [HttpGet]
+    public async Task<IActionResult> GetAllUsersWithRoles()
+    {
+        var users = await _context.Users
+            .OrderBy(u => u.Username)
+            .Select(u => new UserRoleDto
+            {
+                UserId = u.UserId,
+                Username = u.Username,
+                Position = u.Position
+            })
+            .ToListAsync();
+
+        return Json(users);
     }
 
+    [HttpPost]
+    public async Task<IActionResult> CancelTeacherRole(int id)
+    {
+        var user = await _context.Users.FindAsync(id);
 
+        if (user == null)
+        {
+            return NotFound("User not found.");
+        }
 
+        if (user.Position == "Admin")
+        {
+            return BadRequest("Cannot change an Admin's role.");
+        }
 
+        if (user.Position != "Teacher")
+        {
+            return BadRequest("This user is not currently a teacher.");
+        }
+
+        user.Position = "Student";
+        await _context.SaveChangesAsync();
+
+        return Ok();
+    }
 }

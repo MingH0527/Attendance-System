@@ -72,3 +72,10 @@ public class ValidationResult
     public static ValidationResult Success() => new() { IsValid = true };
     public static ValidationResult Fail(string message) => new() { IsValid = false, ErrorMessage = message };
 }
+
+public class UserRoleDto
+{
+    public int UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Position { get; set; } = string.Empty;
+}

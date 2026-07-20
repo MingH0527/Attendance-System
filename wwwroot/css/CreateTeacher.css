@@ -1,0 +1,132 @@
+﻿/* Create Teacher Button */
+
+.student-button {
+    background: white;
+    color: #333;
+    text-decoration: none;
+    padding: 20px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: 0.3s;
+}
+
+
+.student-button:hover {
+    transform: translateY(-5px);
+    background: #fff5f5;
+ }
+
+
+.button-icon {
+    font-size: 35px;
+}
+
+
+.button-content {
+    flex: 1;
+}
+
+
+    .button-content strong {
+        display: block;
+        font-size: 20px;
+        color: #8b0000;
+    }
+
+
+    .button-content small {
+        color: #777;
+    }
+
+
+.button-arrow {
+    font-size: 30px;
+    color: #8b0000;
+}
+
+.teacher-page {
+    max-width: 900px;
+    margin: 30px auto;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+    .teacher-page h2 {
+        margin-bottom: 20px;
+        color: #2c3e50;
+    }
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+    .user-table th,
+    .user-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .user-table th {
+        background-color: #34495e;
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .user-table tr:hover {
+        background-color: #f5f7fa;
+    }
+
+.role-cell {
+    font-weight: 500;
+    color: #555;
+}
+
+.btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.btn-set {
+    background-color: #27ae60;
+    color: #fff;
+}
+
+    .btn-set:hover {
+        background-color: #219150;
+    }
+
+.btn-cancel {
+    background-color: #e74c3c;
+    color: #fff;
+}
+
+    .btn-cancel:hover {
+        background-color: #c0392b;
+    }
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.back-button {
+    display: inline-block;
+    margin-bottom: 15px;
+    color: #8b0000;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.back-button:hover {
+    text-decoration: underline;
+}
