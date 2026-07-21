@@ -655,6 +655,9 @@
 
             activeChatAvatar.onerror =
                 () => {
+                    activeChatAvatar.onerror =
+                        null;
+
                     activeChatAvatar.src =
                         "/image/default.png";
                 };
@@ -844,7 +847,7 @@
                                     alt="${escapeHtml(
                                         user.username
                                     )}"
-                                    onerror="this.src='/image/default.png'" />
+                                    onerror="this.onerror=null; this.src='/image/default.png';" />
 
                                 <span class="search-user-details">
 
@@ -969,7 +972,7 @@
                                     alt="${escapeHtml(
                                         item.otherUsername
                                     )}"
-                                    onerror="this.src='/image/default.png'" />
+                                    onerror="this.onerror=null; this.src='/image/default.png';" />
 
                                 <span class="conversation-main">
 
@@ -1032,103 +1035,50 @@
 
         if (
             !navigator.mediaDevices ||
-            !navigator.mediaDevices.getUserMedia
+            !navigator.mediaDevices
+                .getUserMedia
         ) {
             throw new Error(
-                "This browser does not support camera or microphone access."
+                "This browser does not support camera access."
             );
         }
 
-        try {
-            /*
-             * First attempt:
-             * camera + microphone.
-             */
-            localStream =
-                await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: {
-                            ideal: 1280
-                        },
+        localStream =
+            await navigator
+                .mediaDevices
+                .getUserMedia(
+                    {
+                        video:
+                            {
+                                width:
+                                    {
+                                        ideal:
+                                            1280
+                                    },
 
-                        height: {
-                            ideal: 720
-                        },
+                                height:
+                                    {
+                                        ideal:
+                                            720
+                                    },
 
-                        facingMode: "user"
-                    },
+                                facingMode:
+                                    "user"
+                            },
 
-                    audio: true
-                });
-        }
-        catch (cameraError) {
-            console.error(
-                "Camera and microphone request failed:",
-                cameraError
-            );
-
-            /*
-             * When Chrome already uses the laptop camera,
-             * Edge may fail to open the same physical camera.
-             *
-             * For development on one computer, continue with
-             * audio only instead of rejecting the entire call.
-             */
-            if (
-                cameraError?.name === "NotReadableError" ||
-                cameraError?.name === "NotFoundError" ||
-                cameraError?.name === "OverconstrainedError"
-            ) {
-                try {
-                    localStream =
-                        await navigator.mediaDevices.getUserMedia({
-                            video: false,
-                            audio: true
-                        });
-
-                    cameraEnabled = false;
-
-                    showError(
-                        "Camera is unavailable or already in use. " +
-                        "The call will continue with audio only."
-                    );
-                }
-                catch (audioError) {
-                    console.error(
-                        "Audio-only request failed:",
-                        audioError
-                    );
-
-                    throw audioError;
-                }
-            }
-            else {
-                throw cameraError;
-            }
-        }
+                        audio:
+                            true
+                    }
+                );
 
         localVideo.srcObject =
             localStream;
 
         microphoneEnabled =
-            localStream.getAudioTracks().length > 0;
+            true;
 
         cameraEnabled =
-            localStream.getVideoTracks().length > 0;
-
-        /*
-         * Some browsers need an explicit play request.
-         * The error can be ignored because the element is muted.
-         */
-        try {
-            await localVideo.play();
-        }
-        catch (playError) {
-            console.warn(
-                "Local preview could not autoplay:",
-                playError
-            );
-        }
+            true;
 
         updateMediaButtonStates();
 
@@ -1346,35 +1296,23 @@
             return;
         }
 
-        const callerId =
-            pendingCallerId;
-
-        const callerName =
-            pendingCallerName;
-
         try {
             callPeerUserId =
-                callerId;
+                pendingCallerId;
 
             callPeerName =
-                callerName;
+                pendingCallerName;
 
             hideIncomingCall();
-
-            showVideoCallOverlay(
-                callPeerName,
-                "Preparing camera and microphone…"
-            );
 
             await ensureLocalMedia();
 
             createPeerConnection();
 
-            videoCallStatus.textContent =
-                "Connecting…";
-
-            remoteVideoPlaceholder.textContent =
-                "Connecting…";
+            showVideoCallOverlay(
+                callPeerName,
+                "Connecting…"
+            );
 
             await connection.invoke(
                 "AcceptVideoCall",
@@ -1382,34 +1320,16 @@
             );
         }
         catch (error) {
-            console.error(
-                "Accept call failed:",
-                error
-            );
+            const callerId =
+                callPeerUserId;
 
             cleanupCall();
 
-            /*
-             * Reject only when the receiver genuinely cannot
-             * access any usable media device.
-             */
-            if (
-                callerId &&
-                connection.state ===
-                    signalR.HubConnectionState.Connected
-            ) {
-                try {
-                    await connection.invoke(
-                        "RejectVideoCall",
-                        callerId
-                    );
-                }
-                catch (rejectError) {
-                    console.error(
-                        "Reject call notification failed:",
-                        rejectError
-                    );
-                }
+            if (callerId) {
+                await connection.invoke(
+                    "RejectVideoCall",
+                    callerId
+                );
             }
 
             showError(
@@ -1710,58 +1630,31 @@
         updateMediaButtonStates();
     }
 
-    function getMediaErrorMessage(error) {
-        console.error(
-            "Media error:",
-            error
-        );
-
+    function getMediaErrorMessage(
+        error) {
         if (
-            error?.name === "NotAllowedError"
+            error?.name ===
+            "NotAllowedError"
         ) {
-            return (
-                "Camera or microphone permission was denied. " +
-                "Click the camera icon beside the address bar and select Allow."
-            );
+            return "Camera or microphone permission was denied.";
         }
 
         if (
-            error?.name === "NotFoundError"
+            error?.name ===
+            "NotFoundError"
         ) {
-            return (
-                "No available camera or microphone was found."
-            );
+            return "No camera or microphone was found.";
         }
 
         if (
-            error?.name === "NotReadableError"
+            error?.name ===
+            "NotReadableError"
         ) {
-            return (
-                "The camera or microphone is already being used " +
-                "by another browser or application."
-            );
+            return "The camera or microphone is being used by another application.";
         }
 
-        if (
-            error?.name === "OverconstrainedError"
-        ) {
-            return (
-                "The selected camera does not support the requested settings."
-            );
-        }
-
-        if (
-            error?.name === "SecurityError"
-        ) {
-            return (
-                "Camera access requires HTTPS or localhost."
-            );
-        }
-
-        return (
-            error?.message ||
-            "Video call could not be started."
-        );
+        return error?.message ||
+            "Video call could not be started.";
     }
 
     // ==================================================
@@ -2009,14 +1902,17 @@
     connection.on(
         "IncomingVideoCall",
         caller => {
-            console.log(
-                "IncomingVideoCall received:",
-                caller
-            );
             if (callIsActive) {
-                console.log(
-                    "Incoming call ignored because this tab is already in a call."
-                );
+                connection
+                    .invoke(
+                        "RejectVideoCall",
+                        Number(
+                            caller.callerId
+                        )
+                    )
+                    .catch(
+                        () => {}
+                    );
 
                 return;
             }
@@ -2037,6 +1933,9 @@
 
             incomingCallerAvatar.onerror =
                 () => {
+                    incomingCallerAvatar.onerror =
+                        null;
+
                     incomingCallerAvatar.src =
                         "/image/default.png";
                 };
@@ -2049,10 +1948,6 @@
     connection.on(
         "VideoCallAccepted",
         async accepterId => {
-            console.log(
-                "VideoCallAccepted received from:",
-                accepterId
-            );
             if (
                 Number(
                     accepterId
@@ -2222,15 +2117,6 @@
         try {
             await connection.start();
 
-            console.log(
-                "SignalR connected.",
-                {
-                    currentUserId,
-                    connectionId:
-                        connection.connectionId
-                }
-            );
-
             if (
                 initialSelectedUserId >
                 0
@@ -2249,6 +2135,6 @@
 
     refreshVisibleTimes();
     updateComposer();
-    updateMediaButtonStates(); cloudflared--version
-    start(); cloudflared--versioncloudflared--version
+    updateMediaButtonStates();
+    start();
 })();
