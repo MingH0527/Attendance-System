@@ -1,17 +1,23 @@
+using Fido2NetLib;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Stripe;
 using WebAndMobile;
+using WebAndMobile.Hubs;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
-using Stripe;
-using Fido2NetLib;
-using WebAndMobile.Hubs;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<
+    IUserIdProvider,
+    SignalRUserIdProvider
+>();
 
 var databasePath = Path.Combine(
     builder.Environment.ContentRootPath,

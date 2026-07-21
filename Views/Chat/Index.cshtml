@@ -21,6 +21,7 @@
 <div class="chat-app"
      id="chatApp"
      data-current-user-id="@Model.CurrentUserId"
+     data-current-role="@Model.CurrentRole"
      data-selected-user-id="@(Model.SelectedUserId?.ToString() ?? "")">
 
     <aside class="chat-sidebar">
@@ -29,36 +30,22 @@
 
             <a class="chat-back-link"
                asp-controller="@homeController"
-               asp-action="Index"
-               aria-label="Return to home">
-
+               asp-action="Index">
                 <span aria-hidden="true">←</span>
                 <span>Back</span>
-
             </a>
 
-            <div class="sidebar-title-row">
+            <h1>Chat</h1>
 
-                <div>
-                    <h1>Chat</h1>
-
-                    <p>
-                        @(Model.CurrentRole == "Student"
-                            ? "Message your teachers"
-                            : "Message your students")
-                    </p>
-                </div>
-
-            </div>
+            <p>
+                @(Model.CurrentRole == "Student"
+                    ? "Message your teachers"
+                    : "Message your students")
+            </p>
 
         </header>
 
         <div class="chat-search-wrap">
-
-            <label class="visually-hidden"
-                   for="chatSearchInput">
-                Search @targetRole
-            </label>
 
             <div class="chat-search-box">
 
@@ -83,13 +70,10 @@
         </div>
 
         <div class="conversation-heading">
-
             <span>Messages</span>
-
             <span id="conversationCount">
                 @Model.Conversations.Count
             </span>
-
         </div>
 
         <div id="conversationList"
@@ -97,11 +81,8 @@
 
             @if (Model.Conversations.Count == 0)
             {
-                <div class="conversation-empty"
-                     id="conversationEmpty">
-
+                <div class="conversation-empty">
                     No conversations yet.
-
                 </div>
             }
 
@@ -156,10 +137,7 @@
         <section id="chatEmptyState"
                  class="chat-empty-state">
 
-            <div class="empty-icon"
-                 aria-hidden="true">
-                💬
-            </div>
+            <div class="empty-icon">💬</div>
 
             <h2>Select a conversation</h2>
 
@@ -175,15 +153,33 @@
 
             <header class="active-chat-header">
 
-                <img id="activeChatAvatar"
-                     src="/image/default.png"
-                     alt="Profile" />
+                <div class="active-chat-user">
 
-                <div class="active-chat-person">
+                    <img id="activeChatAvatar"
+                         src="/image/default.png"
+                         alt="Profile" />
 
-                    <h2 id="activeChatName"></h2>
+                    <div class="active-chat-person">
+                        <h2 id="activeChatName"></h2>
+                        <p id="activeChatInfo"></p>
+                    </div>
 
-                    <p id="activeChatInfo"></p>
+                </div>
+
+                <div class="active-chat-actions">
+
+                    <button id="startVideoCallButton"
+                            class="header-icon-button"
+                            type="button"
+                            title="Start video call"
+                            aria-label="Start video call">
+
+                        <svg viewBox="0 0 24 24"
+                             aria-hidden="true">
+                            <path d="M15 8.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1.5l5 3V5.5l-5 3Z" />
+                        </svg>
+
+                    </button>
 
                 </div>
 
@@ -198,9 +194,7 @@
                             class="load-older-button"
                             type="button"
                             hidden>
-
                         Load older messages
-
                     </button>
 
                     <div id="messageList"
@@ -236,15 +230,13 @@
                         <button id="sendMessageButton"
                                 class="send-message-button"
                                 type="button"
-                                aria-label="Send message"
                                 title="Send message"
+                                aria-label="Send message"
                                 disabled>
 
                             <svg viewBox="0 0 24 24"
                                  aria-hidden="true">
-
                                 <path d="M3.4 20.4 21 12 3.4 3.6l-.1 6.5 11.7 1.9-11.7 1.9.1 6.5Z" />
-
                             </svg>
 
                         </button>
@@ -262,6 +254,130 @@
         </section>
 
     </main>
+
+</div>
+
+<!-- Incoming call dialog -->
+<div id="incomingCallOverlay"
+     class="call-overlay"
+     hidden>
+
+    <section class="incoming-call-card"
+             role="dialog"
+             aria-modal="true">
+
+        <img id="incomingCallerAvatar"
+             src="/image/default.png"
+             alt="Caller" />
+
+        <p class="call-label">Incoming video call</p>
+
+        <h2 id="incomingCallerName">
+            Incoming call
+        </h2>
+
+        <div class="incoming-call-actions">
+
+            <button id="declineCallButton"
+                    class="call-round-button call-decline"
+                    type="button"
+                    title="Decline">
+                ✕
+            </button>
+
+            <button id="acceptCallButton"
+                    class="call-round-button call-accept"
+                    type="button"
+                    title="Accept">
+                ✓
+            </button>
+
+        </div>
+
+    </section>
+
+</div>
+
+<!-- Active video call -->
+<div id="videoCallOverlay"
+     class="video-call-overlay"
+     hidden>
+
+    <div class="video-call-stage">
+
+        <video id="remoteVideo"
+               class="remote-video"
+               autoplay
+               playsinline>
+        </video>
+
+        <div id="remoteVideoPlaceholder"
+             class="remote-video-placeholder">
+            Connecting…
+        </div>
+
+        <video id="localVideo"
+               class="local-video"
+               autoplay
+               muted
+               playsinline>
+        </video>
+
+        <div class="video-call-topbar">
+
+            <div>
+                <strong id="videoCallPersonName">
+                    Video call
+                </strong>
+
+                <span id="videoCallStatus">
+                    Connecting…
+                </span>
+            </div>
+
+        </div>
+
+        <div class="video-call-controls">
+
+            <button id="toggleMicrophoneButton"
+                    class="call-control-button"
+                    type="button"
+                    title="Mute microphone">
+
+                <svg viewBox="0 0 24 24"
+                     aria-hidden="true">
+                    <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0M12 16v4m-3 0h6" />
+                </svg>
+
+            </button>
+
+            <button id="toggleCameraButton"
+                    class="call-control-button"
+                    type="button"
+                    title="Turn camera off">
+
+                <svg viewBox="0 0 24 24"
+                     aria-hidden="true">
+                    <path d="M15 8.5V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-1.5l5 3V5.5l-5 3Z" />
+                </svg>
+
+            </button>
+
+            <button id="endCallButton"
+                    class="call-control-button call-end-button"
+                    type="button"
+                    title="End call">
+
+                <svg viewBox="0 0 24 24"
+                     aria-hidden="true">
+                    <path d="M5.5 15.5c4.2-3.4 8.8-3.4 13 0l2-2c-5.4-4.9-11.6-4.9-17 0l2 2Z" />
+                </svg>
+
+            </button>
+
+        </div>
+
+    </div>
 
 </div>
 
