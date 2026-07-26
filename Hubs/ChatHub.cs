@@ -17,6 +17,10 @@ public class ChatHub : Hub
         this.db = db;
     }
 
+    // ==================================================
+    // TEXT CHAT
+    // ==================================================
+
     public async Task SendMessage(
         int otherUserId,
         string content)
@@ -45,51 +49,12 @@ public class ChatHub : Hub
             );
         }
 
-        User? currentUser =
-            await db.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    u =>
-                        u.UserId ==
-                            currentUserId &&
-
-                        u.Status ==
-                            "Active"
-                );
-
-        User? otherUser =
-            await db.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    u =>
-                        u.UserId ==
-                            otherUserId &&
-
-                        u.Status ==
-                            "Active"
-                );
-
-        if (currentUser == null ||
-            otherUser == null)
-        {
-            throw new HubException(
-                "The selected account could not be found."
+        User otherUser =
+            await GetAllowedOtherUser(
+                currentUserId,
+                currentRole,
+                otherUserId
             );
-        }
-
-        bool allowed =
-            currentRole == "Student" &&
-            otherUser.Position == "Teacher" ||
-
-            currentRole == "Teacher" &&
-            otherUser.Position == "Student";
-
-        if (!allowed)
-        {
-            throw new HubException(
-                "You are not allowed to chat with this account."
-            );
-        }
 
         int studentId =
             currentRole == "Student"
@@ -200,41 +165,23 @@ public class ChatHub : Hub
                     message.IsRead
             };
 
-        await Clients
-            .User(
-                currentUserId.ToString()
-            )
+        await Clients.Group(UserGroup(currentUserId))
             .SendAsync(
                 "ReceiveMessage",
                 dto
             );
 
-        await Clients
-            .User(
-                otherUserId.ToString()
-            )
+        await Clients.Group(UserGroup(otherUserId))
             .SendAsync(
                 "ReceiveMessage",
                 dto
             );
 
-        await Clients
-            .User(
-                currentUserId.ToString()
-            )
-            .SendAsync(
-                "ConversationUpdated",
-                conversation.ConversationId
-            );
-
-        await Clients
-            .User(
-                otherUserId.ToString()
-            )
-            .SendAsync(
-                "ConversationUpdated",
-                conversation.ConversationId
-            );
+        await NotifyConversationUpdated(
+            currentUserId,
+            otherUserId,
+            conversation.ConversationId
+        );
     }
 
     public async Task
@@ -307,7 +254,7 @@ public class ChatHub : Hub
                 .Where(
                     c =>
                         c.ConversationId ==
-                        conversationId
+                            conversationId
                 )
                 .Select(
                     c =>
@@ -318,30 +265,260 @@ public class ChatHub : Hub
                 )
                 .SingleAsync();
 
-        await Clients
-            .User(
-                currentUserId.ToString()
-            )
+        await Clients.Group(UserGroup(currentUserId))
             .SendAsync(
                 "MessagesRead",
                 conversationId,
                 currentUserId
             );
 
-        await Clients
-            .User(
-                otherUserId.ToString()
-            )
+        await Clients.Group(UserGroup(otherUserId))
             .SendAsync(
                 "MessagesRead",
                 conversationId,
                 currentUserId
             );
 
-        await Clients
-            .User(
-                currentUserId.ToString()
-            )
+        await NotifyConversationUpdated(
+            currentUserId,
+            otherUserId,
+            conversationId
+        );
+    }
+
+    // ==================================================
+    // VIDEO CALL SIGNALING
+    // SignalR transfers call controls, SDP and ICE.
+    // WebRTC transfers the actual audio/video.
+    // ==================================================
+
+    public async Task StartVideoCall(
+        int otherUserId)
+    {
+        int currentUserId =
+            GetCurrentUserId();
+
+        string currentRole =
+            GetCurrentRole();
+
+        User currentUser =
+            await db.Users
+                .AsNoTracking()
+                .SingleAsync(
+                    u =>
+                        u.UserId ==
+                        currentUserId
+                );
+
+        await GetAllowedOtherUser(
+            currentUserId,
+            currentRole,
+            otherUserId
+        );
+
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync(
+                "IncomingVideoCall",
+                new
+                {
+                    callerId =
+                        currentUserId,
+
+                    callerName =
+                        currentUser.Username,
+
+                    callerAvatar =
+                        string.IsNullOrWhiteSpace(
+                            currentUser.Avatar
+                        )
+                            ? "default.png"
+                            : currentUser.Avatar
+                }
+            );
+    }
+
+    public async Task AcceptVideoCall(
+        int callerId)
+    {
+        int currentUserId =
+            GetCurrentUserId();
+
+        string currentRole =
+            GetCurrentRole();
+
+        await GetAllowedOtherUser(
+            currentUserId,
+            currentRole,
+            callerId
+        );
+
+        await Clients.Group(UserGroup(callerId))
+            .SendAsync(
+                "VideoCallAccepted",
+                currentUserId
+            );
+    }
+
+    public async Task RejectVideoCall(
+        int callerId)
+    {
+        int currentUserId =
+            GetCurrentUserId();
+
+        string currentRole =
+            GetCurrentRole();
+
+        await GetAllowedOtherUser(
+            currentUserId,
+            currentRole,
+            callerId
+        );
+
+        await Clients.Group(UserGroup(callerId))
+            .SendAsync(
+                "VideoCallRejected",
+                currentUserId
+            );
+    }
+
+    public async Task SendWebRtcOffer(
+        int otherUserId,
+        string offerJson)
+    {
+        await ValidateCallTarget(
+            otherUserId
+        );
+
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync(
+                "ReceiveWebRtcOffer",
+                GetCurrentUserId(),
+                offerJson
+            );
+    }
+
+    public async Task SendWebRtcAnswer(
+        int otherUserId,
+        string answerJson)
+    {
+        await ValidateCallTarget(
+            otherUserId
+        );
+
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync(
+                "ReceiveWebRtcAnswer",
+                GetCurrentUserId(),
+                answerJson
+            );
+    }
+
+    public async Task SendIceCandidate(
+        int otherUserId,
+        string candidateJson)
+    {
+        await ValidateCallTarget(
+            otherUserId
+        );
+
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync(
+                "ReceiveIceCandidate",
+                GetCurrentUserId(),
+                candidateJson
+            );
+    }
+
+    public async Task EndVideoCall(
+        int otherUserId)
+    {
+        await ValidateCallTarget(
+            otherUserId
+        );
+
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync(
+                "VideoCallEnded",
+                GetCurrentUserId()
+            );
+    }
+
+    // ==================================================
+    // HELPERS
+    // ==================================================
+
+    private async Task ValidateCallTarget(
+        int otherUserId)
+    {
+        int currentUserId =
+            GetCurrentUserId();
+
+        string currentRole =
+            GetCurrentRole();
+
+        await GetAllowedOtherUser(
+            currentUserId,
+            currentRole,
+            otherUserId
+        );
+    }
+
+    private async Task<User>
+        GetAllowedOtherUser(
+            int currentUserId,
+            string currentRole,
+            int otherUserId)
+    {
+        User? otherUser =
+            await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    u =>
+                        u.UserId ==
+                            otherUserId &&
+
+                        u.Status ==
+                            "Active"
+                );
+
+        if (otherUser == null)
+        {
+            throw new HubException(
+                "The selected account could not be found."
+            );
+        }
+
+        bool allowed =
+            currentRole == "Student" &&
+            otherUser.Position == "Teacher" ||
+
+            currentRole == "Teacher" &&
+            otherUser.Position == "Student";
+
+        if (!allowed ||
+            currentUserId == otherUserId)
+        {
+            throw new HubException(
+                "You are not allowed to contact this account."
+            );
+        }
+
+        return otherUser;
+    }
+
+    private async Task
+        NotifyConversationUpdated(
+            int firstUserId,
+            int secondUserId,
+            int conversationId)
+    {
+        await Clients.Group(UserGroup(firstUserId))
+            .SendAsync(
+                "ConversationUpdated",
+                conversationId
+            );
+
+        await Clients.Group(UserGroup(secondUserId))
             .SendAsync(
                 "ConversationUpdated",
                 conversationId
@@ -385,5 +562,69 @@ public class ChatHub : Hub
         }
 
         return role;
+    }
+    public override async Task OnConnectedAsync()
+    {
+        int currentUserId =
+            GetCurrentUserId();
+
+        string groupName =
+            UserGroup(
+                currentUserId
+            );
+
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            groupName
+        );
+
+        Console.WriteLine(
+            $"SignalR connected: " +
+            $"ConnectionId={Context.ConnectionId}, " +
+            $"ClaimUserId={currentUserId}, " +
+            $"SignalRUserId={Context.UserIdentifier}, " +
+            $"Group={groupName}"
+        );
+
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(
+        Exception? exception)
+    {
+        string? value =
+            Context.User?
+                .FindFirstValue(
+                    ClaimTypes.NameIdentifier
+                );
+
+        if (int.TryParse(
+                value,
+                out int currentUserId))
+        {
+            await Groups.RemoveFromGroupAsync(
+                Context.ConnectionId,
+                UserGroup(
+                    currentUserId
+                )
+            );
+        }
+
+        Console.WriteLine(
+            $"SignalR disconnected: " +
+            $"ConnectionId={Context.ConnectionId}, " +
+            $"UserId={Context.UserIdentifier}, " +
+            $"Error={exception?.Message}"
+        );
+
+        await base.OnDisconnectedAsync(
+            exception
+        );
+    }
+
+    private static string UserGroup(
+        int userId)
+    {
+        return $"user-{userId}";
     }
 }

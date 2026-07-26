@@ -62,7 +62,6 @@ public class ChatController : Controller
             (query ?? string.Empty)
                 .Trim();
 
-        // An empty search must never return all users.
         if (query.Length < 1)
         {
             return Json(
@@ -75,26 +74,16 @@ public class ChatController : Controller
                 ? "Teacher"
                 : "Student";
 
-        /*
-         * Search only by Username.
-         * Gmail is intentionally not searched or returned.
-         *
-         * SQL Server's common default collation is case-insensitive,
-         * so searching "a" also matches "A".
-         */
         var users =
             await db.Users
                 .AsNoTracking()
                 .Where(
                     u =>
-                        u.UserId !=
-                            currentUserId &&
+                        u.UserId != currentUserId &&
 
-                        u.Position ==
-                            requiredRole &&
+                        u.Position == requiredRole &&
 
-                        u.Status ==
-                            "Active" &&
+                        u.Status == "Active" &&
 
                         EF.Functions.Like(
                             u.Username,
@@ -146,11 +135,8 @@ public class ChatController : Controller
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
                     u =>
-                        u.UserId ==
-                            otherUserId &&
-
-                        u.Status ==
-                            "Active"
+                        u.UserId == otherUserId &&
+                        u.Status == "Active"
                 );
 
         if (otherUser == null)
@@ -191,11 +177,8 @@ public class ChatController : Controller
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
                     c =>
-                        c.StudentId ==
-                            studentId &&
-
-                        c.TeacherId ==
-                            teacherId
+                        c.StudentId == studentId &&
+                        c.TeacherId == teacherId
                 );
 
         if (conversation == null)
@@ -254,10 +237,6 @@ public class ChatController : Controller
                 );
         }
 
-        /*
-         * Materialize first, then explicitly mark database DateTime values
-         * as UTC. SQL Server datetime2 does not preserve DateTime.Kind.
-         */
         List<ChatMessage> messageEntities =
             await messageQuery
                 .OrderByDescending(
@@ -486,7 +465,9 @@ public class ChatController : Controller
                             string.Empty,
 
                         LastMessageAtUtc =
-                            EnsureUtc(lastTime),
+                            EnsureUtc(
+                                lastTime
+                            ),
 
                         UnreadCount =
                             unreadCounts

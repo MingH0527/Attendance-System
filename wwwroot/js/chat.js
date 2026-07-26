@@ -9,74 +9,252 @@
     }
 
     const currentUserId =
-        Number(app.dataset.currentUserId);
+        Number(
+            app.dataset.currentUserId
+        );
 
     const initialSelectedUserId =
-        Number(app.dataset.selectedUserId || 0);
+        Number(
+            app.dataset.selectedUserId ||
+            0
+        );
 
     const searchInput =
-        document.getElementById("chatSearchInput");
+        document.getElementById(
+            "chatSearchInput"
+        );
 
     const searchResults =
-        document.getElementById("chatSearchResults");
+        document.getElementById(
+            "chatSearchResults"
+        );
 
     const conversationList =
-        document.getElementById("conversationList");
+        document.getElementById(
+            "conversationList"
+        );
 
     const conversationCount =
-        document.getElementById("conversationCount");
+        document.getElementById(
+            "conversationCount"
+        );
 
     const emptyState =
-        document.getElementById("chatEmptyState");
+        document.getElementById(
+            "chatEmptyState"
+        );
 
     const activeChat =
-        document.getElementById("activeChat");
+        document.getElementById(
+            "activeChat"
+        );
 
     const activeChatAvatar =
-        document.getElementById("activeChatAvatar");
+        document.getElementById(
+            "activeChatAvatar"
+        );
 
     const activeChatName =
-        document.getElementById("activeChatName");
+        document.getElementById(
+            "activeChatName"
+        );
 
     const activeChatInfo =
-        document.getElementById("activeChatInfo");
+        document.getElementById(
+            "activeChatInfo"
+        );
 
     const messageList =
-        document.getElementById("messageList");
+        document.getElementById(
+            "messageList"
+        );
 
     const messageArea =
-        document.getElementById("messageArea");
+        document.getElementById(
+            "messageArea"
+        );
 
     const messageInput =
-        document.getElementById("messageInput");
+        document.getElementById(
+            "messageInput"
+        );
 
     const characterCount =
-        document.getElementById("characterCount");
+        document.getElementById(
+            "characterCount"
+        );
 
     const sendButton =
-        document.getElementById("sendMessageButton");
+        document.getElementById(
+            "sendMessageButton"
+        );
 
     const chatError =
-        document.getElementById("chatError");
+        document.getElementById(
+            "chatError"
+        );
 
     const loadOlderButton =
-        document.getElementById("loadOlderButton");
+        document.getElementById(
+            "loadOlderButton"
+        );
 
-    let selectedUserId = 0;
-    let selectedConversationId = 0;
-    let oldestMessageId = 0;
-    let searchTimer = null;
-    let isLoadingOlder = false;
+    const startVideoCallButton =
+        document.getElementById(
+            "startVideoCallButton"
+        );
+
+    const incomingCallOverlay =
+        document.getElementById(
+            "incomingCallOverlay"
+        );
+
+    const incomingCallerAvatar =
+        document.getElementById(
+            "incomingCallerAvatar"
+        );
+
+    const incomingCallerName =
+        document.getElementById(
+            "incomingCallerName"
+        );
+
+    const acceptCallButton =
+        document.getElementById(
+            "acceptCallButton"
+        );
+
+    const declineCallButton =
+        document.getElementById(
+            "declineCallButton"
+        );
+
+    const videoCallOverlay =
+        document.getElementById(
+            "videoCallOverlay"
+        );
+
+    const remoteVideo =
+        document.getElementById(
+            "remoteVideo"
+        );
+
+    const localVideo =
+        document.getElementById(
+            "localVideo"
+        );
+
+    const remoteVideoPlaceholder =
+        document.getElementById(
+            "remoteVideoPlaceholder"
+        );
+
+    const videoCallPersonName =
+        document.getElementById(
+            "videoCallPersonName"
+        );
+
+    const videoCallStatus =
+        document.getElementById(
+            "videoCallStatus"
+        );
+
+    const toggleMicrophoneButton =
+        document.getElementById(
+            "toggleMicrophoneButton"
+        );
+
+    const toggleCameraButton =
+        document.getElementById(
+            "toggleCameraButton"
+        );
+
+    const endCallButton =
+        document.getElementById(
+            "endCallButton"
+        );
+
+    let selectedUserId =
+        0;
+
+    let selectedConversationId =
+        0;
+
+    let selectedUserName =
+        "";
+
+    let oldestMessageId =
+        0;
+
+    let searchTimer =
+        null;
+
+    let isLoadingOlder =
+        false;
+
+    let pendingCallerId =
+        0;
+
+    let pendingCallerName =
+        "";
+
+    let callPeerUserId =
+        0;
+
+    let callPeerName =
+        "";
+
+    let localStream =
+        null;
+
+    let peerConnection =
+        null;
+
+    let microphoneEnabled =
+        true;
+
+    let cameraEnabled =
+        true;
+
+    let callIsActive =
+        false;
+
+    const pendingIceCandidates =
+        [];
+
+    const rtcConfiguration =
+        {
+            iceServers:
+                [
+                    {
+                        urls:
+                            "stun:stun.l.google.com:19302"
+                    },
+                    {
+                        urls:
+                            "stun:stun1.l.google.com:19302"
+                    }
+                ]
+        };
 
     const connection =
-        new signalR.HubConnectionBuilder()
-            .withUrl("/chatHub")
+        new signalR
+            .HubConnectionBuilder()
+            .withUrl(
+                "/chatHub"
+            )
             .withAutomaticReconnect()
             .build();
 
+    // ==================================================
+    // COMMON HELPERS
+    // ==================================================
+
     function escapeHtml(value) {
         const element =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         element.textContent =
             value ?? "";
@@ -84,44 +262,52 @@
         return element.innerHTML;
     }
 
-    /*
-     * SQL Server datetime/datetime2 does not preserve DateTime.Kind.
-     * A value loaded from EF may therefore arrive without "Z".
-     * Without this correction, JavaScript treats it as local time,
-     * causing the eight-hour Malaysia time difference after reopening.
-     */
-    function parseUtcDate(utcValue) {
+    function parseUtcDate(
+        utcValue) {
         if (!utcValue) {
             return null;
         }
 
         let normalized =
-            String(utcValue).trim();
+            String(
+                utcValue
+            ).trim();
 
         const hasTimeZone =
-            /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+            /(?:Z|[+-]\d{2}:\d{2})$/i
+                .test(
+                    normalized
+                );
 
         if (!hasTimeZone) {
-            normalized += "Z";
+            normalized +=
+                "Z";
         }
 
         const date =
-            new Date(normalized);
+            new Date(
+                normalized
+            );
 
-        return Number.isNaN(date.getTime())
+        return Number.isNaN(
+            date.getTime()
+        )
             ? null
             : date;
     }
 
-    function formatTime(utcValue) {
+    function formatTime(
+        utcValue) {
         const date =
-            parseUtcDate(utcValue);
+            parseUtcDate(
+                utcValue
+            );
 
         if (!date) {
             return "";
         }
 
-        const malaysiaTodayText =
+        const dateFormatter =
             new Intl.DateTimeFormat(
                 "en-MY",
                 {
@@ -137,60 +323,59 @@
                     day:
                         "2-digit"
                 }
-            ).format(new Date());
+            );
 
-        const malaysiaMessageDateText =
-            new Intl.DateTimeFormat(
-                "en-MY",
-                {
-                    timeZone:
-                        "Asia/Kuala_Lumpur",
+        const today =
+            dateFormatter.format(
+                new Date()
+            );
 
-                    year:
-                        "numeric",
+        const messageDate =
+            dateFormatter.format(
+                date
+            );
 
-                    month:
-                        "2-digit",
+        if (today ===
+            messageDate) {
+            return new Intl
+                .DateTimeFormat(
+                    "en-MY",
+                    {
+                        timeZone:
+                            "Asia/Kuala_Lumpur",
 
-                    day:
-                        "2-digit"
-                }
-            ).format(date);
+                        hour:
+                            "2-digit",
 
-        if (malaysiaTodayText ===
-            malaysiaMessageDateText) {
+                        minute:
+                            "2-digit",
 
-            return new Intl.DateTimeFormat(
-                "en-MY",
-                {
-                    timeZone:
-                        "Asia/Kuala_Lumpur",
-
-                    hour:
-                        "2-digit",
-
-                    minute:
-                        "2-digit",
-
-                    hour12:
-                        true
-                }
-            ).format(date);
+                        hour12:
+                            true
+                    }
+                )
+                .format(
+                    date
+                );
         }
 
-        return new Intl.DateTimeFormat(
-            "en-MY",
-            {
-                timeZone:
-                    "Asia/Kuala_Lumpur",
+        return new Intl
+            .DateTimeFormat(
+                "en-MY",
+                {
+                    timeZone:
+                        "Asia/Kuala_Lumpur",
 
-                month:
-                    "short",
+                    month:
+                        "short",
 
-                day:
-                    "numeric"
-            }
-        ).format(date);
+                    day:
+                        "numeric"
+                }
+            )
+            .format(
+                date
+            );
     }
 
     function refreshVisibleTimes() {
@@ -198,15 +383,18 @@
             .querySelectorAll(
                 "time[data-utc]"
             )
-            .forEach(time => {
-                time.textContent =
-                    formatTime(
-                        time.dataset.utc
-                    );
-            });
+            .forEach(
+                time => {
+                    time.textContent =
+                        formatTime(
+                            time.dataset.utc
+                        );
+                }
+            );
     }
 
-    function showError(message) {
+    function showError(
+        message) {
         chatError.textContent =
             message;
 
@@ -222,27 +410,40 @@
             true;
     }
 
+    // ==================================================
+    // TEXT CHAT
+    // ==================================================
+
     function updateComposer() {
         const length =
-            messageInput.value.length;
+            messageInput
+                .value
+                .length;
 
         characterCount.textContent =
             `${length}/400`;
 
-        characterCount.classList.toggle(
-            "near-limit",
-            length >= 350 &&
-            length < 400
-        );
+        characterCount
+            .classList
+            .toggle(
+                "near-limit",
 
-        characterCount.classList.toggle(
-            "at-limit",
-            length >= 400
-        );
+                length >= 350 &&
+                length < 400
+            );
+
+        characterCount
+            .classList
+            .toggle(
+                "at-limit",
+                length >= 400
+            );
 
         sendButton.disabled =
             length === 0 ||
-            messageInput.value
+
+            messageInput
+                .value
                 .trim()
                 .length === 0;
 
@@ -251,21 +452,27 @@
 
         messageInput.style.height =
             `${Math.min(
-                messageInput.scrollHeight,
+                messageInput
+                    .scrollHeight,
                 150
             )}px`;
     }
 
-    function messageHtml(message) {
+    function messageHtml(
+        message) {
         const mine =
-            Number(message.senderId) ===
+            Number(
+                message.senderId
+            ) ===
             currentUserId;
 
         return `
             <article
-                class="message-row ${mine
-                    ? "message-mine"
-                    : "message-other"}"
+                class="message-row ${
+                    mine
+                        ? "message-mine"
+                        : "message-other"
+                }"
                 data-message-id="${message.messageId}">
 
                 <div class="message-bubble">
@@ -290,13 +497,15 @@
                             )}
                         </time>
 
-                        ${mine
-                            ? `<span class="read-state">${
-                                message.isRead
-                                    ? "Read"
-                                    : "Sent"
-                            }</span>`
-                            : ""}
+                        ${
+                            mine
+                                ? `<span class="read-state">${
+                                    message.isRead
+                                        ? "Read"
+                                        : "Sent"
+                                  }</span>`
+                                : ""
+                        }
 
                     </div>
 
@@ -308,27 +517,35 @@
     function appendMessage(
         message,
         scroll = true) {
-
         const existing =
-            document.querySelector(
-                `[data-message-id="${message.messageId}"]`
-            );
+            document
+                .querySelector(
+                    `[data-message-id="${message.messageId}"]`
+                );
 
         if (existing) {
             return;
         }
 
-        messageList.insertAdjacentHTML(
-            "beforeend",
-            messageHtml(message)
-        );
+        messageList
+            .insertAdjacentHTML(
+                "beforeend",
+                messageHtml(
+                    message
+                )
+            );
 
         oldestMessageId =
             oldestMessageId === 0
-                ? Number(message.messageId)
+                ? Number(
+                    message.messageId
+                )
                 : Math.min(
                     oldestMessageId,
-                    Number(message.messageId)
+
+                    Number(
+                        message.messageId
+                    )
                 );
 
         if (scroll) {
@@ -337,39 +554,47 @@
         }
     }
 
-    function prependMessages(messages) {
+    function prependMessages(
+        messages) {
         const oldHeight =
-            messageArea.scrollHeight;
+            messageArea
+                .scrollHeight;
 
         const html =
             messages
-                .map(messageHtml)
+                .map(
+                    messageHtml
+                )
                 .join("");
 
-        messageList.insertAdjacentHTML(
-            "afterbegin",
-            html
-        );
+        messageList
+            .insertAdjacentHTML(
+                "afterbegin",
+                html
+            );
 
         if (messages.length > 0) {
             oldestMessageId =
                 Number(
-                    messages[0].messageId
+                    messages[0]
+                        .messageId
                 );
         }
 
         messageArea.scrollTop =
-            messageArea.scrollHeight -
+            messageArea
+                .scrollHeight -
             oldHeight;
     }
 
     async function openConversation(
         otherUserId) {
-
         clearError();
 
         selectedUserId =
-            Number(otherUserId);
+            Number(
+                otherUserId
+            );
 
         selectedConversationId =
             0;
@@ -387,15 +612,20 @@
             .querySelectorAll(
                 ".conversation-item"
             )
-            .forEach(item => {
-                item.classList.toggle(
-                    "active",
+            .forEach(
+                item => {
+                    item
+                        .classList
+                        .toggle(
+                            "active",
 
-                    Number(
-                        item.dataset.userId
-                    ) === selectedUserId
-                );
-            });
+                            Number(
+                                item.dataset.userId
+                            ) ===
+                            selectedUserId
+                        );
+                }
+            );
 
         try {
             const response =
@@ -413,13 +643,21 @@
                 await response.json();
 
             selectedConversationId =
-                Number(data.conversationId);
+                Number(
+                    data.conversationId
+                );
+
+            selectedUserName =
+                data.otherUser.username;
 
             activeChatAvatar.src =
                 `/image/${data.otherUser.avatar}`;
 
             activeChatAvatar.onerror =
                 () => {
+                    activeChatAvatar.onerror =
+                        null;
+
                     activeChatAvatar.src =
                         "/image/default.png";
                 };
@@ -427,7 +665,6 @@
             activeChatName.textContent =
                 data.otherUser.username;
 
-            // Gmail is intentionally hidden.
             activeChatInfo.textContent =
                 data.otherUser.position;
 
@@ -437,13 +674,14 @@
             activeChat.hidden =
                 false;
 
-            data.messages.forEach(
-                message =>
-                    appendMessage(
-                        message,
-                        false
-                    )
-            );
+            data.messages
+                .forEach(
+                    message =>
+                        appendMessage(
+                            message,
+                            false
+                        )
+                );
 
             loadOlderButton.hidden =
                 !data.hasMore;
@@ -452,7 +690,9 @@
                 messageArea.scrollHeight;
 
             if (
-                selectedConversationId > 0 &&
+                selectedConversationId >
+                    0 &&
+
                 connection.state ===
                     signalR
                         .HubConnectionState
@@ -471,6 +711,7 @@
         catch (error) {
             showError(
                 error.message ||
+
                 "Unable to open conversation."
             );
         }
@@ -516,6 +757,7 @@
         catch (error) {
             showError(
                 error.message ||
+
                 "Unable to load older messages."
             );
         }
@@ -548,7 +790,7 @@
                 .Connected
         ) {
             showError(
-                "Real-time connection is not ready. Please wait or refresh the page."
+                "Real-time connection is not ready."
             );
 
             return;
@@ -572,6 +814,7 @@
         catch (error) {
             showError(
                 error.message ||
+
                 "Message could not be sent."
             );
 
@@ -579,7 +822,8 @@
         }
     }
 
-    function renderSearchResults(users) {
+    function renderSearchResults(
+        users) {
         if (users.length === 0) {
             searchResults.innerHTML =
                 `<div class="search-empty">
@@ -589,44 +833,44 @@
         else {
             searchResults.innerHTML =
                 users
-                    .map(user => `
-                        <button
-                            type="button"
-                            class="search-user"
-                            data-user-id="${user.userId}">
+                    .map(
+                        user => `
+                            <button
+                                type="button"
+                                class="search-user"
+                                data-user-id="${user.userId}">
 
-                            <img
-                                src="/image/${escapeHtml(
-                                    user.avatar
-                                )}"
-                                alt="${escapeHtml(
-                                    user.username
-                                )}"
-                                onerror="this.src='/image/default.png'" />
-
-                            <span class="search-user-details">
-
-                                <strong>
-                                    ${escapeHtml(
+                                <img
+                                    src="/image/${escapeHtml(
+                                        user.avatar
+                                    )}"
+                                    alt="${escapeHtml(
                                         user.username
-                                    )}
-                                </strong>
+                                    )}"
+                                    onerror="this.onerror=null; this.src='/image/default.png';" />
 
-                                <small>
-                                    ${escapeHtml(
-                                        user.position
-                                    )}
-                                </small>
+                                <span class="search-user-details">
 
-                            </span>
+                                    <strong>
+                                        ${escapeHtml(
+                                            user.username
+                                        )}
+                                    </strong>
 
-                            <span
-                                class="message-action"
-                                aria-hidden="true">
-                                ›
-                            </span>
+                                    <small>
+                                        ${escapeHtml(
+                                            user.position
+                                        )}
+                                    </small>
 
-                        </button>`)
+                                </span>
+
+                                <span class="message-action">
+                                    ›
+                                </span>
+
+                            </button>`
+                    )
                     .join("");
         }
 
@@ -634,7 +878,8 @@
             false;
     }
 
-    async function searchUsers(query) {
+    async function searchUsers(
+        query) {
         const keyword =
             query.trim();
 
@@ -660,10 +905,9 @@
                 throw new Error();
             }
 
-            const users =
-                await response.json();
-
-            renderSearchResults(users);
+            renderSearchResults(
+                await response.json()
+            );
         }
         catch {
             searchResults.innerHTML =
@@ -691,7 +935,9 @@
                 await response.json();
 
             conversationCount.textContent =
-                String(items.length);
+                String(
+                    items.length
+                );
 
             if (items.length === 0) {
                 conversationList.innerHTML =
@@ -704,75 +950,716 @@
 
             conversationList.innerHTML =
                 items
-                    .map(item => `
-                        <button
-                            type="button"
-                            class="conversation-item ${
-                                Number(
-                                    item.otherUserId
-                                ) ===
-                                selectedUserId
-                                    ? "active"
-                                    : ""
-                            }"
-                            data-user-id="${item.otherUserId}"
-                            data-conversation-id="${item.conversationId}">
+                    .map(
+                        item => `
+                            <button
+                                type="button"
+                                class="conversation-item ${
+                                    Number(
+                                        item.otherUserId
+                                    ) ===
+                                    selectedUserId
+                                        ? "active"
+                                        : ""
+                                }"
+                                data-user-id="${item.otherUserId}"
+                                data-conversation-id="${item.conversationId}">
 
-                            <img
-                                src="/image/${escapeHtml(
-                                    item.otherAvatar
-                                )}"
-                                alt="${escapeHtml(
-                                    item.otherUsername
-                                )}"
-                                onerror="this.src='/image/default.png'" />
+                                <img
+                                    src="/image/${escapeHtml(
+                                        item.otherAvatar
+                                    )}"
+                                    alt="${escapeHtml(
+                                        item.otherUsername
+                                    )}"
+                                    onerror="this.onerror=null; this.src='/image/default.png';" />
 
-                            <span class="conversation-main">
+                                <span class="conversation-main">
 
-                                <span class="conversation-topline">
+                                    <span class="conversation-topline">
 
-                                    <strong>
-                                        ${escapeHtml(
-                                            item.otherUsername
-                                        )}
-                                    </strong>
+                                        <strong>
+                                            ${escapeHtml(
+                                                item.otherUsername
+                                            )}
+                                        </strong>
 
-                                    <time
-                                        data-utc="${escapeHtml(
-                                            item.lastMessageAtUtc
-                                        )}">
-                                        ${formatTime(
-                                            item.lastMessageAtUtc
-                                        )}
-                                    </time>
+                                        <time
+                                            data-utc="${escapeHtml(
+                                                item.lastMessageAtUtc
+                                            )}">
+                                            ${formatTime(
+                                                item.lastMessageAtUtc
+                                            )}
+                                        </time>
 
-                                </span>
-
-                                <span class="conversation-bottomline">
-
-                                    <span class="conversation-preview">
-                                        ${escapeHtml(
-                                            item.lastMessage
-                                        )}
                                     </span>
 
-                                    ${item.unreadCount > 0
-                                        ? `<span class="unread-badge">
-                                            ${item.unreadCount}
-                                           </span>`
-                                        : ""}
+                                    <span class="conversation-bottomline">
+
+                                        <span class="conversation-preview">
+                                            ${escapeHtml(
+                                                item.lastMessage
+                                            )}
+                                        </span>
+
+                                        ${
+                                            item.unreadCount > 0
+                                                ? `<span class="unread-badge">
+                                                    ${item.unreadCount}
+                                                   </span>`
+                                                : ""
+                                        }
+
+                                    </span>
 
                                 </span>
 
-                            </span>
-
-                        </button>`)
+                            </button>`
+                    )
                     .join("");
         }
         catch {
-            // Keep the existing list if refreshing fails.
+            // Existing list remains visible.
         }
     }
+
+    // ==================================================
+    // WEBRTC VIDEO CALL
+    // ==================================================
+
+    async function ensureLocalMedia() {
+        if (localStream) {
+            return localStream;
+        }
+
+        if (
+            !navigator.mediaDevices ||
+            !navigator.mediaDevices
+                .getUserMedia
+        ) {
+            throw new Error(
+                "This browser does not support camera access."
+            );
+        }
+
+        localStream =
+            await navigator
+                .mediaDevices
+                .getUserMedia(
+                    {
+                        video:
+                            {
+                                width:
+                                    {
+                                        ideal:
+                                            1280
+                                    },
+
+                                height:
+                                    {
+                                        ideal:
+                                            720
+                                    },
+
+                                facingMode:
+                                    "user"
+                            },
+
+                        audio:
+                            true
+                    }
+                );
+
+        localVideo.srcObject =
+            localStream;
+
+        microphoneEnabled =
+            true;
+
+        cameraEnabled =
+            true;
+
+        updateMediaButtonStates();
+
+        return localStream;
+    }
+
+    function createPeerConnection() {
+        if (peerConnection) {
+            return peerConnection;
+        }
+
+        peerConnection =
+            new RTCPeerConnection(
+                rtcConfiguration
+            );
+
+        peerConnection.onicecandidate =
+            async event => {
+                if (
+                    !event.candidate ||
+                    !callPeerUserId
+                ) {
+                    return;
+                }
+
+                await connection.invoke(
+                    "SendIceCandidate",
+                    callPeerUserId,
+                    JSON.stringify(
+                        event.candidate
+                    )
+                );
+            };
+
+        peerConnection.ontrack =
+            event => {
+                const stream =
+                    event.streams[0];
+
+                if (stream) {
+                    remoteVideo.srcObject =
+                        stream;
+
+                    remoteVideoPlaceholder.hidden =
+                        true;
+
+                    videoCallStatus.textContent =
+                        "Connected";
+                }
+            };
+
+        peerConnection.onconnectionstatechange =
+            () => {
+                const state =
+                    peerConnection
+                        ?.connectionState;
+
+                if (
+                    state ===
+                    "connected"
+                ) {
+                    videoCallStatus.textContent =
+                        "Connected";
+
+                    remoteVideoPlaceholder.hidden =
+                        true;
+                }
+
+                if (
+                    state ===
+                    "failed" ||
+
+                    state ===
+                    "disconnected"
+                ) {
+                    videoCallStatus.textContent =
+                        "Connection interrupted";
+                }
+
+                if (
+                    state ===
+                    "closed"
+                ) {
+                    cleanupCall();
+                }
+            };
+
+        if (localStream) {
+            localStream
+                .getTracks()
+                .forEach(
+                    track => {
+                        peerConnection
+                            .addTrack(
+                                track,
+                                localStream
+                            );
+                    }
+                );
+        }
+
+        return peerConnection;
+    }
+
+    async function flushPendingIceCandidates() {
+        if (
+            !peerConnection ||
+            !peerConnection
+                .remoteDescription
+        ) {
+            return;
+        }
+
+        while (
+            pendingIceCandidates
+                .length > 0
+        ) {
+            const candidate =
+                pendingIceCandidates
+                    .shift();
+
+            await peerConnection
+                .addIceCandidate(
+                    candidate
+                );
+        }
+    }
+
+    function showVideoCallOverlay(
+        peerName,
+        status) {
+        callPeerName =
+            peerName ||
+            "Video call";
+
+        videoCallPersonName.textContent =
+            callPeerName;
+
+        videoCallStatus.textContent =
+            status;
+
+        remoteVideoPlaceholder.hidden =
+            false;
+
+        remoteVideoPlaceholder.textContent =
+            status;
+
+        videoCallOverlay.hidden =
+            false;
+
+        callIsActive =
+            true;
+    }
+
+    function hideIncomingCall() {
+        incomingCallOverlay.hidden =
+            true;
+
+        pendingCallerId =
+            0;
+
+        pendingCallerName =
+            "";
+    }
+
+    async function startOutgoingVideoCall() {
+        clearError();
+
+        if (!selectedUserId) {
+            showError(
+                "Select a person before starting a call."
+            );
+
+            return;
+        }
+
+        if (callIsActive) {
+            return;
+        }
+
+        try {
+            callPeerUserId =
+                selectedUserId;
+
+            callPeerName =
+                selectedUserName;
+
+            await ensureLocalMedia();
+
+            createPeerConnection();
+
+            showVideoCallOverlay(
+                callPeerName,
+                "Calling…"
+            );
+
+            await connection.invoke(
+                "StartVideoCall",
+                callPeerUserId
+            );
+        }
+        catch (error) {
+            cleanupCall();
+
+            showError(
+                getMediaErrorMessage(
+                    error
+                )
+            );
+        }
+    }
+
+    async function acceptIncomingCall() {
+        if (!pendingCallerId) {
+            return;
+        }
+
+        try {
+            callPeerUserId =
+                pendingCallerId;
+
+            callPeerName =
+                pendingCallerName;
+
+            hideIncomingCall();
+
+            await ensureLocalMedia();
+
+            createPeerConnection();
+
+            showVideoCallOverlay(
+                callPeerName,
+                "Connecting…"
+            );
+
+            await connection.invoke(
+                "AcceptVideoCall",
+                callPeerUserId
+            );
+        }
+        catch (error) {
+            const callerId =
+                callPeerUserId;
+
+            cleanupCall();
+
+            if (callerId) {
+                await connection.invoke(
+                    "RejectVideoCall",
+                    callerId
+                );
+            }
+
+            showError(
+                getMediaErrorMessage(
+                    error
+                )
+            );
+        }
+    }
+
+    async function declineIncomingCall() {
+        const callerId =
+            pendingCallerId;
+
+        hideIncomingCall();
+
+        if (
+            callerId &&
+            connection.state ===
+                signalR
+                    .HubConnectionState
+                    .Connected
+        ) {
+            await connection.invoke(
+                "RejectVideoCall",
+                callerId
+            );
+        }
+    }
+
+    async function createAndSendOffer() {
+        const pc =
+            createPeerConnection();
+
+        const offer =
+            await pc.createOffer();
+
+        await pc.setLocalDescription(
+            offer
+        );
+
+        await connection.invoke(
+            "SendWebRtcOffer",
+            callPeerUserId,
+            JSON.stringify(
+                pc.localDescription
+            )
+        );
+    }
+
+    async function receiveOffer(
+        callerId,
+        offerJson) {
+        callPeerUserId =
+            Number(
+                callerId
+            );
+
+        if (!localStream) {
+            await ensureLocalMedia();
+        }
+
+        const pc =
+            createPeerConnection();
+
+        const offer =
+            JSON.parse(
+                offerJson
+            );
+
+        await pc.setRemoteDescription(
+            new RTCSessionDescription(
+                offer
+            )
+        );
+
+        await flushPendingIceCandidates();
+
+        const answer =
+            await pc.createAnswer();
+
+        await pc.setLocalDescription(
+            answer
+        );
+
+        await connection.invoke(
+            "SendWebRtcAnswer",
+            callPeerUserId,
+            JSON.stringify(
+                pc.localDescription
+            )
+        );
+    }
+
+    async function receiveAnswer(
+        answerJson) {
+        if (!peerConnection) {
+            return;
+        }
+
+        const answer =
+            JSON.parse(
+                answerJson
+            );
+
+        await peerConnection
+            .setRemoteDescription(
+                new RTCSessionDescription(
+                    answer
+                )
+            );
+
+        await flushPendingIceCandidates();
+    }
+
+    async function receiveIceCandidate(
+        candidateJson) {
+        const candidate =
+            new RTCIceCandidate(
+                JSON.parse(
+                    candidateJson
+                )
+            );
+
+        if (
+            peerConnection &&
+            peerConnection
+                .remoteDescription
+        ) {
+            await peerConnection
+                .addIceCandidate(
+                    candidate
+                );
+
+            return;
+        }
+
+        pendingIceCandidates.push(
+            candidate
+        );
+    }
+
+    function toggleMicrophone() {
+        if (!localStream) {
+            return;
+        }
+
+        microphoneEnabled =
+            !microphoneEnabled;
+
+        localStream
+            .getAudioTracks()
+            .forEach(
+                track => {
+                    track.enabled =
+                        microphoneEnabled;
+                }
+            );
+
+        updateMediaButtonStates();
+    }
+
+    function toggleCamera() {
+        if (!localStream) {
+            return;
+        }
+
+        cameraEnabled =
+            !cameraEnabled;
+
+        localStream
+            .getVideoTracks()
+            .forEach(
+                track => {
+                    track.enabled =
+                        cameraEnabled;
+                }
+            );
+
+        updateMediaButtonStates();
+    }
+
+    function updateMediaButtonStates() {
+        toggleMicrophoneButton
+            .classList
+            .toggle(
+                "disabled-media",
+                !microphoneEnabled
+            );
+
+        toggleCameraButton
+            .classList
+            .toggle(
+                "disabled-media",
+                !cameraEnabled
+            );
+
+        toggleMicrophoneButton.title =
+            microphoneEnabled
+                ? "Mute microphone"
+                : "Unmute microphone";
+
+        toggleCameraButton.title =
+            cameraEnabled
+                ? "Turn camera off"
+                : "Turn camera on";
+    }
+
+    async function endVideoCall(
+        notifyOtherUser = true) {
+        const peerUserId =
+            callPeerUserId;
+
+        cleanupCall();
+
+        if (
+            notifyOtherUser &&
+            peerUserId &&
+            connection.state ===
+                signalR
+                    .HubConnectionState
+                    .Connected
+        ) {
+            try {
+                await connection.invoke(
+                    "EndVideoCall",
+                    peerUserId
+                );
+            }
+            catch {
+                // Local call is already closed.
+            }
+        }
+    }
+
+    function cleanupCall() {
+        if (peerConnection) {
+            peerConnection
+                .onicecandidate =
+                null;
+
+            peerConnection
+                .ontrack =
+                null;
+
+            peerConnection
+                .onconnectionstatechange =
+                null;
+
+            peerConnection.close();
+
+            peerConnection =
+                null;
+        }
+
+        if (localStream) {
+            localStream
+                .getTracks()
+                .forEach(
+                    track =>
+                        track.stop()
+                );
+
+            localStream =
+                null;
+        }
+
+        localVideo.srcObject =
+            null;
+
+        remoteVideo.srcObject =
+            null;
+
+        videoCallOverlay.hidden =
+            true;
+
+        remoteVideoPlaceholder.hidden =
+            false;
+
+        pendingIceCandidates.length =
+            0;
+
+        callPeerUserId =
+            0;
+
+        callPeerName =
+            "";
+
+        callIsActive =
+            false;
+
+        microphoneEnabled =
+            true;
+
+        cameraEnabled =
+            true;
+
+        updateMediaButtonStates();
+    }
+
+    function getMediaErrorMessage(
+        error) {
+        if (
+            error?.name ===
+            "NotAllowedError"
+        ) {
+            return "Camera or microphone permission was denied.";
+        }
+
+        if (
+            error?.name ===
+            "NotFoundError"
+        ) {
+            return "No camera or microphone was found.";
+        }
+
+        if (
+            error?.name ===
+            "NotReadableError"
+        ) {
+            return "The camera or microphone is being used by another application.";
+        }
+
+        return error?.message ||
+            "Video call could not be started.";
+    }
+
+    // ==================================================
+    // DOM EVENTS
+    // ==================================================
 
     searchInput.addEventListener(
         "input",
@@ -880,23 +1767,88 @@
         loadOlderMessages
     );
 
+    startVideoCallButton.addEventListener(
+        "click",
+        startOutgoingVideoCall
+    );
+
+    acceptCallButton.addEventListener(
+        "click",
+        acceptIncomingCall
+    );
+
+    declineCallButton.addEventListener(
+        "click",
+        declineIncomingCall
+    );
+
+    toggleMicrophoneButton.addEventListener(
+        "click",
+        toggleMicrophone
+    );
+
+    toggleCameraButton.addEventListener(
+        "click",
+        toggleCamera
+    );
+
+    endCallButton.addEventListener(
+        "click",
+        () =>
+            endVideoCall(
+                true
+            )
+    );
+
+    window.addEventListener(
+        "beforeunload",
+        () => {
+            if (callPeerUserId) {
+                connection
+                    .invoke(
+                        "EndVideoCall",
+                        callPeerUserId
+                    )
+                    .catch(
+                        () => {}
+                    );
+            }
+
+            cleanupCall();
+        }
+    );
+
+    // ==================================================
+    // SIGNALR EVENTS
+    // ==================================================
+
     connection.on(
         "ReceiveMessage",
         async message => {
             const belongsToOpenChat =
-                Number(message.senderId) ===
+                Number(
+                    message.senderId
+                ) ===
                     selectedUserId ||
-                Number(message.receiverId) ===
+
+                Number(
+                    message.receiverId
+                ) ===
                     selectedUserId;
 
             if (belongsToOpenChat) {
-                appendMessage(message);
+                appendMessage(
+                    message
+                );
 
                 if (
                     Number(
                         message.receiverId
-                    ) === currentUserId &&
-                    selectedConversationId > 0
+                    ) ===
+                        currentUserId &&
+
+                    selectedConversationId >
+                        0
                 ) {
                     await connection.invoke(
                         "MarkConversationAsRead",
@@ -921,15 +1873,15 @@
             readerId
         ) => {
             if (
-                Number(conversationId) !==
-                selectedConversationId
-            ) {
-                return;
-            }
+                Number(
+                    conversationId
+                ) !==
+                    selectedConversationId ||
 
-            if (
-                Number(readerId) ===
-                currentUserId
+                Number(
+                    readerId
+                ) ===
+                    currentUserId
             ) {
                 return;
             }
@@ -938,17 +1890,208 @@
                 .querySelectorAll(
                     ".message-mine .read-state"
                 )
-                .forEach(element => {
-                    element.textContent =
-                        "Read";
-                });
+                .forEach(
+                    element => {
+                        element.textContent =
+                            "Read";
+                    }
+                );
+        }
+    );
+
+    connection.on(
+        "IncomingVideoCall",
+        caller => {
+            if (callIsActive) {
+                connection
+                    .invoke(
+                        "RejectVideoCall",
+                        Number(
+                            caller.callerId
+                        )
+                    )
+                    .catch(
+                        () => {}
+                    );
+
+                return;
+            }
+
+            pendingCallerId =
+                Number(
+                    caller.callerId
+                );
+
+            pendingCallerName =
+                caller.callerName;
+
+            incomingCallerName.textContent =
+                caller.callerName;
+
+            incomingCallerAvatar.src =
+                `/image/${caller.callerAvatar}`;
+
+            incomingCallerAvatar.onerror =
+                () => {
+                    incomingCallerAvatar.onerror =
+                        null;
+
+                    incomingCallerAvatar.src =
+                        "/image/default.png";
+                };
+
+            incomingCallOverlay.hidden =
+                false;
+        }
+    );
+
+    connection.on(
+        "VideoCallAccepted",
+        async accepterId => {
+            if (
+                Number(
+                    accepterId
+                ) !==
+                callPeerUserId
+            ) {
+                return;
+            }
+
+            videoCallStatus.textContent =
+                "Connecting…";
+
+            await createAndSendOffer();
+        }
+    );
+
+    connection.on(
+        "VideoCallRejected",
+        rejecterId => {
+            if (
+                Number(
+                    rejecterId
+                ) !==
+                callPeerUserId
+            ) {
+                return;
+            }
+
+            cleanupCall();
+
+            showError(
+                "The video call was declined."
+            );
+        }
+    );
+
+    connection.on(
+        "ReceiveWebRtcOffer",
+        async (
+            callerId,
+            offerJson
+        ) => {
+            try {
+                await receiveOffer(
+                    callerId,
+                    offerJson
+                );
+            }
+            catch (error) {
+                showError(
+                    error.message ||
+                    "Could not receive video call."
+                );
+
+                endVideoCall(
+                    true
+                );
+            }
+        }
+    );
+
+    connection.on(
+        "ReceiveWebRtcAnswer",
+        async (
+            answererId,
+            answerJson
+        ) => {
+            if (
+                Number(
+                    answererId
+                ) !==
+                callPeerUserId
+            ) {
+                return;
+            }
+
+            try {
+                await receiveAnswer(
+                    answerJson
+                );
+            }
+            catch (error) {
+                showError(
+                    error.message ||
+                    "Could not connect the video call."
+                );
+
+                endVideoCall(
+                    true
+                );
+            }
+        }
+    );
+
+    connection.on(
+        "ReceiveIceCandidate",
+        async (
+            senderId,
+            candidateJson
+        ) => {
+            if (
+                Number(
+                    senderId
+                ) !==
+                callPeerUserId
+            ) {
+                return;
+            }
+
+            try {
+                await receiveIceCandidate(
+                    candidateJson
+                );
+            }
+            catch {
+                // Some late ICE candidates can safely be ignored.
+            }
+        }
+    );
+
+    connection.on(
+        "VideoCallEnded",
+        senderId => {
+            if (
+                Number(
+                    senderId
+                ) !==
+                callPeerUserId
+            ) {
+                return;
+            }
+
+            cleanupCall();
+
+            showError(
+                "The video call ended."
+            );
         }
     );
 
     connection.onreconnecting(
         () => {
             showError(
-                "Connection interrupted. Reconnecting..."
+                "Connection interrupted. Reconnecting…"
             );
         }
     );
@@ -962,8 +2105,10 @@
 
     connection.onclose(
         () => {
+            cleanupCall();
+
             showError(
-                "Real-time connection was closed. Refresh the page to reconnect."
+                "Real-time connection was closed. Refresh the page."
             );
         }
     );
@@ -973,7 +2118,8 @@
             await connection.start();
 
             if (
-                initialSelectedUserId > 0
+                initialSelectedUserId >
+                0
             ) {
                 await openConversation(
                     initialSelectedUserId
@@ -982,12 +2128,13 @@
         }
         catch {
             showError(
-                "Real-time connection failed. Refresh the page to reconnect."
+                "Real-time connection failed. Refresh the page."
             );
         }
     }
 
     refreshVisibleTimes();
     updateComposer();
+    updateMediaButtonStates();
     start();
 })();
