@@ -203,6 +203,35 @@ namespace WebAndMobile.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
+                {
+                    b.Property<int>("TeacherId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeacherId"));
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("HireDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Salary")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TeacherId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Teacher");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
                 {
                     b.Property<int>("TimetableId")
@@ -448,6 +477,17 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>

@@ -28,6 +28,9 @@ public class DB : DbContext
 
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
+    public DbSet<Teacher> Teacher => Set<Teacher>();
+
+ 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
