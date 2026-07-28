@@ -1,0 +1,45 @@
+@model WebAndMobile.Models.PaymentTransaction
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Confirm Payment</title>
+    <link rel="stylesheet" href="/css/face-payment.css" />
+</head>
+<body class="mobile-payment-body">
+<main class="mobile-payment-card">
+    <div class="wallet-mark">📱</div>
+    <p class="eyebrow">@Model.PaymentMethod</p>
+    <h1>Confirm payment</h1>
+    <div class="mobile-amount">RM @Model.Amount.ToString("0.00")</div>
+    <p class="muted">@Model.FeeName</p>
+
+    @if (ViewBag.Error != null)
+    {
+        <div class="message error">@ViewBag.Error</div>
+    }
+
+    <form action="@Url.Action("ConfirmMobilePayment", "Payment")" method="post" id="mobilePinForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="token" value="@Model.QrToken" />
+        <div class="field-group">
+            <label for="pin">Six-digit Payment PIN</label>
+            <input id="pin" name="pin" type="password" inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="off" required />
+        </div>
+        <button class="primary-action button-action" type="submit">Pay RM @Model.Amount.ToString("0.00")</button>
+    </form>
+    <p class="small-note">Academic e-wallet simulation. The payment is recorded only in this system.</p>
+</main>
+<script>
+const form = document.getElementById("mobilePinForm");
+form?.addEventListener("submit", () => {
+    const button = form.querySelector("button[type='submit']");
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Confirming payment…";
+    }
+});
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿@using System.Security.Claims
+@using System.Security.Claims
 
 @{
     Layout = "_Layout";
@@ -75,6 +75,21 @@
         </div>
 
         <div class="profile-actions">
+
+            @if (role == "Student")
+            {
+                <a asp-controller="FaceId"
+                   asp-action="Manage"
+                   class="profile-button security">
+
+                    <span>🙂</span>
+
+                    <div>
+                        <strong>Payment Face ID</strong>
+                        <small>Register the face used before QR payment.</small>
+                    </div>
+                </a>
+            }
 
             <a asp-controller="MyProfile"
                asp-action="Passkey"

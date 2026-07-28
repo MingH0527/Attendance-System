@@ -30,7 +30,13 @@ public class DB : DbContext
 
     public DbSet<Teacher> Teacher => Set<Teacher>();
 
- 
+    public DbSet<UserFaceProfile> UserFaceProfiles => Set<UserFaceProfile>();
+
+    public DbSet<PaymentSecurity> PaymentSecurities => Set<PaymentSecurity>();
+
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -154,6 +160,44 @@ public class DB : DbContext
 
         modelBuilder.Entity<ChatMessage>()
             .HasIndex(m => new { m.ReceiverId, m.IsRead });
+
+        modelBuilder.Entity<UserFaceProfile>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<UserFaceProfile>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PaymentSecurity>()
+            .HasIndex(p => p.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentSecurity>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasIndex(p => p.QrToken)
+            .IsUnique();
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PaymentTransaction>()
+            .Property(p => p.Amount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Teacher>()
+            .Property(t => t.Salary)
+            .HasPrecision(18, 2);
 
     }
 }
