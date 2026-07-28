@@ -1,0 +1,31 @@
+@model Stripe.Checkout.Session
+@{
+    ViewData["Title"] = "Stripe Payment Successful";
+}
+
+<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
+
+<div class="security-shell">
+    <section class="security-card compact-card success-screen">
+        <div class="success-check">✓</div>
+        <p class="eyebrow">Stripe Payment Completed</p>
+        <h1>Payment successful</h1>
+
+        <div class="mobile-amount">
+            @ViewBag.Currency @(((decimal)ViewBag.AmountTotal).ToString("0.00"))
+        </div>
+
+        <p class="muted">@ViewBag.FeeName</p>
+
+        @if (!string.IsNullOrWhiteSpace(ViewBag.CustomerEmail as string))
+        {
+            <p class="small-note">Receipt email: @ViewBag.CustomerEmail</p>
+        }
+
+        <p class="small-note">Session ID: @ViewBag.SessionId</p>
+
+        <a class="primary-action" asp-action="SelectFee">
+            Return to Fees
+        </a>
+    </section>
+</div>

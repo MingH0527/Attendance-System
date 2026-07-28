@@ -1,47 +1,145 @@
-﻿@model WebAndMobile.Models.FeeItem
-
+@model WebAndMobile.Models.FeeItem
 @{
-    ViewData["Title"] = "Student Payment";
+    ViewData["Title"] = "Student Fee Payment";
+    bool hasFace = ViewBag.HasFaceId ?? false;
+    bool hasPin = ViewBag.HasPaymentPin ?? false;
+    string publicBaseUrl = ViewBag.PublicBaseUrl ?? "";
 }
 
-<link rel="stylesheet" href="~/css/Payment.css" />
+<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
 
-<div class="payment-page">
-    <div class="payment-container">
+<div class="security-shell">
+    <section class="security-card payment-choice-card"
+             id="paymentChoiceApp"
+             data-has-face="@hasFace.ToString().ToLowerInvariant()"
+             data-register-url="@Url.Action("Register", "FaceId", new { returnFeeId = Model.Id, returnUrl = Url.Action("Pay", "Payment", new { feeId = Model.Id }) })">
+        <p class="eyebrow">Student Fee Payment</p>
+        <h1>@Model.Name</h1>
+        <p class="muted">@Model.Description</p>
 
-        <h1>Student Payment</h1>
+        @if (ViewBag.Message != null)
+        {
+            <div class="message success">@ViewBag.Message</div>
+        }
 
-        <p>
-            Complete your payment securely through Stripe.
-        </p>
+        @if (ViewBag.Error != null)
+        {
+            <div class="message error">@ViewBag.Error</div>
+        }
 
-        <div class="payment-details">
-            <p>
-                Payment item
-                <strong>@Model.Name</strong>
-            </p>
-
-            <p>
-                Amount
-                <strong>RM @Model.Amount.ToString("N2")</strong>
-            </p>
+        <div class="fee-amount">
+            @(Model.AmountIsFixed ? $"RM {Model.Amount:0.00}" : "Choose an amount below")
         </div>
 
-        <form asp-controller="Payment"
-              asp-action="CreateCheckoutSession"
-              method="post">
+        <div class="payment-method-grid">
+            <section class="payment-method-card">
+                <div class="payment-method-icon">💳</div>
+                <h2>Credit or Debit Card</h2>
+                <p class="small-note">Continue to Stripe Checkout.</p>
 
-            @Html.AntiForgeryToken()
+                <form asp-action="CreateCheckoutSession" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="feeId" value="@Model.Id" />
 
-            <input type="hidden"
-                   name="feeId"
-                   value="@Model.Id" />
+                    @if (!Model.AmountIsFixed)
+                    {
+                        <div class="field-group">
+                            <label for="stripeCustomAmount">Amount (RM)</label>
+                            <input id="stripeCustomAmount" name="customAmount" type="number" min="0.01" step="0.01" required />
+                        </div>
+                    }
 
-            <button type="submit"
-                    class="payment-button">
-                Pay RM @Model.Amount.ToString("N2")
-            </button>
-        </form>
+                    <button class="primary-action button-action" type="submit">Pay with Stripe</button>
+                </form>
+            </section>
 
-    </div>
+            <section class="payment-method-card qr-method-card">
+                <div class="payment-method-icon">📱</div>
+                <h2>QR Scan Payment</h2>
+                <p class="small-note">Face ID starts immediately before the QR code is unlocked.</p>
+
+                <div class="security-mini-status">
+                    <span class="@(hasFace ? "ok" : "missing")">@(hasFace ? "✓ Face ID registered" : "! Face ID not registered")</span>
+                    <span class="@(hasPin ? "ok" : "missing")">@(hasPin ? "✓ Payment PIN ready" : "! PIN setup required")</span>
+                </div>
+
+                <form asp-action="BeginQrPayment" method="post" id="qrPaymentForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="feeId" value="@Model.Id" />
+
+                    <div class="field-group">
+                        <label for="publicBaseUrl">Cloudflare Public URL</label>
+                        <input id="publicBaseUrl"
+                               name="publicBaseUrl"
+                               type="url"
+                               value="@publicBaseUrl"
+                               placeholder="https://name.trycloudflare.com"
+                               autocomplete="off"
+                               required />
+                        <small>Paste the URL shown by cloudflared. No code change or restart is needed.</small>
+                    </div>
+
+                    <div class="wallet-grid">
+                        <label class="wallet-option">
+                            <input type="radio" name="paymentMethod" value="TouchNGo" required />
+                            <span class="wallet-emoji">💚</span>
+                            <strong>Touch 'n Go</strong>
+                        </label>
+                        <label class="wallet-option">
+                            <input type="radio" name="paymentMethod" value="GrabPay" required />
+                            <span class="wallet-emoji">🟢</span>
+                            <strong>GrabPay</strong>
+                        </label>
+                        <label class="wallet-option">
+                            <input type="radio" name="paymentMethod" value="Boost" required />
+                            <span class="wallet-emoji">🔴</span>
+                            <strong>Boost</strong>
+                        </label>
+                    </div>
+
+                    @if (!Model.AmountIsFixed)
+                    {
+                        <div class="field-group">
+                            <label for="qrCustomAmount">Amount (RM)</label>
+                            <input id="qrCustomAmount" name="customAmount" type="number" min="0.01" step="0.01" required />
+                        </div>
+                    }
+
+                    <button class="primary-action button-action" type="submit">
+                        Start Face ID and QR Payment
+                    </button>
+                </form>
+            </section>
+        </div>
+
+        <a class="secondary-action" asp-action="SelectFee">Back to Fees</a>
+    </section>
 </div>
+
+<script>
+(() => {
+    const app = document.getElementById("paymentChoiceApp");
+    const form = document.getElementById("qrPaymentForm");
+    if (!app || !form) return;
+
+    document.querySelectorAll(".wallet-option input").forEach(input => {
+        input.addEventListener("change", () => {
+            document.querySelectorAll(".wallet-option").forEach(option => option.classList.remove("selected"));
+            input.closest(".wallet-option")?.classList.add("selected");
+        });
+    });
+
+    form.addEventListener("submit", event => {
+        if (!form.reportValidity()) {
+            event.preventDefault();
+            return;
+        }
+
+        if (app.dataset.hasFace !== "true") {
+            event.preventDefault();
+            alert("Please go to register Face ID before using QR Scan Payment.");
+            window.location.assign(app.dataset.registerUrl);
+        }
+    });
+})();
+</script>

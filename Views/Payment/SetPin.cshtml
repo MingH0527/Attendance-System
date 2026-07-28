@@ -1,0 +1,20 @@
+@model WebAndMobile.Models.SetPaymentPinViewModel
+@{ ViewData["Title"] = "Create Payment PIN"; }
+<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
+<div class="security-shell">
+    <section class="security-card compact-card">
+        <div class="security-icon">🔢</div>
+        <p class="eyebrow">One-time Setup</p>
+        <h1>Create Payment PIN</h1>
+        <p class="muted">This six-digit PIN is used on the phone after scanning the payment QR. It can only be created once in this version.</p>
+        <form asp-action="SetPin" method="post">
+            @Html.AntiForgeryToken()
+            <input asp-for="ReturnFeeId" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="message error"></div>
+            <div class="field-group"><label asp-for="Pin"></label><input asp-for="Pin" inputmode="numeric" maxlength="6" autocomplete="new-password" /><span asp-validation-for="Pin"></span></div>
+            <div class="field-group"><label asp-for="ConfirmPin"></label><input asp-for="ConfirmPin" inputmode="numeric" maxlength="6" autocomplete="new-password" /><span asp-validation-for="ConfirmPin"></span></div>
+            <button class="primary-action button-action" type="submit">Save Payment PIN</button>
+        </form>
+        <a class="secondary-action" asp-action="Pay" asp-route-feeId="@Model.ReturnFeeId">Cancel</a>
+    </section>
+</div>

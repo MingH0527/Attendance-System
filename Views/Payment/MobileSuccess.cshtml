@@ -1,0 +1,25 @@
+@model WebAndMobile.Models.PaymentTransaction
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Payment Successful</title>
+    <link rel="stylesheet" href="/css/face-payment.css" />
+</head>
+<body class="mobile-payment-body">
+<main class="mobile-payment-card success-screen">
+    <div class="success-check">✓</div>
+    <p class="eyebrow">Payment Completed</p>
+    <h1>Payment successful</h1>
+    <div class="mobile-amount">RM @Model.Amount.ToString("0.00")</div>
+    <p class="muted">@Model.FeeName</p>
+    <div class="mobile-result-box">
+        <span>E-wallet</span><strong>@Model.PaymentMethod</strong>
+        <span>Status</span><strong>Paid</strong>
+        <span>Paid at</span><strong>@Model.PaidAt?.ToLocalTime().ToString("dd MMM yyyy, hh:mm:ss tt")</strong>
+    </div>
+    <p>You may return to the computer. It will update automatically.</p>
+</main>
+</body>
+</html>

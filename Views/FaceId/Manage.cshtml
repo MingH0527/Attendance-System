@@ -1,0 +1,33 @@
+@{
+    ViewData["Title"] = "Payment Face ID";
+    bool hasFace = ViewBag.HasFaceProfile ?? false;
+    int? returnFeeId = ViewBag.ReturnFeeId;
+}
+<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
+<div class="security-shell">
+    <section class="security-card compact-card">
+        <div class="security-icon">🙂</div>
+        <p class="eyebrow">Payment Security</p>
+        <h1>Payment Face ID</h1>
+        <p class="muted">This face is checked before the system displays a QR payment code.</p>
+
+        @if (ViewBag.Message != null) { <div class="message success">@ViewBag.Message</div> }
+        @if (ViewBag.Error != null) { <div class="message error">@ViewBag.Error</div> }
+
+        <div class="status-panel @(hasFace ? "ready" : "missing")">
+            <strong>@(hasFace ? "Face ID registered" : "Face ID not registered")</strong>
+            <span>@(hasFace ? "Your account is ready for face verification." : "Register your face before using QR payment.")</span>
+        </div>
+
+        @if (!hasFace)
+        {
+            <a class="primary-action" asp-action="Register" asp-route-returnFeeId="@returnFeeId">Register Face ID</a>
+        }
+        else if (returnFeeId.HasValue)
+        {
+            <a class="primary-action" asp-action="Verify" asp-route-feeId="@returnFeeId">Continue Face Verification</a>
+        }
+
+        <a class="secondary-action" asp-controller="MyProfile" asp-action="Index">Back to My Profile</a>
+    </section>
+</div>
