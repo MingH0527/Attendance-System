@@ -1,0 +1,207 @@
+﻿/* =============== Layout =============== */
+
+body {
+    margin: 0;
+    font-family: Segoe UI, Arial, sans-serif;
+    background: #f5f7fb;
+}
+
+/* Entire page */
+
+.layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 90px 1fr;
+    height: 100vh;
+}
+
+/* ================= Top Bar ================= */
+
+.topbar {
+    grid-column: 1 / 3;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #4338ca 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(30, 58, 138, 0.25);
+}
+
+    .topbar::before {
+        content: "";
+        position: absolute;
+        top: -70px;
+        right: 120px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        border: 30px solid rgba(255, 255, 255, 0.08);
+        pointer-events: none;
+    }
+
+.logo {
+    font-size: 26px;
+    font-weight: bold;
+    color: white;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+    .logo img {
+        max-height: 80px;
+        width: auto;
+        display: block;
+        filter: brightness(0) invert(1);
+    }
+
+.top-actions {
+    display: flex;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+    .top-actions a,
+    .top-actions button {
+        text-decoration: none;
+        color: white;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-family: inherit;
+        cursor: pointer;
+        transition: .2s;
+    }
+
+        .top-actions a:hover,
+        .top-actions button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+/* ================= Profile Dropdown ================= */
+
+.profile-dropdown {
+    position: relative;
+}
+
+.profile-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    min-width: 210px;
+    padding: 8px;
+    z-index: 100;
+}
+
+    .profile-dropdown-menu.show {
+        display: block;
+    }
+
+.dropdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 8px;
+    font-size: 14px;
+    color: #222;
+}
+
+    .dropdown-item + .dropdown-item {
+        border-top: 1px solid #eee;
+    }
+
+    .dropdown-item select {
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 13px;
+        font-family: inherit;
+    }
+
+/* Toggle switch */
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 20px;
+}
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #ccc;
+    border-radius: 20px;
+    transition: .2s;
+}
+
+    .slider::before {
+        content: "";
+        position: absolute;
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: .2s;
+    }
+
+.switch input:checked + .slider {
+    background: #4f46e5;
+}
+
+    .switch input:checked + .slider::before {
+        transform: translateX(18px);
+    }
+
+/* ================= Sidebar ================= */
+
+.sidebar {
+    background: white;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+    .sidebar a {
+        text-decoration: none;
+        color: #222;
+        padding: 22px;
+        border-bottom: 1px solid #eee;
+        border-left: 3px solid transparent;
+        transition: .2s;
+        font-size: 17px;
+    }
+
+        .sidebar a:hover {
+            background: #eef2ff;
+            border-left-color: #2563eb;
+            color: #1e3a8a;
+        }
+
+/* ================= Content ================= */
+
+.content {
+    padding: 35px;
+    overflow: auto;
+}

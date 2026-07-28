@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Stripe.Checkout;
 using WebAndMobile.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebAndMobile.Controllers;
 
+[Authorize(Roles = "Student")]
 public class PaymentController : Controller
 {
     private readonly IConfiguration _configuration;

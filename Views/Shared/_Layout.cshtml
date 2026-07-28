@@ -15,16 +15,135 @@
           href="~/css/app.css"
           asp-append-version="true" />
 
+    <link rel="stylesheet"
+          href="~/css/layout.css"
+          asp-append-version="true" />
+
 </head>
 
 <body>
 
-    @RenderBody()
+    <div class="layout">
 
-    @await RenderSectionAsync(
-        "Scripts",
-        required: false
-    )
+        <header class="topbar">
+
+            <div class="logo">
+
+                <img src="~/image/Logo_transparent_bg.png" alt="Logo" />
+
+            </div>
+
+            <div class="top-actions">
+
+                <form asp-controller="Student"
+                      asp-action="Logout"
+                      method="post">
+                    @Html.AntiForgeryToken()
+
+                    <button type="submit">
+                        Logout
+                    </button>
+                </form>
+
+                <div class="profile-dropdown">
+
+                    <button type="button"
+                            id="profileDropdownToggle"
+                            class="profile-dropdown-toggle">
+
+                        My Profile
+
+                    </button>
+
+                    <div class="profile-dropdown-menu"
+                         id="profileDropdownMenu">
+
+                        <div class="dropdown-item">
+                            <span>Dark Mode</span>
+                            <label class="switch">
+                                <input type="checkbox" id="darkModeToggle" />
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="dropdown-item">
+                            <span>Language</span>
+                            <select id="languageSelect">
+                                <option value="en">English</option>
+                                <option value="zh">中文</option>
+                                <option value="ms">Bahasa Melayu</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <aside class="sidebar">
+
+            <a asp-controller="Student"
+               asp-action="Index">
+
+                Home
+
+            </a>
+
+            <a asp-controller="MyProfile"
+               asp-action="Index">
+
+                My Profile
+
+            </a>
+
+            <a asp-controller="Chat"
+               asp-action="Index">
+
+                Chat
+
+            </a>
+
+            <a asp-controller="Payment"
+               asp-action="SelectFee">
+
+                Payment
+
+            </a>
+
+        </aside>
+
+        <main class="content">
+
+            @RenderBody()
+
+        </main>
+
+    </div>
+
+    <script>
+            (function () {
+                var toggle = document.getElementById('profileDropdownToggle');
+                var menu = document.getElementById('profileDropdownMenu');
+
+                if (!toggle || !menu) return;
+
+                toggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    menu.classList.toggle('show');
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (!menu.contains(e.target) && e.target !== toggle) {
+                        menu.classList.remove('show');
+                    }
+                });
+            })();
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
 
 </body>
 
