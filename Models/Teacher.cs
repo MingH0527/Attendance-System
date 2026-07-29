@@ -9,24 +9,20 @@ public class Teacher
     public int TeacherId { get; set; }
 
     [Required]
-    public int UserId {  get; set; }
+    public int UserId { get; set; }
 
     [Required]
-    [MaxLength(100)]
-    public string Department { get; set; } = "";
+    [MaxLength(10)]
+    public string TeacherCode { get; set; } = "";
 
-    [Required]
-    public decimal Salary { get; set; }
+    public decimal? Salary { get; set; }
+
+    public DateTime? HireDate { get; set; }
+
+    public string? Program { get; set; }
+
+    public string? Subject { get; set; }
 
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
-
-    public DateTime HireDate { get; set; }
-
-
-
-
 }
-
-
-

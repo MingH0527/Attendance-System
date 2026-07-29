@@ -770,12 +770,26 @@ public class AccountController : Controller
             new ClaimsPrincipal(identity),
             properties);
 
-        return user.Position switch
+        if (user.Position == "Teacher")
         {
-            "Admin" => RedirectToAction("Index", "Admin"),
-            "Teacher" => RedirectToAction("Index", "Teacher"),
-            _ => RedirectToAction("Index", "Student")
-        };
+            if (user.Position == "Teacher")
+            {
+                return RedirectToAction(
+                    "Index",
+                    "Teacher"
+                );
+            }
+        }
+
+        if (user.Position == "Student")
+        {
+            if (user.Position == "Student")
+            {
+                return RedirectToAction("Index", "Student");
+            }
+        }
+
+        return RedirectToAction("Index", "Admin");
     }
 
     [HttpPost]
