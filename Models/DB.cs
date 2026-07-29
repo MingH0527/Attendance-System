@@ -8,6 +8,9 @@ public class DB : DbContext
         : base(options)
     {
     }
+    public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
+
+    public DbSet<TeacherCourse> TeacherCourses => Set<TeacherCourse>();
 
     public DbSet<User> Users => Set<User>();
 
@@ -154,6 +157,7 @@ public class DB : DbContext
 
         modelBuilder.Entity<ChatMessage>()
             .HasIndex(m => new { m.ReceiverId, m.IsRead });
+
 
     }
 }

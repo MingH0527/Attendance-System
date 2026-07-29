@@ -203,6 +203,35 @@ namespace WebAndMobile.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
+                {
+                    b.Property<int>("RegistrationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationId"));
+
+                    b.Property<int>("ClassId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgramId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RegisteredDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RegistrationId");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("StudentClasses");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
                 {
                     b.Property<int>("TeacherId")
@@ -230,6 +259,32 @@ namespace WebAndMobile.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Teacher");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TeacherCourse", b =>
+                {
+                    b.Property<int>("TeacherCourseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeacherCourseId"));
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RegisteredDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TeacherCourseId");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TeacherCourses");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
@@ -479,6 +534,25 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.ClassGroup", "ClassGroup")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClassGroup");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
                 {
                     b.HasOne("WebAndMobile.Models.User", "User")
@@ -486,6 +560,25 @@ namespace WebAndMobile.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TeacherCourse", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
 
                     b.Navigation("User");
                 });

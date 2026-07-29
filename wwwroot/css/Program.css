@@ -1,0 +1,248 @@
+﻿* {
+    box-sizing: border-box;
+}
+
+.program-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 64px 20px;
+    background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 100%);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1a1a2e;
+}
+
+.program-container {
+    width: 100%;
+    max-width: 520px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 40px 36px 32px;
+    box-shadow: 0 20px 45px rgba(30, 58, 92, 0.12);
+}
+
+.eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #c89b3c;
+    margin-bottom: 8px;
+}
+
+h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: #1e3a5c;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #667085;
+    margin: 0 0 24px;
+}
+
+/* ---------- Current registration summary ---------- */
+
+.current-registration {
+    background: #f3f6fa;
+    border: 1px solid #e3e8ef;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.current-registration__label {
+    font-size: 12px;
+    color: #667085;
+}
+
+.current-registration__value {
+    font-weight: 700;
+    font-size: 15px;
+    color: #1e3a5c;
+}
+
+.current-registration__courses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.current-registration__tag {
+    display: inline-block;
+    width: fit-content;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e3a5c;
+    background: #eaf1fb;
+    border-radius: 999px;
+    padding: 3px 10px;
+}
+
+/* ---------- Form ---------- */
+
+.program-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #344054;
+    margin-bottom: 6px;
+}
+
+select {
+    font-size: 15px;
+    font-family: inherit;
+    padding: 11px 14px;
+    border: 1px solid #d7dce3;
+    border-radius: 10px;
+    background: #fbfcfe;
+    color: #1a1a2e;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23667085'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 34px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+    select:hover {
+        border-color: #b7c0cc;
+    }
+
+    select:focus {
+        outline: none;
+        border-color: #1e3a5c;
+        box-shadow: 0 0 0 3px rgba(30, 58, 92, 0.12);
+    }
+
+/* ---------- Course checkboxes (for teachers) ---------- */
+
+.course-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.course-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #d7dce3;
+    border-radius: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+    .course-option:hover {
+        border-color: #b7c0cc;
+    }
+
+    .course-option:has(input:checked) {
+        border-color: #1e3a5c;
+        background: #f3f6fa;
+    }
+
+    .course-option input {
+        width: auto;
+        accent-color: #1e3a5c;
+    }
+
+    .course-option small {
+        color: #98a2b3;
+    }
+
+/* ---------- Validation ---------- */
+
+.validation-summary ul {
+    margin: 0 0 16px;
+    padding-left: 18px;
+    color: #b3261e;
+    font-size: 13px;
+}
+
+.field-error {
+    color: #b3261e;
+    font-size: 12px;
+    margin-top: 4px;
+    min-height: 14px;
+}
+
+/* ---------- Submit / links ---------- */
+
+.save-button {
+    margin-top: 8px;
+    padding: 13px 20px;
+    border: none;
+    border-radius: 10px;
+    background: #1e3a5c;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+    .save-button:hover {
+        background: #16304d;
+    }
+
+.back-link {
+    display: block;
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #667085;
+    text-decoration: none;
+}
+
+    .back-link:hover {
+        color: #1e3a5c;
+        text-decoration: underline;
+    }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 480px) {
+    .program-page {
+        padding: 32px 16px;
+    }
+
+    .program-container {
+        padding: 32px 22px 24px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    select,
+    .save-button,
+    .course-option {
+        transition: none;
+    }
+}

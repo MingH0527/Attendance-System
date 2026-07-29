@@ -1,42 +1,31 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WebAndMobile.Models;
-
-public class Timetable
+namespace WebAndMobile.Models
 {
-    [Key]
-    public int TimetableId { get; set; }
+    public class Timetable
+    {
+        [Key]
+        public int TimetableId { get; set; }
 
-    [Required]
-    public int TeacherId { get; set; }
+        [ForeignKey(nameof(Course))]
+        public int CourseId { get; set; }
+        public Course? Course { get; set; }
 
-    [Required]
-    public int CourseId { get; set; }
+        [ForeignKey(nameof(ClassGroup))]
+        public int ClassId { get; set; }
+        public ClassGroup? ClassGroup { get; set; }
 
-    [ForeignKey(nameof(CourseId))]
-    public Course? Course { get; set; }
+        [ForeignKey(nameof(Classroom))]
+        public int? ClassroomId { get; set; }
+        public Classroom? Classroom { get; set; }
 
-    [Required]
-    public int ClassId { get; set; }
+        public int TeacherId { get; set; }
 
-    [ForeignKey(nameof(ClassId))]
-    public ClassGroup? ClassGroup { get; set; }
+        public DayOfWeek DayOfWeek { get; set; }
+        public TimeSpan StartTime { get; set; }
+        public TimeSpan EndTime { get; set; }
 
-    public int? ClassroomId { get; set; }
-
-    [ForeignKey(nameof(ClassroomId))]
-    public Classroom? Classroom { get; set; }
-
-    [Required]
-    public DayOfWeek DayOfWeek { get; set; }
-
-    [Required]
-    public TimeSpan StartTime { get; set; }
-
-    [Required]
-    public TimeSpan EndTime { get; set; }
-
-    [Required]
-    public ClassType ClassType { get; set; }
+        public ClassType ClassType { get; set; }
+    }
 }
