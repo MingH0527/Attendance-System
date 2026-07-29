@@ -63,6 +63,16 @@ builder.Services.AddScoped<
     PasswordHasher<AdminSecurity>
 >();
 
+builder.Services.AddScoped<
+    IPasswordHasher<PaymentSecurity>,
+    PasswordHasher<PaymentSecurity>
+>();
+
+builder.Services.AddSingleton<
+    IFaceRecognitionService,
+    FaceRecognitionService
+>();
+
 builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddSession(options =>

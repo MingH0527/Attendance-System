@@ -1,0 +1,27 @@
+@model WebAndMobile.Models.PaymentTransaction
+@{ ViewData["Title"] = "Scan Payment QR"; }
+<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
+<div class="security-shell">
+    <section class="security-card qr-card"
+             id="qrPayment"
+             data-status-url="@Url.Action("Status", new { id = Model.PaymentTransactionId })"
+             data-success-url="@Url.Action("Success", new { id = Model.PaymentTransactionId })">
+        <p class="eyebrow">Face Verified</p>
+        <h1>Scan to confirm payment</h1>
+        <p class="muted">Use a phone camera, open the page, and enter the six-digit payment PIN.</p>
+        <img class="qr-image" src="@ViewBag.QrDataUrl" alt="Payment QR code" />
+        <div class="transaction-summary">
+            <span>Fee</span><strong>@Model.FeeName</strong>
+            <span>Amount</span><strong>RM @Model.Amount.ToString("0.00")</strong>
+            <span>E-wallet</span><strong>@Model.PaymentMethod</strong>
+            <span>Status</span><strong>Pending</strong>
+        </div>
+        <div id="qrStatus" class="waiting-status"><span class="pulse-dot"></span>Waiting for mobile confirmation…</div>
+        <details class="qr-debug">
+            <summary>Show mobile URL</summary>
+            <code>@ViewBag.MobileUrl</code>
+        </details>
+        <p class="small-note">QR expires at @Model.QrExpiresAt.ToLocalTime().ToString("hh:mm:ss tt").</p>
+    </section>
+</div>
+<script src="~/js/payment-qr-polling.js" asp-append-version="true"></script>

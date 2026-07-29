@@ -1,0 +1,25 @@
+@model WebAndMobile.Models.PaymentTransaction
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Payment Already Completed</title>
+    <link rel="stylesheet" href="/css/face-payment.css" />
+</head>
+<body class="mobile-payment-body">
+<main class="mobile-payment-card already-paid-screen">
+    <div class="already-paid-icon">✓</div>
+    <p class="eyebrow">QR Already Used</p>
+    <h1>Payment already completed</h1>
+    <p class="muted">This QR code has already been paid. No further action is required.</p>
+    <div class="mobile-amount">RM @Model.Amount.ToString("0.00")</div>
+    <div class="mobile-result-box">
+        <span>Fee</span><strong>@Model.FeeName</strong>
+        <span>E-wallet</span><strong>@Model.PaymentMethod</strong>
+        <span>Status</span><strong>Paid</strong>
+        <span>Paid at</span><strong>@Model.PaidAt?.ToLocalTime().ToString("dd MMM yyyy, hh:mm:ss tt")</strong>
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,85 @@
+﻿@model List<WebAndMobile.Models.Timetable>
+
+@{
+    ViewData["Title"] = "My Timetable";
+}
+
+<link rel="stylesheet" href="~/css/teacherhome.css" />
+<link rel="stylesheet" href="~/css/teacher-timetable.css" />
+
+<div class="teacher-dashboard">
+
+    <header class="teacher-header">
+
+        <div>
+            <a asp-controller="Teacher"
+               asp-action="Index"
+               class="tt-back-link">
+
+                &larr; Back to Dashboard
+
+            </a>
+
+            <p class="teacher-role">
+                Teacher Portal
+            </p>
+
+            <h1>
+                My Timetable
+            </h1>
+
+            <p>
+                View your scheduled classes and
+                teaching sessions.
+            </p>
+        </div>
+
+    </header>
+
+    <section class="tt-table-card">
+
+        @if (Model == null || Model.Count == 0)
+        {
+            <div class="tt-empty">
+                <p>
+                    You don't have any timetable
+                    entries yet.
+                </p>
+            </div>
+        }
+        else
+        {
+            <table class="tt-table">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Course</th>
+                        <th>Class</th>
+                        <th>Classroom</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model)
+                    {
+                        <tr>
+                            <td>@entry.DayOfWeek</td>
+                            <td>
+                                @entry.StartTime.ToString(@"hh\:mm")
+                                &ndash;
+                                @entry.EndTime.ToString(@"hh\:mm")
+                            </td>
+                            <td>@(entry.Course?.CourseName ?? "-")</td>
+                            <td>@(entry.ClassGroup?.ClassName ?? "-")</td>
+                            <td>@(entry.Classroom?.RoomName ?? "-")</td>
+                            <td>@entry.ClassType</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+    </section>
+
+</div>
