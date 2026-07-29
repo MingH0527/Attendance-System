@@ -1,9 +1,8 @@
-﻿namespace WebAndMobile.Models;
-
-// Whether a timetable entry belongs to a normal weekday School class
-// or a weekend Tuition class.
-public enum ClassType
+﻿namespace WebAndMobile.Models
 {
-    School = 0,
-    Tuition = 1
+    public enum ClassType
+    {
+        School,
+        Tuition
+    }
 }
