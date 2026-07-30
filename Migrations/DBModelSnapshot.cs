@@ -296,6 +296,33 @@ namespace WebAndMobile.Migrations
                     b.ToTable("PaymentTransactions");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
+                {
+                    b.Property<int>("RegistrationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationId"));
+
+                    b.Property<int>("ClassId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RegisteredDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RegistrationId");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("StudentClasses");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
                 {
                     b.Property<int>("TeacherId")
@@ -304,17 +331,23 @@ namespace WebAndMobile.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeacherId"));
 
-                    b.Property<string>("Department")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("HireDate")
+                    b.Property<DateTime?>("HireDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal>("Salary")
+                    b.Property<string>("Program")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Salary")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TeacherCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -324,6 +357,33 @@ namespace WebAndMobile.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Teacher");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TeacherCourse", b =>
+                {
+                    b.Property<int>("TeacherCourseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeacherCourseId"));
+
+                    b.Property<int>("CourseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RegisteredDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("TeacherCourseId");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("UserId", "CourseId")
+                        .IsUnique();
+
+                    b.ToTable("TeacherCourses");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
@@ -627,6 +687,25 @@ namespace WebAndMobile.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.ClassGroup", "ClassGroup")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ClassGroup");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
                 {
                     b.HasOne("WebAndMobile.Models.User", "User")
@@ -634,6 +713,25 @@ namespace WebAndMobile.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TeacherCourse", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
 
                     b.Navigation("User");
                 });

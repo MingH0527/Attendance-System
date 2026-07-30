@@ -39,8 +39,34 @@ public class MyProfileController : Controller
     // ==================================================
 
     [HttpGet]
-    public IActionResult Index()
+    [HttpGet]
+    public async Task<IActionResult> Index()
     {
+        string? role = User.FindFirstValue(ClaimTypes.Role);
+
+        if (role == "Teacher")
+        {
+            string? userIdValue =
+                User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (int.TryParse(userIdValue, out int userId))
+            {
+                bool hasTeacherInfo =
+                    await db.Teacher
+                    .AnyAsync(t => t.UserId == userId);
+
+
+                if (!hasTeacherInfo)
+                {
+                    return RedirectToAction(
+                        "Create",
+                        "Teacher"
+                    );
+                }
+            }
+        }
+
+
         return View();
     }
 

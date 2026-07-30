@@ -1,0 +1,26 @@
+﻿@model WebAndMobile.Models.Teacher
+
+@{
+    ViewData["Title"] = "Complete Teacher Information";
+}
+
+
+<form asp-controller="Teacher"
+      asp-action="Create"
+      method="post">
+
+    @Html.AntiForgeryToken()
+
+    <h1>Comlete Teacher Information</h1>
+
+    <label>Program</label>
+    <input asp-for="Program" />
+
+    <label>Subject</label>
+    <input asp-for="Subject" />
+
+    <button type="submit">
+        Save
+    </button>
+
+</form>

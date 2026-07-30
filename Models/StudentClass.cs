@@ -11,11 +11,7 @@ namespace WebAndMobile.Models
         [ForeignKey(nameof(User))]
         public int UserId { get; set; }
         public User? User { get; set; }
-
-        [ForeignKey(nameof(Program))]
-        public int ProgramId { get; set; }
       
-
         [ForeignKey(nameof(ClassGroup))]
         public int ClassId { get; set; }
         public ClassGroup? ClassGroup { get; set; }

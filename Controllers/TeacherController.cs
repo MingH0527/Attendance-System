@@ -107,4 +107,82 @@ public class TeacherController : Controller
 
         return View(entries);
     }
+    [HttpGet]
+    public IActionResult Create()
+    {
+        return View();
+    }
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(Teacher model)
+    {
+        int? userId = GetCurrentUserId();
+
+        if (userId == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+
+        ModelState.Remove("User");
+        ModelState.Remove("TeacherCode");
+
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+
+        var lastTeacher = await db.Teacher
+            .OrderByDescending(t => t.TeacherId)
+            .FirstOrDefaultAsync();
+
+
+        int nextNumber = 1;
+
+        if (lastTeacher != null)
+        {
+            nextNumber = lastTeacher.TeacherId + 1;
+        }
+
+
+        model.TeacherCode = $"T{nextNumber:D3}";
+
+        model.UserId = userId.Value;
+
+
+        db.Teacher.Add(model);
+
+        await db.SaveChangesAsync();
+
+
+        return RedirectToAction(
+            "Index",
+            "MyProfile"
+        );
+    }
+    [HttpGet]
+    public async Task<IActionResult> Profile()
+    {
+        int? userId = GetCurrentUserId();
+
+        Teacher? teacher = await db.Teacher
+            .FirstOrDefaultAsync(
+                t => t.UserId == userId
+            );
+
+
+        if (teacher == null)
+        {
+            return RedirectToAction(
+                "Create",
+                "Teacher"
+            );
+        }
+
+
+        return View(teacher);
+    }
+
 }
