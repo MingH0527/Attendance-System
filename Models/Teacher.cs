@@ -11,10 +11,6 @@ public class Teacher
     [Required]
     public int UserId { get; set; }
 
-    [Required]
-    [MaxLength(10)]
-    public string TeacherCode { get; set; } = "";
-
     public decimal? Salary { get; set; }
 
     public DateTime? HireDate { get; set; }

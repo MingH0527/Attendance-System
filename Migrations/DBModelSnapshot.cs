@@ -344,11 +344,6 @@ namespace WebAndMobile.Migrations
                     b.Property<string>("Subject")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("TeacherCode")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 

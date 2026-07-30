@@ -123,39 +123,18 @@ public class TeacherController : Controller
             return RedirectToAction("Login", "Account");
         }
 
-
         ModelState.Remove("User");
-        ModelState.Remove("TeacherCode");
-
 
         if (!ModelState.IsValid)
         {
             return View(model);
         }
 
-
-        var lastTeacher = await db.Teacher
-            .OrderByDescending(t => t.TeacherId)
-            .FirstOrDefaultAsync();
-
-
-        int nextNumber = 1;
-
-        if (lastTeacher != null)
-        {
-            nextNumber = lastTeacher.TeacherId + 1;
-        }
-
-
-        model.TeacherCode = $"T{nextNumber:D3}";
-
         model.UserId = userId.Value;
-
 
         db.Teacher.Add(model);
 
         await db.SaveChangesAsync();
-
 
         return RedirectToAction(
             "Index",
