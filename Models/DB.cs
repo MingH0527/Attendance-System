@@ -36,10 +36,6 @@ public class DB : DbContext
 
     public DbSet<Teacher> Teacher => Set<Teacher>();
 
-    public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
-
-    public DbSet<TeacherCourse> TeacherCourses => Set<TeacherCourse>();
-
     public DbSet<UserFaceProfile> UserFaceProfiles => Set<UserFaceProfile>();
 
     public DbSet<PaymentSecurity> PaymentSecurities => Set<PaymentSecurity>();
