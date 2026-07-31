@@ -36,6 +36,10 @@ public class DB : DbContext
 
     public DbSet<Teacher> Teacher => Set<Teacher>();
 
+    public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
+
+    public DbSet<TeacherCourse> TeacherCourses => Set<TeacherCourse>();
+
     public DbSet<UserFaceProfile> UserFaceProfiles => Set<UserFaceProfile>();
 
     public DbSet<PaymentSecurity> PaymentSecurities => Set<PaymentSecurity>();
@@ -210,6 +214,38 @@ public class DB : DbContext
         modelBuilder.Entity<Teacher>()
             .Property(t => t.Salary)
             .HasPrecision(18, 2);
+
+        modelBuilder.Entity<StudentClass>()
+            .HasIndex(sc => sc.UserId)
+            .IsUnique();
+
+        modelBuilder.Entity<StudentClass>()
+            .HasOne(sc => sc.User)
+            .WithMany()
+            .HasForeignKey(sc => sc.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StudentClass>()
+            .HasOne(sc => sc.ClassGroup)
+            .WithMany()
+            .HasForeignKey(sc => sc.ClassId)
+            .OnDelete(DeleteBehavior.Restrict); 
+
+        modelBuilder.Entity<TeacherCourse>()
+            .HasIndex(tc => new { tc.UserId, tc.CourseId })
+            .IsUnique();
+
+        modelBuilder.Entity<TeacherCourse>()
+            .HasOne(tc => tc.User)
+            .WithMany()
+            .HasForeignKey(tc => tc.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TeacherCourse>()
+            .HasOne(tc => tc.Course)
+            .WithMany()
+            .HasForeignKey(tc => tc.CourseId)
+            .OnDelete(DeleteBehavior.Restrict); 
 
     }
 }
