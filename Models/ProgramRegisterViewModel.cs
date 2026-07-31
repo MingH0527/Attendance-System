@@ -4,18 +4,21 @@ namespace WebAndMobile.Models
 {
     public class ProgramRegisterViewModel
     {
-        public string Position { get; set; } = ""; // "Student" or "Teacher", 从登录用户带过来, 用来决定显示哪个表单
+        public string Position { get; set; } = "";
 
-        public List<ClassGroup> AvailableClasses { get; set; } = new(); // 学生用
-        public List<Course> AvailableCourses { get; set; } = new();     // 老师用
+        public List<AcademicProgram> AvailablePrograms { get; set; } = new(); 
+        public List<ClassGroup> AvailableClasses { get; set; } = new();       
+        public List<Course> AvailableCourses { get; set; } = new();       
 
-        // 学生专用
+       
+        [Required(ErrorMessage = "Please select a program")]
+        public int SelectedProgramId { get; set; }
         public int? SelectedClassId { get; set; }
 
-        // 老师专用 (可以教多门课)
         public List<int> SelectedCourseIds { get; set; } = new();
 
-        // 如果已经注册过, 用来在页面上显示目前状态
+        public string? CurrentStudentId { get; set; }
+        public string? CurrentProgramName { get; set; }
         public string? CurrentClassName { get; set; }
         public List<string> CurrentCourseNames { get; set; } = new();
     }

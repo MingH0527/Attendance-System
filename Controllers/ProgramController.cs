@@ -1,144 +1,184 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
 
-namespace WebAndMobile.Controllers
-{
-    public class ProgramController : Controller
-    {
-        // TODO: 换成你项目实际的 DbContext 类名 (从截图看你的文件叫 DB.cs, 类名可能是 DB 或类似的, 请确认并替换)
-        private readonly DB _context;
+namespace WebAndMobile.Controllers;
 
-        public ProgramController(DB context)
+[Authorize]
+public class ProgramController : Controller
+{
+    private readonly DB db;
+
+    public ProgramController(DB db)
+    {
+        this.db = db;
+    }
+
+    // GET: /Program/RegisterProgram
+    [HttpGet]
+    public async Task<IActionResult> RegisterProgram()
+    {
+        int? userId = GetCurrentUserId();
+
+        if (userId == null)
         {
-            _context = context;
+            return RedirectToAction("Login", "Account");
         }
 
-        // GET: /Program/RegisterProgram
-        [HttpGet]
-        public async Task<IActionResult> RegisterProgram()
+        User? user = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserId == userId.Value);
+
+        if (user == null)
         {
-            // TODO: 换成你项目实际读取登录用户的方式 (Session / Claims)
-            var userId = HttpContext.Session.GetInt32("UserId");
-            if (userId == null)
+            return RedirectToAction("Login", "Account");
+        }
+
+        var model = new ProgramRegisterViewModel
+        {
+            Position = user.Position,
+            AvailablePrograms = await db.AcademicPrograms.AsNoTracking().ToListAsync(),
+            AvailableClasses = await db.ClassGroups.AsNoTracking().ToListAsync(),
+            AvailableCourses = await db.Courses.AsNoTracking().ToListAsync(),
+        };
+
+        if (user.Position == "Student")
+        {
+            StudentClass? existing = await db.StudentClasses
+                .Include(sc => sc.Program)
+                .Include(sc => sc.ClassGroup)
+                .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+
+            if (existing != null)
             {
-                return RedirectToAction("Login", "Account");
+                model.SelectedProgramId = existing.ProgramId;
+                model.SelectedClassId = existing.ClassId;
+                model.CurrentStudentId = existing.StudentId;
+                model.CurrentProgramName = existing.Program?.ProgramName;
+                model.CurrentClassName = existing.ClassGroup?.ClassName;
             }
+        }
+        else if (user.Position == "Teacher")
+        {
+            List<TeacherCourse> existing = await db.TeacherCourses
+                .Include(tc => tc.Course)
+                .Where(tc => tc.UserId == userId.Value)
+                .ToListAsync();
 
-            var user = await _context.Users.FindAsync(userId.Value);
-            if (user == null)
-            {
-                return RedirectToAction("Login", "Account");
-            }
+            model.SelectedCourseIds = existing.Select(tc => tc.CourseId).ToList();
+            model.CurrentCourseNames = existing.Select(tc => tc.Course!.CourseName).ToList();
+        }
 
-            var model = new ProgramRegisterViewModel
-            {
-                Position = user.Position,
-                AvailableClasses = await _context.ClassGroups.AsNoTracking().ToListAsync(),
-                AvailableCourses = await _context.Courses.AsNoTracking().ToListAsync(),
-            };
+        return View(model);
+    }
 
-            if (user.Position == "Student")
-            {
-                var existing = await _context.StudentClasses
-                    .Include(sc => sc.ClassGroup)
-                    .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+    // POST: /Program/RegisterProgram
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegisterProgram(ProgramRegisterViewModel model)
+    {
+        int? userId = GetCurrentUserId();
 
-                if (existing != null)
-                {
-                    model.SelectedClassId = existing.ClassId;
-                    model.CurrentClassName = existing.ClassGroup?.ClassName;
-                }
-            }
-            else if (user.Position == "Teacher")
-            {
-                var existing = await _context.TeacherCourses
-                    .Include(tc => tc.Course)
-                    .Where(tc => tc.UserId == userId.Value)
-                    .ToListAsync();
+        if (userId == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
 
-                model.SelectedCourseIds = existing.Select(tc => tc.CourseId).ToList();
-                model.CurrentCourseNames = existing.Select(tc => tc.Course!.CourseName).ToList();
-            }
+        User? user = await db.Users.FindAsync(userId.Value);
 
+        if (user == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        if (user.Position == "Student")
+        {
+            if (model.SelectedProgramId <= 0)
+                ModelState.AddModelError(nameof(model.SelectedProgramId), "请选择科系/学位");
+
+            if (model.SelectedClassId == null)
+                ModelState.AddModelError(nameof(model.SelectedClassId), "请选择班级");
+        }
+
+        if (user.Position == "Teacher" && !model.SelectedCourseIds.Any())
+        {
+            ModelState.AddModelError(nameof(model.SelectedCourseIds), "请至少选择一门课程");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            model.Position = user.Position;
+            model.AvailablePrograms = await db.AcademicPrograms.AsNoTracking().ToListAsync();
+            model.AvailableClasses = await db.ClassGroups.AsNoTracking().ToListAsync();
+            model.AvailableCourses = await db.Courses.AsNoTracking().ToListAsync();
             return View(model);
         }
 
-        // POST: /Program/RegisterProgram
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegisterProgram(ProgramRegisterViewModel model)
+        if (user.Position == "Student")
         {
-            var userId = HttpContext.Session.GetInt32("UserId");
-            if (userId == null)
+            StudentClass? existing = await db.StudentClasses
+                .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+
+            if (existing != null)
             {
-                return RedirectToAction("Login", "Account");
+               
+                existing.ProgramId = model.SelectedProgramId;
+                existing.ClassId = model.SelectedClassId!.Value;
+                existing.RegisteredDate = DateTime.Now;
             }
-
-            var user = await _context.Users.FindAsync(userId.Value);
-            if (user == null)
+            else
             {
-                return RedirectToAction("Login", "Account");
-            }
+                
+                string newStudentId = await GenerateStudentIdAsync();
 
-            if (user.Position == "Student" && model.SelectedClassId == null)
-            {
-                ModelState.AddModelError(nameof(model.SelectedClassId), "请选择班级");
-            }
-
-            if (user.Position == "Teacher" && !model.SelectedCourseIds.Any())
-            {
-                ModelState.AddModelError(nameof(model.SelectedCourseIds), "请至少选择一门课程");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                model.Position = user.Position;
-                model.AvailableClasses = await _context.ClassGroups.AsNoTracking().ToListAsync();
-                model.AvailableCourses = await _context.Courses.AsNoTracking().ToListAsync();
-                return View(model);
-            }
-
-            if (user.Position == "Student")
-            {
-                // upsert: 一个学生同一时间只属于一个班, 有旧记录就更新, 没有就新增
-                var existing = await _context.StudentClasses
-                    .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
-
-                if (existing != null)
+                db.StudentClasses.Add(new StudentClass
                 {
-                    existing.ClassId = model.SelectedClassId!.Value;
-                    existing.RegisteredDate = DateTime.Now;
-                }
-                else
-                {
-                    _context.StudentClasses.Add(new StudentClass
-                    {
-                        UserId = userId.Value,
-                        ClassId = model.SelectedClassId!.Value
-                    });
-                }
+                    UserId = userId.Value,
+                    StudentId = newStudentId,
+                    ProgramId = model.SelectedProgramId,
+                    ClassId = model.SelectedClassId!.Value
+                });
             }
-            else if (user.Position == "Teacher")
-            {
-                // 先移除旧的任教记录, 再按这次勾选的重新加入
-                var oldRecords = _context.TeacherCourses.Where(tc => tc.UserId == userId.Value);
-                _context.TeacherCourses.RemoveRange(oldRecords);
-
-                foreach (var courseId in model.SelectedCourseIds)
-                {
-                    _context.TeacherCourses.Add(new TeacherCourse
-                    {
-                        UserId = userId.Value,
-                        CourseId = courseId
-                    });
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Registration saved successfully.";
-            return RedirectToAction("MyProfile", "Profile"); // TODO: 换成你实际 MyProfile 所在的 Controller 名
         }
+        else if (user.Position == "Teacher")
+        {
+            var oldRecords = db.TeacherCourses.Where(tc => tc.UserId == userId.Value);
+            db.TeacherCourses.RemoveRange(oldRecords);
+
+            foreach (int courseId in model.SelectedCourseIds)
+            {
+                db.TeacherCourses.Add(new TeacherCourse
+                {
+                    UserId = userId.Value,
+                    CourseId = courseId
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+
+        TempData["Message"] = "Registration saved successfully.";
+        return RedirectToAction("Index", "MyProfile");
+    }
+
+   
+    private async Task<string> GenerateStudentIdAsync()
+    {
+        int year = DateTime.Now.Year;
+        string prefix = $"S{year}";
+
+        int countThisYear = await db.StudentClasses
+            .CountAsync(sc => sc.StudentId.StartsWith(prefix));
+
+        return $"{prefix}{(countThisYear + 1):D3}";
+    }
+
+    private int? GetCurrentUserId()
+    {
+        string? userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        return int.TryParse(userIdValue, out int userId) ? userId : null;
     }
 }

@@ -39,8 +39,31 @@ public class MyProfileController : Controller
     // ==================================================
 
     [HttpGet]
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
+        int? userId = GetCurrentUserId();
+
+        if (userId == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        User? user = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserId == userId.Value);
+
+        if (user != null)
+        {
+            bool hasCompletedRegistration = user.Position switch
+            {
+                "Student" => await db.StudentClasses.AnyAsync(sc => sc.UserId == userId.Value),
+                "Teacher" => await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId.Value),
+                _ => true
+            };
+
+            ViewBag.ShowRegisterCourseCard = !hasCompletedRegistration;
+        }
+
         return View();
     }
 

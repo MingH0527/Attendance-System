@@ -76,6 +76,25 @@
 
         <div class="profile-actions">
 
+            @if (ViewBag.ShowRegisterCourseCard == true)
+            {
+                <a asp-controller="Program"
+                   asp-action="RegisterProgram"
+                   class="profile-button security">
+
+                    <span>📋</span>
+
+                    <div>
+                        <strong>Complete My Profile</strong>
+                        <small>
+                            @(role == "Teacher"
+                                ? "Register the course(s) you teach."
+                                : "Register your program and class to finish setup.")
+                        </small>
+                    </div>
+                </a>
+            }
+
             @if (role == "Student")
             {
                 <a asp-controller="FaceId"

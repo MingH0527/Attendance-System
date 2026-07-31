@@ -9,6 +9,12 @@ public class DB : DbContext
     {
     }
 
+    public DbSet<AcademicProgram> AcademicPrograms => Set<AcademicProgram>();
+
+    public DbSet<StudentClass> StudentClasses => Set<StudentClass>();
+
+    public DbSet<TeacherCourse> TeacherCourses => Set<TeacherCourse>();
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<Course> Courses => Set<Course>();
@@ -63,7 +69,13 @@ public class DB : DbContext
         // Class group unique name
         modelBuilder.Entity<ClassGroup>()
             .HasIndex(c => c.ClassName)
-            .IsUnique();
+            .IsUnique()
+            ;
+        modelBuilder.Entity<ClassGroup>()
+             .HasOne(c => c.Program)
+             .WithMany(p => p.Classes)
+             .HasForeignKey(c => c.ProgramId)
+             .OnDelete(DeleteBehavior.Restrict);
 
         // Classroom unique name
         modelBuilder.Entity<Classroom>()
