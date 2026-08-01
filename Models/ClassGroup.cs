@@ -13,6 +13,10 @@ public class ClassGroup
     [MaxLength(150)]
     public string ClassName { get; set; } = string.Empty;
 
+    [ForeignKey(nameof(Program))]
+    public int ProgramId { get; set; }
+    public AcademicProgram? Program { get; set; }
+
     public ICollection<Timetable> Timetables { get; set; }
         = new List<Timetable>();
 }

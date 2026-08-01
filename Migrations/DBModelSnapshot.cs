@@ -22,6 +22,29 @@ namespace WebAndMobile.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WebAndMobile.Models.AcademicProgram", b =>
+                {
+                    b.Property<int>("ProgramId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProgramId"));
+
+                    b.Property<string>("ProgramCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ProgramName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.HasKey("ProgramId");
+
+                    b.ToTable("AcademicPrograms");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.AdminSecurity", b =>
                 {
                     b.Property<int>("AdminSecurityId")
@@ -119,10 +142,15 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<int>("ProgramId")
+                        .HasColumnType("int");
+
                     b.HasKey("ClassId");
 
                     b.HasIndex("ClassName")
                         .IsUnique();
+
+                    b.HasIndex("ProgramId");
 
                     b.ToTable("Classes");
                 });
@@ -298,27 +326,36 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
                 {
-                    b.Property<int>("RegistrationId")
+                    b.Property<int>("StudentClassId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StudentClassId"));
 
                     b.Property<int>("ClassId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgramId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("RegisteredDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.HasKey("RegistrationId");
+                    b.HasKey("StudentClassId");
 
                     b.HasIndex("ClassId");
 
-                    b.HasIndex("UserId")
-                        .IsUnique();
+                    b.HasIndex("ProgramId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("StudentClasses");
                 });
@@ -375,8 +412,7 @@ namespace WebAndMobile.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.HasIndex("UserId", "CourseId")
-                        .IsUnique();
+                    b.HasIndex("UserId");
 
                     b.ToTable("TeacherCourses");
                 });
@@ -641,6 +677,17 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Sender");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.AcademicProgram", "Program")
+                        .WithMany("Classes")
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Program");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Conversation", b =>
                 {
                     b.HasOne("WebAndMobile.Models.User", "Student")
@@ -690,6 +737,23 @@ namespace WebAndMobile.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.ClassGroup", "ClassGroup")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.AcademicProgram", "Program")
+                        .WithMany()
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("WebAndMobile.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -697,6 +761,8 @@ namespace WebAndMobile.Migrations
                         .IsRequired();
 
                     b.Navigation("ClassGroup");
+
+                    b.Navigation("Program");
 
                     b.Navigation("User");
                 });
@@ -717,7 +783,7 @@ namespace WebAndMobile.Migrations
                     b.HasOne("WebAndMobile.Models.Course", "Course")
                         .WithMany()
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("WebAndMobile.Models.User", "User")
@@ -783,6 +849,11 @@ namespace WebAndMobile.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AcademicProgram", b =>
+                {
+                    b.Navigation("Classes");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>

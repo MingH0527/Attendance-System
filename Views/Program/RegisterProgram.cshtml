@@ -29,7 +29,12 @@
 
                 @if (Model.Position == "Student" && Model.CurrentClassName != null)
                 {
-                    <span class="current-registration__value">@Model.CurrentClassName</span>
+                    @if (!string.IsNullOrEmpty(Model.CurrentStudentId))
+                    {
+                        <span class="current-registration__tag">Student ID: @Model.CurrentStudentId</span>
+                    }
+                    <span class="current-registration__value">@Model.CurrentProgramName</span>
+                    <span class="current-registration__tag">@Model.CurrentClassName</span>
                 }
 
                 @if (Model.Position == "Teacher" && Model.CurrentCourseNames.Any())
@@ -75,12 +80,24 @@
             else
             {
                 <div class="form-group">
+                    <label asp-for="SelectedProgramId">Program</label>
+                    <select asp-for="SelectedProgramId" id="programSelect" onchange="filterClassesByProgram()">
+                        <option value="">-- Choose a program --</option>
+                        @foreach (var p in Model.AvailablePrograms)
+                        {
+                            <option value="@p.ProgramId">@p.ProgramName (@p.ProgramCode)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="SelectedProgramId" class="field-error"></span>
+                </div>
+
+                <div class="form-group">
                     <label asp-for="SelectedClassId">Class</label>
-                    <select asp-for="SelectedClassId">
-                        <option value="">-- Choose your class --</option>
+                    <select asp-for="SelectedClassId" id="classSelect">
+                        <option value="">-- Choose your program first --</option>
                         @foreach (var c in Model.AvailableClasses)
                         {
-                            <option value="@c.ClassId">@c.ClassName</option>
+                            <option value="@c.ClassId" data-program="@c.ProgramId">@c.ClassName</option>
                         }
                     </select>
                     <span asp-validation-for="SelectedClassId" class="field-error"></span>
@@ -89,8 +106,25 @@
 
             <button type="submit" class="save-button">Save Registration</button>
 
-            <a asp-controller="Profile" asp-action="MyProfile" class="back-link">← Back to My Profile</a>
+            <a asp-controller="MyProfile" asp-action="Index" class="back-link">← Back to My Profile</a>
 
         </form>
     </div>
 </div>
+
+<script>
+
+    function filterClassesByProgram() {
+        var programId = document.getElementById('programSelect').value;
+        var classSelect = document.getElementById('classSelect');
+        if (!classSelect) return;
+
+        Array.from(classSelect.options).forEach(function(opt) {
+            if (!opt.dataset.program) return; // 占位选项跳过
+            opt.hidden = programId !== '' && opt.dataset.program !== programId;
+        });
+        classSelect.value = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', filterClassesByProgram);
+</script>

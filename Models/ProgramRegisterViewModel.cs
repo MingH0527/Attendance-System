@@ -4,17 +4,21 @@ namespace WebAndMobile.Models
 {
     public class ProgramRegisterViewModel
     {
-        public string Position { get; set; } = ""; 
+        public string Position { get; set; } = "";
 
-        public List<ClassGroup> AvailableClasses { get; set; } = new(); // student use
-        public List<Course> AvailableCourses { get; set; } = new();     // teacher use
+        public List<AcademicProgram> AvailablePrograms { get; set; } = new(); 
+        public List<ClassGroup> AvailableClasses { get; set; } = new();       
+        public List<Course> AvailableCourses { get; set; } = new();       
 
-        // for student
+       
+        [Required(ErrorMessage = "Please select a program")]
+        public int SelectedProgramId { get; set; }
         public int? SelectedClassId { get; set; }
 
-        // for teacher
         public List<int> SelectedCourseIds { get; set; } = new();
 
+        public string? CurrentStudentId { get; set; }
+        public string? CurrentProgramName { get; set; }
         public string? CurrentClassName { get; set; }
         public List<string> CurrentCourseNames { get; set; } = new();
     }
