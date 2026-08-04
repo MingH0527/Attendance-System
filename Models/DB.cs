@@ -42,7 +42,7 @@ public class DB : DbContext
 
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
-
+   
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -241,7 +241,35 @@ public class DB : DbContext
             .HasOne(tc => tc.Course)
             .WithMany()
             .HasForeignKey(tc => tc.CourseId)
-            .OnDelete(DeleteBehavior.Restrict); 
+            .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<StudentClass>()
+            .HasOne(sc => sc.Program)
+            .WithMany()
+            .HasForeignKey(sc => sc.ProgramId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StudentClass>()
+    .HasIndex(sc => sc.UserId)
+    .IsUnique();
+
+        modelBuilder.Entity<StudentClass>()
+            .HasOne(sc => sc.User)
+            .WithMany()
+            .HasForeignKey(sc => sc.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StudentClass>()
+            .HasOne(sc => sc.ClassGroup)
+            .WithMany()
+            .HasForeignKey(sc => sc.ClassId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentClass>()
+            .HasOne(sc => sc.Program)
+            .WithMany()
+            .HasForeignKey(sc => sc.ProgramId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
+   
+
 }

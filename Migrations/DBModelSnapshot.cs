@@ -355,7 +355,8 @@ namespace WebAndMobile.Migrations
 
                     b.HasIndex("ProgramId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("StudentClasses");
                 });
@@ -412,7 +413,8 @@ namespace WebAndMobile.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "CourseId")
+                        .IsUnique();
 
                     b.ToTable("TeacherCourses");
                 });
@@ -737,17 +739,6 @@ namespace WebAndMobile.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
-                {
-                    b.HasOne("WebAndMobile.Models.ClassGroup", "ClassGroup")
-                        .WithMany()
-                        .HasForeignKey("ClassId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("WebAndMobile.Models.AcademicProgram", "Program")
                         .WithMany()
                         .HasForeignKey("ProgramId")
@@ -783,7 +774,7 @@ namespace WebAndMobile.Migrations
                     b.HasOne("WebAndMobile.Models.Course", "Course")
                         .WithMany()
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("WebAndMobile.Models.User", "User")
