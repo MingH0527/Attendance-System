@@ -1,5 +1,6 @@
 using Fido2NetLib;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -9,15 +10,24 @@ using WebAndMobile.Hubs;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
+// ==================================================
+// MVC / SIGNALR
+// ==================================================
+
 builder.Services.AddControllersWithViews();
+
 builder.Services.AddSignalR();
+
 builder.Services.AddSingleton<
     IUserIdProvider,
     SignalRUserIdProvider
 >();
+
+// ==================================================
+// DATABASE
+// ==================================================
 
 var databasePath = Path.Combine(
     builder.Environment.ContentRootPath,
@@ -53,6 +63,10 @@ builder.Services.AddDbContext<DB>(
         )
 );
 
+// ==================================================
+// PASSWORD HASHERS
+// ==================================================
+
 builder.Services.AddScoped<
     IPasswordHasher<User>,
     PasswordHasher<User>
@@ -68,10 +82,18 @@ builder.Services.AddScoped<
     PasswordHasher<PaymentSecurity>
 >();
 
+// ==================================================
+// FACE RECOGNITION
+// ==================================================
+
 builder.Services.AddSingleton<
     IFaceRecognitionService,
     FaceRecognitionService
 >();
+
+// ==================================================
+// SESSION
+// ==================================================
 
 builder.Services.AddDistributedMemoryCache();
 
@@ -80,14 +102,31 @@ builder.Services.AddSession(options =>
     options.IdleTimeout =
         TimeSpan.FromMinutes(30);
 
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
+    options.Cookie.HttpOnly =
+        true;
+
+    options.Cookie.IsEssential =
+        true;
+
+    options.Cookie.SameSite =
+        SameSiteMode.Lax;
+
+    options.Cookie.SecurePolicy =
+        CookieSecurePolicy.SameAsRequest;
 });
+
+// ==================================================
+// STRIPE
+// ==================================================
 
 StripeConfiguration.ApiKey =
     builder.Configuration[
         "Stripe:SecretKey"
     ];
+
+// ==================================================
+// COOKIE AUTHENTICATION
+// ==================================================
 
 builder.Services
     .AddAuthentication(
@@ -118,6 +157,10 @@ builder.Services
             SameSiteMode.Lax;
     });
 
+// ==================================================
+// AUTHORIZATION
+// ==================================================
+
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(
@@ -143,6 +186,16 @@ builder.Services.AddAuthorization(options =>
     );
 });
 
+// ==================================================
+// ORIGINAL FIDO2 CONFIG
+// ==================================================
+//
+// localhost FIDO2 configuration。
+// 新版 MyProfileController / PasskeyController
+// may use PasskeyFido2Factory to build a dunamic configuration。
+// to avoid anothe fucntion depend on IFido2。
+//
+
 builder.Services.AddFido2(options =>
 {
     options.ServerDomain =
@@ -158,6 +211,25 @@ builder.Services.AddFido2(options =>
         };
 });
 
+// ==================================================
+// DYNAMIC PASSKEY CONFIGURATION
+// ==================================================
+//
+// Private:
+// localhost
+//
+// Public:
+// Cloudflare / custom HTTPS domain
+//
+
+builder.Services.AddSingleton<
+    PasskeyFido2Factory
+>();
+
+// ==================================================
+// OTHER SERVICES
+// ==================================================
+
 builder.Services.AddScoped<
     GmailServiceHelper
 >();
@@ -167,19 +239,59 @@ builder.Services.AddScoped<
     TimetableValidationService
 >();
 
+// ==================================================
+// BUILD APPLICATION
+// ==================================================
+
 var app = builder.Build();
 
+// ==================================================
+// CLOUDFLARE / REVERSE PROXY HEADERS
+// ==================================================
+//
+// need to put before UseHttpsRedirection() 
+// so the PasskeyFido2Factory will know the correct
+// Scheme / Host / Origin。
+//
+
+app.UseForwardedHeaders(
+    new ForwardedHeadersOptions
+    {
+        ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor |
+            ForwardedHeaders.XForwardedProto |
+            ForwardedHeaders.XForwardedHost
+    }
+);
+
+// ==================================================
+// HTTP PIPELINE
+// ==================================================
+
 app.UseHttpsRedirection();
+
 app.UseStaticFiles();
 
 app.UseRouting();
 
+// Session must before the Controller running, otherwise the session will be null in the controller.
 app.UseSession();
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
-app.MapHub<ChatHub>("/chatHub");
+// ==================================================
+// SIGNALR
+// ==================================================
+
+app.MapHub<ChatHub>(
+    "/chatHub"
+);
+
+// ==================================================
+// MVC ROUTE
+// ==================================================
 
 app.MapControllerRoute(
     name: "default",

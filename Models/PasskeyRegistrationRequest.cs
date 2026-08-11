@@ -1,4 +1,4 @@
-﻿using Fido2NetLib;
+using Fido2NetLib;
 using Fido2NetLib.Objects;
 
 namespace WebAndMobile.Models;
@@ -15,6 +15,7 @@ public class PasskeyRegistrationRequest
 
 public class PasskeyDeviceInfo
 {
+    public string DeviceIdentifier { get; set; } = "";
     public string DeviceName { get; set; } = "";
     public string DeviceType { get; set; } = "";
     public string OperatingSystem { get; set; } = "";

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace WebAndMobile.Models;
 
@@ -27,6 +27,9 @@ public class DB : DbContext
 
     public DbSet<UserPasskey> UserPasskeys => Set<UserPasskey>();
 
+    public DbSet<PasskeyDeviceBinding> PasskeyDeviceBindings =>
+        Set<PasskeyDeviceBinding>();
+
     public DbSet<AdminSecurity> AdminSecurities =>
         Set<AdminSecurity>();
 
@@ -42,7 +45,7 @@ public class DB : DbContext
 
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
-   
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -110,13 +113,45 @@ public class DB : DbContext
             .HasForeignKey(t => t.TeacherId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // PasskeyCode cannot be duplicated.
+        // NULL is allowed for old legacy rows.
+        modelBuilder.Entity<UserPasskey>()
+            .HasIndex(p => p.PasskeyCode)
+            .IsUnique()
+            .HasFilter("[PasskeyCode] IS NOT NULL");
+
         // CredentialId cannot be duplicated
         modelBuilder.Entity<UserPasskey>()
             .HasIndex(p => p.CredentialId)
             .IsUnique();
 
+        // Device lookup for per-device account limits
+        modelBuilder.Entity<UserPasskey>()
+            .HasIndex(p => p.DeviceIdentifier);
+
+        // The same account cannot register the same browser/device identity twice.
+        // Filter keeps existing legacy rows with NULL DeviceIdentifier valid.
+        modelBuilder.Entity<UserPasskey>()
+            .HasIndex(p => new { p.UserId, p.DeviceIdentifier })
+            .IsUnique()
+            .HasFilter("[DeviceIdentifier] IS NOT NULL");
+
         // One user can have many passkeys
         modelBuilder.Entity<UserPasskey>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Temporary phone/tablet binding used only before Passkey registration.
+        modelBuilder.Entity<PasskeyDeviceBinding>()
+            .HasIndex(p => p.BindingToken)
+            .IsUnique();
+
+        modelBuilder.Entity<PasskeyDeviceBinding>()
+            .HasIndex(p => new { p.DeviceIdentifier, p.Status });
+
+        modelBuilder.Entity<PasskeyDeviceBinding>()
             .HasOne(p => p.User)
             .WithMany()
             .HasForeignKey(p => p.UserId)
@@ -225,7 +260,7 @@ public class DB : DbContext
             .HasOne(sc => sc.ClassGroup)
             .WithMany()
             .HasForeignKey(sc => sc.ClassId)
-            .OnDelete(DeleteBehavior.Restrict); 
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<TeacherCourse>()
             .HasIndex(tc => new { tc.UserId, tc.CourseId })
@@ -270,6 +305,6 @@ public class DB : DbContext
             .HasForeignKey(sc => sc.ProgramId)
             .OnDelete(DeleteBehavior.Cascade);
     }
-   
+
 
 }

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Authentication;
@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -26,19 +27,19 @@ public class PasskeyController : Controller
 
     private readonly DB db;
 
-    private readonly IFido2 fido2;
+    private readonly PasskeyFido2Factory passkeyFido2Factory;
 
     private readonly IPasswordHasher<AdminSecurity>
         adminPinHasher;
 
     public PasskeyController(
         DB db,
-        IFido2 fido2,
+        PasskeyFido2Factory passkeyFido2Factory,
         IPasswordHasher<AdminSecurity>
             adminPinHasher)
     {
         this.db = db;
-        this.fido2 = fido2;
+        this.passkeyFido2Factory = passkeyFido2Factory;
         this.adminPinHasher = adminPinHasher;
     }
 
@@ -65,6 +66,9 @@ public class PasskeyController : Controller
                     "in this system."
             });
         }
+
+        IFido2 fido2 =
+            passkeyFido2Factory.Create(Request);
 
         AssertionOptions options =
             fido2.GetAssertionOptions(
@@ -194,6 +198,9 @@ public class PasskeyController : Controller
                             userHandleMatches
                         );
                     };
+
+            IFido2 fido2 =
+                passkeyFido2Factory.Create(Request);
 
             var verificationResult =
                 await fido2.MakeAssertionAsync(
