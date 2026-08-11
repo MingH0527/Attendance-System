@@ -95,6 +95,22 @@ namespace WebAndMobile.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ChatMessageId"));
 
+                    b.Property<DateTime?>("CallAnsweredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CallDurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CallEndedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CallStartedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CallStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(400)
@@ -105,6 +121,11 @@ namespace WebAndMobile.Migrations
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("ReadAtUtc")
                         .HasColumnType("datetime2");

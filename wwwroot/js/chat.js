@@ -219,6 +219,18 @@
     let callIsActive =
         false;
 
+    let activeCallMessageId =
+        0;
+
+    let pendingCallMessageId =
+        0;
+
+    let callConnectedAt =
+        null;
+
+    let callTimerInterval =
+        null;
+
     const pendingIceCandidates =
         [];
 
@@ -458,60 +470,85 @@
             )}px`;
     }
 
-    function messageHtml(
-        message) {
-        const mine =
-            Number(
-                message.senderId
-            ) ===
-            currentUserId;
+    function formatDuration(totalSeconds) {
+        const seconds = Math.max(0, Number(totalSeconds || 0));
+        const minutes = Math.floor(seconds / 60);
+        const remaining = seconds % 60;
+        return `${minutes}:${String(remaining).padStart(2, "0")}`;
+    }
+
+    function messageHtml(message) {
+        const mine = Number(message.senderId) === currentUserId;
+        const isCall = (message.messageType || "Text") === "VideoCall";
+
+        let contentHtml;
+
+        if (isCall) {
+            const status = message.callStatus || "Calling";
+            let detail = "Calling…";
+
+            if (status === "Connected") {
+                detail = "Video call in progress";
+            }
+            else if (status === "Completed") {
+                detail = `Ended · ${formatDuration(message.callDurationSeconds)}`;
+            }
+            else if (status === "Declined") {
+                detail = "Declined";
+            }
+            else if (status === "Missed") {
+                detail = "Missed video call";
+            }
+
+            contentHtml = `
+                <div class="call-message-card">
+                    <div class="call-message-icon">📹</div>
+                    <div>
+                        <strong>Video call</strong>
+                        <div class="call-message-detail">${escapeHtml(detail)}</div>
+                    </div>
+                </div>`;
+        }
+        else {
+            contentHtml = `
+                <div class="message-content">
+                    ${escapeHtml(message.content).replace(/\n/g, "<br>")}
+                </div>`;
+        }
 
         return `
             <article
-                class="message-row ${
-                    mine
-                        ? "message-mine"
-                        : "message-other"
-                }"
+                class="message-row ${mine ? "message-mine" : "message-other"}"
                 data-message-id="${message.messageId}">
 
-                <div class="message-bubble">
-
-                    <div class="message-content">
-                        ${escapeHtml(
-                            message.content
-                        ).replace(
-                            /\n/g,
-                            "<br>"
-                        )}
-                    </div>
+                <div class="message-bubble ${isCall ? "call-message-bubble" : ""}">
+                    ${contentHtml}
 
                     <div class="message-meta">
-
-                        <time
-                            data-utc="${escapeHtml(
-                                message.sentAtUtc
-                            )}">
-                            ${formatTime(
-                                message.sentAtUtc
-                            )}
+                        <time data-utc="${escapeHtml(message.sentAtUtc)}">
+                            ${formatTime(message.sentAtUtc)}
                         </time>
 
-                        ${
-                            mine
-                                ? `<span class="read-state">${
-                                    message.isRead
-                                        ? "Read"
-                                        : "Sent"
-                                  }</span>`
-                                : ""
-                        }
-
+                        ${mine
+                            ? `<span class="read-state">${message.isRead ? "Read" : "Sent"}</span>`
+                            : ""}
                     </div>
-
                 </div>
-
             </article>`;
+    }
+
+    function replaceMessage(message) {
+        const existing = document.querySelector(
+            `[data-message-id="${message.messageId}"]`
+        );
+
+        if (!existing) {
+            appendMessage(message, false);
+            return;
+        }
+
+        existing.outerHTML = messageHtml(message);
+        refreshVisibleTimes();
     }
 
     function appendMessage(
@@ -1067,12 +1104,32 @@
                             },
 
                         audio:
-                            true
+                            {
+                                echoCancellation: true,
+                                noiseSuppression: true,
+                                autoGainControl: true
+                            }
                     }
                 );
 
         localVideo.srcObject =
             localStream;
+
+        const audioTracks =
+            localStream.getAudioTracks();
+
+        if (audioTracks.length === 0) {
+            throw new Error(
+                "Microphone permission was granted, but no audio track was created."
+            );
+        }
+
+        console.log(
+            "Local audio track:",
+            audioTracks[0].label,
+            audioTracks[0].enabled,
+            audioTracks[0].readyState
+        );
 
         microphoneEnabled =
             true;
@@ -1114,19 +1171,44 @@
             };
 
         peerConnection.ontrack =
-            event => {
+            async event => {
                 const stream =
                     event.streams[0];
+
+                console.log(
+                    "Remote track:",
+                    event.track.kind,
+                    event.track.enabled,
+                    event.track.readyState
+                );
 
                 if (stream) {
                     remoteVideo.srcObject =
                         stream;
+
+                    remoteVideo.muted =
+                        false;
+
+                    remoteVideo.volume =
+                        1;
+
+                    try {
+                        await remoteVideo.play();
+                    }
+                    catch (error) {
+                        console.warn(
+                            "Remote media autoplay was blocked:",
+                            error
+                        );
+                    }
 
                     remoteVideoPlaceholder.hidden =
                         true;
 
                     videoCallStatus.textContent =
                         "Connected";
+
+                    startCallTimer();
                 }
             };
 
@@ -1207,6 +1289,41 @@
         }
     }
 
+    function startCallTimer() {
+        if (callTimerInterval) {
+            return;
+        }
+
+        callConnectedAt = Date.now();
+        const timer = document.getElementById("videoCallTimer");
+
+        const update = () => {
+            if (!timer || !callConnectedAt) {
+                return;
+            }
+
+            const seconds = Math.floor((Date.now() - callConnectedAt) / 1000);
+            timer.textContent = formatDuration(seconds);
+        };
+
+        update();
+        callTimerInterval = setInterval(update, 1000);
+    }
+
+    function stopCallTimer() {
+        if (callTimerInterval) {
+            clearInterval(callTimerInterval);
+            callTimerInterval = null;
+        }
+
+        callConnectedAt = null;
+
+        const timer = document.getElementById("videoCallTimer");
+        if (timer) {
+            timer.textContent = "00:00";
+        }
+    }
+
     function showVideoCallOverlay(
         peerName,
         status) {
@@ -1275,10 +1392,13 @@
                 "Calling…"
             );
 
-            await connection.invoke(
-                "StartVideoCall",
-                callPeerUserId
-            );
+            activeCallMessageId =
+                Number(
+                    await connection.invoke(
+                        "StartVideoCall",
+                        callPeerUserId
+                    )
+                );
         }
         catch (error) {
             cleanupCall();
@@ -1314,8 +1434,12 @@
                 "Connecting…"
             );
 
+            activeCallMessageId =
+                pendingCallMessageId;
+
             await connection.invoke(
                 "AcceptVideoCall",
+                activeCallMessageId,
                 callPeerUserId
             );
         }
@@ -1328,6 +1452,7 @@
             if (callerId) {
                 await connection.invoke(
                     "RejectVideoCall",
+                    activeCallMessageId || pendingCallMessageId,
                     callerId
                 );
             }
@@ -1355,6 +1480,7 @@
         ) {
             await connection.invoke(
                 "RejectVideoCall",
+                pendingCallMessageId,
                 callerId
             );
         }
@@ -1543,6 +1669,9 @@
         const peerUserId =
             callPeerUserId;
 
+        const callMessageId =
+            activeCallMessageId;
+
         cleanupCall();
 
         if (
@@ -1556,6 +1685,7 @@
             try {
                 await connection.invoke(
                     "EndVideoCall",
+                    callMessageId,
                     peerUserId
                 );
             }
@@ -1566,6 +1696,8 @@
     }
 
     function cleanupCall() {
+        stopCallTimer();
+
         if (peerConnection) {
             peerConnection
                 .onicecandidate =
@@ -1620,6 +1752,12 @@
 
         callIsActive =
             false;
+
+        activeCallMessageId =
+            0;
+
+        pendingCallMessageId =
+            0;
 
         microphoneEnabled =
             true;
@@ -1807,6 +1945,7 @@
                 connection
                     .invoke(
                         "EndVideoCall",
+                        activeCallMessageId,
                         callPeerUserId
                     )
                     .catch(
@@ -1907,6 +2046,9 @@
                     .invoke(
                         "RejectVideoCall",
                         Number(
+                            caller.callMessageId
+                        ),
+                        Number(
                             caller.callerId
                         )
                     )
@@ -1920,6 +2062,11 @@
             pendingCallerId =
                 Number(
                     caller.callerId
+                );
+
+            pendingCallMessageId =
+                Number(
+                    caller.callMessageId
                 );
 
             pendingCallerName =
@@ -1947,7 +2094,10 @@
 
     connection.on(
         "VideoCallAccepted",
-        async accepterId => {
+        async (
+            accepterId,
+            callMessageId
+        ) => {
             if (
                 Number(
                     accepterId
@@ -1956,6 +2106,9 @@
             ) {
                 return;
             }
+
+            activeCallMessageId =
+                Number(callMessageId);
 
             videoCallStatus.textContent =
                 "Connecting…";
@@ -2069,8 +2222,19 @@
     );
 
     connection.on(
+        "CallRecordUpdated",
+        async message => {
+            replaceMessage(message);
+            await refreshConversationList();
+        }
+    );
+
+    connection.on(
         "VideoCallEnded",
-        senderId => {
+        (
+            senderId,
+            callMessageId
+        ) => {
             if (
                 Number(
                     senderId

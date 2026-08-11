@@ -19,6 +19,17 @@ public class ChatMessage
     public bool IsRead { get; set; }
     public DateTime? ReadAtUtc { get; set; }
 
+    [MaxLength(20)]
+    public string MessageType { get; set; } = "Text";
+
+    [MaxLength(20)]
+    public string? CallStatus { get; set; }
+
+    public DateTime? CallStartedAtUtc { get; set; }
+    public DateTime? CallAnsweredAtUtc { get; set; }
+    public DateTime? CallEndedAtUtc { get; set; }
+    public int? CallDurationSeconds { get; set; }
+
     public Conversation Conversation { get; set; } = null!;
     public User Sender { get; set; } = null!;
     public User Receiver { get; set; } = null!;

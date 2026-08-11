@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
-using WebAndMobile.ViewModels;
 
 namespace WebAndMobile.Controllers;
 
@@ -273,7 +272,25 @@ public class ChatController : Controller
                             ),
 
                         IsRead =
-                            m.IsRead
+                            m.IsRead,
+
+                        MessageType =
+                            m.MessageType,
+
+                        CallStatus =
+                            m.CallStatus,
+
+                        CallStartedAtUtc =
+                            m.CallStartedAtUtc,
+
+                        CallAnsweredAtUtc =
+                            m.CallAnsweredAtUtc,
+
+                        CallEndedAtUtc =
+                            m.CallEndedAtUtc,
+
+                        CallDurationSeconds =
+                            m.CallDurationSeconds
                     }
                 )
                 .ToList();

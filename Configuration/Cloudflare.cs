@@ -13,7 +13,7 @@ public static class Cloudflare
     //
 
     public const string PublicUrl =
-        "https://pale-checked-physiology-yellow.trycloudflare.com";
+        "https://planet-organisation-ceiling-sand.trycloudflare.com";
 
     // ==================================================
     // CONFIGURATION CHECK
@@ -22,7 +22,7 @@ public static class Cloudflare
     public static bool IsConfigured()
     {
         string url =
-            (PublicUrl ?? "").Trim();
+            (PublicUrl ?? string.Empty).Trim();
 
         if (string.IsNullOrWhiteSpace(url))
         {
@@ -44,24 +44,29 @@ public static class Cloudflare
         }
 
         return Uri.TryCreate(
-            url,
-            UriKind.Absolute,
-            out Uri? uri
-        ) &&
-        string.Equals(
-            uri.Scheme,
-            Uri.UriSchemeHttps,
-            StringComparison.OrdinalIgnoreCase
-        );
+                   url,
+                   UriKind.Absolute,
+                   out Uri? uri
+               )
+               &&
+               string.Equals(
+                   uri.Scheme,
+                   Uri.UriSchemeHttps,
+                   StringComparison.OrdinalIgnoreCase
+               );
     }
 
     // ==================================================
-    // PUBLIC URL FOR PHONE/TABLET BINDING ONLY
+    // PUBLIC BASE URL
     // ==================================================
     //
-    // IMPORTANT:
-    // This does NOT control WebAuthn Private/Public mode.
-    // It is used only for the phone/tablet verification QR.
+    // Shared Cloudflare public URL for features that
+    // need access from another device or public network.
+    //
+    // Examples:
+    // - Phone / tablet verification QR
+    // - Passkey public mode
+    // - External laptop access
     //
 
     public static string GetPublicUrl()
@@ -78,5 +83,31 @@ public static class Cloudflare
         return PublicUrl
             .Trim()
             .TrimEnd('/');
+    }
+
+    // ==================================================
+    // BUILD PUBLIC URL
+    // ==================================================
+    //
+    // Example:
+    // Cloudflare.BuildPublicUrl("/Payment/Verify")
+    //
+    // Result:
+    // https://xxxx.trycloudflare.com/Payment/Verify
+    //
+
+    public static string BuildPublicUrl(
+        string path)
+    {
+        string baseUrl =
+            GetPublicUrl();
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return baseUrl;
+        }
+
+        return
+            $"{baseUrl}/{path.TrimStart('/')}";
     }
 }
