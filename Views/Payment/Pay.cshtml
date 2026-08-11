@@ -3,7 +3,6 @@
     ViewData["Title"] = "Student Fee Payment";
     bool hasFace = ViewBag.HasFaceId ?? false;
     bool hasPin = ViewBag.HasPaymentPin ?? false;
-    string publicBaseUrl = ViewBag.PublicBaseUrl ?? "";
 }
 
 <link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
@@ -45,53 +44,65 @@
                     {
                         <div class="field-group">
                             <label for="stripeCustomAmount">Amount (RM)</label>
-                            <input id="stripeCustomAmount" name="customAmount" type="number" min="0.01" step="0.01" required />
+                            <input id="stripeCustomAmount"
+                                   name="customAmount"
+                                   type="number"
+                                   min="0.01"
+                                   step="0.01"
+                                   required />
                         </div>
                     }
 
-                    <button class="primary-action button-action" type="submit">Pay with Stripe</button>
+                    <button class="primary-action button-action" type="submit">
+                        Pay with Stripe
+                    </button>
                 </form>
             </section>
 
             <section class="payment-method-card qr-method-card">
                 <div class="payment-method-icon">📱</div>
                 <h2>QR Scan Payment</h2>
-                <p class="small-note">Face ID starts immediately before the QR code is unlocked.</p>
+                <p class="small-note">
+                    Face ID starts immediately before the QR code is unlocked.
+                </p>
 
                 <div class="security-mini-status">
-                    <span class="@(hasFace ? "ok" : "missing")">@(hasFace ? "✓ Face ID registered" : "! Face ID not registered")</span>
-                    <span class="@(hasPin ? "ok" : "missing")">@(hasPin ? "✓ Payment PIN ready" : "! PIN setup required")</span>
+                    <span class="@(hasFace ? "ok" : "missing")">
+                        @(hasFace ? "✓ Face ID registered" : "! Face ID not registered")
+                    </span>
+                    <span class="@(hasPin ? "ok" : "missing")">
+                        @(hasPin ? "✓ Payment PIN ready" : "! PIN setup required")
+                    </span>
                 </div>
 
                 <form asp-action="BeginQrPayment" method="post" id="qrPaymentForm">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="feeId" value="@Model.Id" />
 
-                    <div class="field-group">
-                        <label for="publicBaseUrl">Cloudflare Public URL</label>
-                        <input id="publicBaseUrl"
-                               name="publicBaseUrl"
-                               type="url"
-                               value="@publicBaseUrl"
-                               placeholder="https://name.trycloudflare.com"
-                               autocomplete="off"
-                               required />
-                        <small>Paste the URL shown by cloudflared. No code change or restart is needed.</small>
-                    </div>
-
                     <div class="wallet-grid">
                         <label class="wallet-option">
-                            <input type="radio" name="paymentMethod" value="TouchNGo" required />
+                            <input type="radio"
+                                   name="paymentMethod"
+                                   value="TouchNGo"
+                                   required />
                             <span class="wallet-emoji">💚</span>
                             <strong>Touch 'n Go</strong>
                         </label>
+
                         <label class="wallet-option">
-                            <input type="radio" name="paymentMethod" value="GrabPay" required />
+                            <input type="radio"
+                                   name="paymentMethod"
+                                   value="GrabPay"
+                                   required />
                             <span class="wallet-emoji">🟢</span>
                             <strong>GrabPay</strong>
                         </label>
+
                         <label class="wallet-option">
-                            <input type="radio" name="paymentMethod" value="Boost" required />
+                            <input type="radio"
+                                   name="paymentMethod"
+                                   value="Boost"
+                                   required />
                             <span class="wallet-emoji">🔴</span>
                             <strong>Boost</strong>
                         </label>
@@ -101,7 +112,12 @@
                     {
                         <div class="field-group">
                             <label for="qrCustomAmount">Amount (RM)</label>
-                            <input id="qrCustomAmount" name="customAmount" type="number" min="0.01" step="0.01" required />
+                            <input id="qrCustomAmount"
+                                   name="customAmount"
+                                   type="number"
+                                   min="0.01"
+                                   step="0.01"
+                                   required />
                         </div>
                     }
 
@@ -117,29 +133,31 @@
 </div>
 
 <script>
-(() => {
-    const app = document.getElementById("paymentChoiceApp");
-    const form = document.getElementById("qrPaymentForm");
-    if (!app || !form) return;
+    (() => {
+        const app = document.getElementById("paymentChoiceApp");
+        const form = document.getElementById("qrPaymentForm");
+        if (!app || !form) return;
 
-    document.querySelectorAll(".wallet-option input").forEach(input => {
-        input.addEventListener("change", () => {
-            document.querySelectorAll(".wallet-option").forEach(option => option.classList.remove("selected"));
-            input.closest(".wallet-option")?.classList.add("selected");
+        document.querySelectorAll(".wallet-option input").forEach(input => {
+            input.addEventListener("change", () => {
+                document.querySelectorAll(".wallet-option")
+                    .forEach(option => option.classList.remove("selected"));
+
+                input.closest(".wallet-option")?.classList.add("selected");
+            });
         });
-    });
 
-    form.addEventListener("submit", event => {
-        if (!form.reportValidity()) {
-            event.preventDefault();
-            return;
-        }
+        form.addEventListener("submit", event => {
+            if (!form.reportValidity()) {
+                event.preventDefault();
+                return;
+            }
 
-        if (app.dataset.hasFace !== "true") {
-            event.preventDefault();
-            alert("Please go to register Face ID before using QR Scan Payment.");
-            window.location.assign(app.dataset.registerUrl);
-        }
-    });
-})();
+            if (app.dataset.hasFace !== "true") {
+                event.preventDefault();
+                alert("Please register Face ID before using QR Scan Payment.");
+                window.location.assign(app.dataset.registerUrl);
+            }
+        });
+    })();
 </script>

@@ -7,13 +7,13 @@ public static class Cloudflare
     // ==================================================
     //
     // When Quick Tunnel gives you a new URL,
-    // change ONLY this line.
+    // change ONLY this line. https://xxxx.trycloudflare.com/Payment/Verify
     //
     // Do not add a trailing slash.
     //
 
     public const string PublicUrl =
-        "https://planet-organisation-ceiling-sand.trycloudflare.com";
+        "https://alternate-speaking-magnet-freeze.trycloudflare.com";
 
     // ==================================================
     // CONFIGURATION CHECK
