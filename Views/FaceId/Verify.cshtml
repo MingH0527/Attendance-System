@@ -3,26 +3,120 @@
     int? feeId = ViewBag.FeeId;
     string returnUrl = ViewBag.ReturnUrl ?? Url.Action("SelectFee", "Payment")!;
 }
-<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
+
+<link rel="stylesheet"
+      href="~/css/face-payment.css"
+      asp-append-version="true" />
+
 <div class="security-shell">
-    <section class="security-card camera-card" id="faceApp"
+    <section class="security-card camera-card"
+             id="faceApp"
              data-mode="verify"
              data-auto-start="true"
              data-return-url="@returnUrl">
+
         @Html.AntiForgeryToken()
-        <p class="eyebrow">AI Identity Verification</p>
-        <h1>Verifying your face</h1>
-        <p class="muted">The camera starts automatically. The QR code remains locked until the registered user is confirmed.</p>
+
+        <p class="eyebrow">
+            AI Identity Verification
+        </p>
+
+        <h1>
+            Verifying your face
+        </h1>
+
+        <p class="muted">
+            Keep one full face inside the guide.
+            The QR code stays locked until identity verification reaches 100%.
+        </p>
+
         <div class="camera-frame">
-            <video id="faceVideo" autoplay playsinline muted></video>
-            <canvas id="captureCanvas" hidden></canvas>
+            <video id="faceVideo"
+                   autoplay
+                   playsinline
+                   muted>
+            </video>
+
+            <canvas id="captureCanvas"
+                    hidden>
+            </canvas>
+
             <div class="face-guide"></div>
         </div>
-        <div class="progress-caption"><span>Verification progress</span><strong id="progressText">0%</strong></div>
-        <div class="progress-track"><div id="faceProgress" class="progress-value"></div></div>
-        <div id="faceStatus" class="face-status">Requesting camera permission…</div>
-        <button id="startFaceButton" class="primary-action button-action" type="button">Restart Verification</button>
-        <a class="secondary-action" asp-controller="Payment" asp-action="Pay" asp-route-feeId="@feeId">Cancel</a>
+
+        <div class="progress-caption">
+            <span>
+                Face progress
+            </span>
+
+            <strong id="progressText">
+                0%
+            </strong>
+        </div>
+
+        <div class="progress-track">
+            <div id="faceProgress"
+                 class="progress-value">
+            </div>
+        </div>
+
+        <div id="faceStatus"
+             class="face-status">
+            Requesting camera permission…
+        </div>
+
+        <button id="startFaceButton"
+                class="primary-action button-action"
+                type="button">
+            Restart Verification
+        </button>
+
+        <a class="secondary-action"
+           asp-controller="Payment"
+           asp-action="Pay"
+           asp-route-feeId="@feeId">
+            Cancel
+        </a>
+
     </section>
 </div>
-<script src="~/js/face-payment.js" asp-append-version="true"></script>
+
+
+<script>
+    window.mpVisionReady = new Promise((resolve, reject) => {
+        window.__resolveMpVision = resolve;
+        window.__rejectMpVision = reject;
+    });
+
+    window.addEventListener("error", event => {
+        const source = event?.filename || "";
+
+        if (source.includes("@@mediapipe/tasks-vision")) {
+            window.__rejectMpVision?.(
+                new Error(
+                    "MediaPipe Tasks Vision failed to load from the CDN."
+                )
+            );
+        }
+    });
+</script>
+
+<script type="module">
+    import {
+        FilesetResolver,
+        FaceLandmarker,
+        HandLandmarker
+    } from "https://cdn.jsdelivr.net/npm/@@mediapipe/tasks-vision/vision_bundle.mjs";
+
+    window.mpVision = {
+        FilesetResolver,
+        FaceLandmarker,
+        HandLandmarker
+    };
+
+    window.__resolveMpVision?.(window.mpVision);
+</script>
+
+<script src="~/js/face-payment.js"
+        asp-append-version="true">
+</script>

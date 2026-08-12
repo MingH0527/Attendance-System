@@ -1,4 +1,4 @@
-﻿@model List<WebAndMobile.Models.UserPasskey>
+@model List<WebAndMobile.Models.UserPasskey>
 
 @{
     ViewData["Title"] = "Manage Passkeys";
@@ -17,9 +17,13 @@
 
     bool adminPinEnabled =
         ViewBag.AdminPinEnabled ?? false;
-}
 
-<link rel="stylesheet" href="~/css/passkey.css" />
+    string passkeyEnvironment =
+        ViewBag.PasskeyEnvironment ?? "Unknown";
+
+    string passkeyRpId =
+        ViewBag.PasskeyRpId ?? "Unknown";
+}
 
 <link rel="stylesheet"
       href="~/css/passkey.css"
@@ -139,6 +143,21 @@
 
             </div>
 
+            <div class="passkey-environment-box">
+                <div>
+                    <span class="limit-label">
+                        Passkey environment
+                    </span>
+                    <strong>
+                        @passkeyEnvironment
+                    </strong>
+                </div>
+
+                <small>
+                    RP ID: @passkeyRpId
+                </small>
+            </div>
+
             <div class="passkey-limit">
 
                 <div>
@@ -207,15 +226,84 @@
 
                                 <div class="registered-passkey-content">
 
+                                    @{
+                                        string attachment =
+                                            passkey.AuthenticatorAttachment ?? "";
+
+                                        string transports =
+                                            passkey.AuthenticatorTransports ?? "";
+
+                                        bool isPlatform =
+                                            attachment.Equals(
+                                                "platform",
+                                                StringComparison.OrdinalIgnoreCase);
+
+                                        bool isCrossPlatform =
+                                            attachment.Equals(
+                                                "cross-platform",
+                                                StringComparison.OrdinalIgnoreCase);
+
+                                        bool isHybrid =
+                                            transports.Contains(
+                                                "hybrid",
+                                                StringComparison.OrdinalIgnoreCase);
+
+                                        string authenticatorName =
+                                            isHybrid
+                                                ? "Phone / External Device"
+                                                : isPlatform
+                                                    ? "This Device"
+                                                    : isCrossPlatform
+                                                        ? "External Authenticator"
+                                                        : "Passkey Authenticator";
+
+                                        string authenticatorDetails =
+                                            isPlatform
+                                                ? "Platform"
+                                                : isCrossPlatform && isHybrid
+                                                    ? "Cross-platform · Hybrid"
+                                                    : isCrossPlatform
+                                                        ? "Cross-platform"
+                                                        : !string.IsNullOrWhiteSpace(transports)
+                                                            ? transports
+                                                            : "Unknown";
+                                    }
+
                                     <strong>
-                                        @passkey.DeviceName
+                                        @authenticatorName
                                     </strong>
 
+                                    <small>
+                                        <b>Authenticator:</b>
+                                        @authenticatorDetails
+                                    </small>
+
+                                    <small>
+                                        <b>Registered from:</b>
+                                        @passkey.DeviceName
+                                        @if (!string.IsNullOrWhiteSpace(
+                                                passkey.DeviceType))
+                                        {
+                                            <text>
+                                                · @passkey.DeviceType
+                                            </text>
+                                        }
+                                    </small>
+
                                     @if (!string.IsNullOrWhiteSpace(
-                                            passkey.OperatingSystem))
+                                            passkey.OperatingSystem) ||
+                                         !string.IsNullOrWhiteSpace(
+                                            passkey.Browser))
                                     {
                                         <small>
-                                            @passkey.OperatingSystem
+                                            @if (!string.IsNullOrWhiteSpace(
+                                                    passkey.OperatingSystem))
+                                            {
+                                                <text>
+                                                    @passkey.OperatingSystem
+                                                </text>
+                                            }
+
                                             @if (!string.IsNullOrWhiteSpace(
                                                     passkey.Browser))
                                             {
@@ -228,22 +316,20 @@
 
                                     <small>
                                         Registered
-                                        @passkey.CreatedAt
-                                        .ToLocalTime()
-                                        .ToString(
-                                        "dd MMM yyyy, hh:mm tt"
-                                        )
+                                        @(passkey.CreatedAt
+                                            .ToLocalTime()
+                                            .ToString(
+                                                "dd MMM yyyy, hh:mm tt"))
                                     </small>
 
                                     @if (passkey.LastUsedAt.HasValue)
                                     {
                                         <small>
                                             Last used
-                                            @passkey.LastUsedAt.Value
-                                            .ToLocalTime()
-                                            .ToString(
-                                            "dd MMM yyyy, hh:mm tt"
-                                            )
+                                            @(passkey.LastUsedAt.Value
+                                                .ToLocalTime()
+                                                .ToString(
+                                                    "dd MMM yyyy, hh:mm tt"))
                                         </small>
                                     }
 
@@ -288,7 +374,8 @@
             </button>
 
             <p class="development-message">
-                Maximum 3 passkeys per account.
+                Maximum 3 passkeys per account ·
+                Maximum 4 accounts per verified phone/tablet device.
             </p>
 
             <p class="delete-note">
@@ -297,6 +384,33 @@
                 to remove it from your phone or
                 password manager separately.
             </p>
+
+            <div id="deviceBindingModal"
+                 hidden
+                 style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;padding:24px;overflow:auto;">
+
+                <div style="max-width:520px;margin:40px auto;background:white;border-radius:24px;padding:28px;text-align:center;">
+                    <h2>Verify the phone or tablet</h2>
+
+                    <p>
+                        Scan this QR code using the phone or tablet that will own
+                        the Passkey. This check is only required during registration.
+                    </p>
+
+                    <img id="deviceBindingQr"
+                         alt="Device binding QR code"
+                         style="width:260px;height:260px;max-width:100%;object-fit:contain;" />
+
+                    <p id="deviceBindingStatus">
+                        Waiting for device verification...
+                    </p>
+<button type="button"
+                            id="cancelDeviceBindingButton">
+                        Cancel
+                    </button>
+                </div>
+
+            </div>
 
         </div>
 

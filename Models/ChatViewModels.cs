@@ -1,4 +1,4 @@
-namespace WebAndMobile.ViewModels;
+namespace WebAndMobile.Models;
 
 public class ChatIndexViewModel
 {
@@ -28,4 +28,10 @@ public class ChatMessageDto
     public string Content { get; set; } = string.Empty;
     public DateTime SentAtUtc { get; set; }
     public bool IsRead { get; set; }
+    public string MessageType { get; set; } = "Text";
+    public string? CallStatus { get; set; }
+    public DateTime? CallStartedAtUtc { get; set; }
+    public DateTime? CallAnsweredAtUtc { get; set; }
+    public DateTime? CallEndedAtUtc { get; set; }
+    public int? CallDurationSeconds { get; set; }
 }

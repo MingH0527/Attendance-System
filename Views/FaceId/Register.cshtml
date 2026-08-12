@@ -3,27 +3,126 @@
     int? returnFeeId = ViewBag.ReturnFeeId;
     string returnUrl = ViewBag.ReturnUrl ?? Url.Action("Manage", "FaceId")!;
 }
-<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
+
+<link rel="stylesheet"
+      href="~/css/face-payment.css"
+      asp-append-version="true" />
+
 <div class="security-shell">
-    <section class="security-card camera-card" id="faceApp"
+    <section class="security-card camera-card"
+             id="faceApp"
              data-mode="register"
              data-auto-start="true"
              data-return-url="@returnUrl">
+
         @Html.AntiForgeryToken()
-        <p class="eyebrow">AI Face Registration</p>
-        <h1>Register your payment face</h1>
-        <p class="muted">Only one person is allowed. Look forward and keep still.</p>
-        @if (ViewBag.Message != null) { <div class="message error">@ViewBag.Message</div> }
+
+        <p class="eyebrow">
+            AI Face Registration
+        </p>
+
+        <h1>
+            Register your payment face
+        </h1>
+
+        <p class="muted">
+            Keep one full face inside the guide.
+            Remove anything covering your face and remain still.
+        </p>
+
+        @if (ViewBag.Message != null)
+        {
+            <div class="message error">
+                @ViewBag.Message
+            </div>
+        }
+
         <div class="camera-frame">
-            <video id="faceVideo" autoplay playsinline muted></video>
-            <canvas id="captureCanvas" hidden></canvas>
+            <video id="faceVideo"
+                   autoplay
+                   playsinline
+                   muted>
+            </video>
+
+            <canvas id="captureCanvas"
+                    hidden>
+            </canvas>
+
             <div class="face-guide"></div>
         </div>
-        <div class="progress-caption"><span>Registration progress</span><strong id="progressText">0%</strong></div>
-        <div class="progress-track"><div id="faceProgress" class="progress-value"></div></div>
-        <div id="faceStatus" class="face-status">Requesting camera permission…</div>
-        <button id="startFaceButton" class="primary-action button-action" type="button">Start Registration</button>
-        <a class="secondary-action" asp-action="Manage" asp-route-returnFeeId="@returnFeeId">Cancel</a>
+
+        <div class="progress-caption">
+            <span>
+                Face progress
+            </span>
+
+            <strong id="progressText">
+                0%
+            </strong>
+        </div>
+
+        <div class="progress-track">
+            <div id="faceProgress"
+                 class="progress-value">
+            </div>
+        </div>
+
+        <div id="faceStatus"
+             class="face-status">
+            Requesting camera permission…
+        </div>
+
+        <button id="startFaceButton"
+                class="primary-action button-action"
+                type="button">
+            Restart Registration
+        </button>
+
+        <a class="secondary-action"
+           asp-action="Manage"
+           asp-route-returnFeeId="@returnFeeId">
+            Cancel
+        </a>
+
     </section>
 </div>
-<script src="~/js/face-payment.js" asp-append-version="true"></script>
+
+
+<script>
+    window.mpVisionReady = new Promise((resolve, reject) => {
+        window.__resolveMpVision = resolve;
+        window.__rejectMpVision = reject;
+    });
+
+    window.addEventListener("error", event => {
+        const source = event?.filename || "";
+
+        if (source.includes("@@mediapipe/tasks-vision")) {
+            window.__rejectMpVision?.(
+                new Error(
+                    "MediaPipe Tasks Vision failed to load from the CDN."
+                )
+            );
+        }
+    });
+</script>
+
+<script type="module">
+    import {
+        FilesetResolver,
+        FaceLandmarker,
+        HandLandmarker
+    } from "https://cdn.jsdelivr.net/npm/@@mediapipe/tasks-vision/vision_bundle.mjs";
+
+    window.mpVision = {
+        FilesetResolver,
+        FaceLandmarker,
+        HandLandmarker
+    };
+
+    window.__resolveMpVision?.(window.mpVision);
+</script>
+
+<script src="~/js/face-payment.js"
+        asp-append-version="true">
+</script>

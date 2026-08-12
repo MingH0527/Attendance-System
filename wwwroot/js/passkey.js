@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
     "use strict";
 
     const registerButton =
@@ -105,6 +105,284 @@
             .replace(/=+$/g, "");
     }
 
+
+    function getOrCreateDeviceIdentifier() {
+        const storageKey =
+            "WebAndMobile.PasskeyDeviceId";
+
+        let deviceIdentifier =
+            window.localStorage.getItem(
+                storageKey
+            );
+
+        if (
+            deviceIdentifier &&
+            /^[a-f0-9]{32}$/i.test(
+                deviceIdentifier
+            )
+        ) {
+            return deviceIdentifier
+                .toLowerCase();
+        }
+
+        if (
+            window.crypto &&
+            typeof window.crypto.randomUUID ===
+                "function"
+        ) {
+            deviceIdentifier =
+                window.crypto
+                    .randomUUID()
+                    .replace(/-/g, "");
+        }
+        else {
+            const bytes =
+                new Uint8Array(16);
+
+            window.crypto
+                .getRandomValues(bytes);
+
+            deviceIdentifier =
+                Array.from(bytes)
+                    .map(
+                        value =>
+                            value
+                                .toString(16)
+                                .padStart(2, "0")
+                    )
+                    .join("");
+        }
+
+        window.localStorage.setItem(
+            storageKey,
+            deviceIdentifier
+        );
+
+        return deviceIdentifier;
+    }
+
+    function getBasicDeviceType(userAgent) {
+        const ua = userAgent || "";
+
+        const isTablet =
+            /iPad|Tablet|PlayBook|Silk/i.test(ua) ||
+            (/Android/i.test(ua) &&
+             !/Mobile/i.test(ua)) ||
+            /SM-T|SM-X/i.test(ua);
+
+        if (isTablet) {
+            return "Tablet";
+        }
+
+        const isMobile =
+            /Mobi|Android|iPhone|iPod|Windows Phone/i
+                .test(ua);
+
+        return isMobile
+            ? "Mobile"
+            : "Desktop";
+    }
+
+    function getOperatingSystem(userAgent) {
+        const ua = userAgent || "";
+
+        let match =
+            ua.match(/Android\s([0-9.]+)/i);
+
+        if (match) {
+            return `Android ${match[1]}`;
+        }
+
+        match =
+            ua.match(/(?:iPhone OS|CPU OS)\s([0-9_]+)/i);
+
+        if (match) {
+            return `iOS ${match[1].replace(/_/g, ".")}`;
+        }
+
+        if (/Windows NT 10\.0/i.test(ua)) {
+            return "Windows";
+        }
+
+        if (/Mac OS X/i.test(ua)) {
+            match =
+                ua.match(/Mac OS X\s([0-9_]+)/i);
+
+            return match
+                ? `macOS ${match[1].replace(/_/g, ".")}`
+                : "macOS";
+        }
+
+        if (/Linux/i.test(ua)) {
+            return "Linux";
+        }
+
+        return "Unknown OS";
+    }
+
+    function getBrowser(userAgent) {
+        const ua = userAgent || "";
+
+        let match =
+            ua.match(/Edg\/([0-9.]+)/i);
+
+        if (match) {
+            return `Microsoft Edge ${match[1]}`;
+        }
+
+        match =
+            ua.match(/Chrome\/([0-9.]+)/i);
+
+        if (match && !/Edg\//i.test(ua)) {
+            return `Google Chrome ${match[1]}`;
+        }
+
+        match =
+            ua.match(/Firefox\/([0-9.]+)/i);
+
+        if (match) {
+            return `Mozilla Firefox ${match[1]}`;
+        }
+
+        match =
+            ua.match(/Version\/([0-9.]+).*Safari/i);
+
+        if (match && !/Chrome/i.test(ua)) {
+            return `Safari ${match[1]}`;
+        }
+
+        return "Unknown Browser";
+    }
+
+    async function getDeviceInfo(
+        credential
+    ) {
+        const userAgent =
+            navigator.userAgent || "";
+
+        let deviceType =
+            getBasicDeviceType(
+                userAgent
+            );
+
+        let operatingSystem =
+            getOperatingSystem(
+                userAgent
+            );
+
+        let browser =
+            getBrowser(
+                userAgent
+            );
+
+        let deviceName = "";
+
+        if (navigator.userAgentData) {
+            try {
+                const highEntropy =
+                    await navigator.userAgentData
+                        .getHighEntropyValues([
+                            "model",
+                            "platform",
+                            "platformVersion",
+                            "fullVersionList"
+                        ]);
+
+                if (highEntropy.model) {
+                    deviceName =
+                        highEntropy.model;
+                }
+
+                if (navigator.userAgentData.mobile &&
+                    deviceType !== "Tablet") {
+                    deviceType = "Mobile";
+                }
+
+                if (
+                    highEntropy.platform &&
+                    highEntropy.platformVersion
+                ) {
+                    operatingSystem =
+                        `${highEntropy.platform} ` +
+                        `${highEntropy.platformVersion}`;
+                }
+
+                if (
+                    Array.isArray(
+                        highEntropy.fullVersionList)
+                ) {
+                    const preferred =
+                        highEntropy.fullVersionList
+                            .find(
+                                item =>
+                                    /Google Chrome|Microsoft Edge|Chromium/i
+                                        .test(
+                                            item.brand
+                                        ));
+
+                    if (preferred) {
+                        browser =
+                            `${preferred.brand} ` +
+                            `${preferred.version}`;
+                    }
+                }
+            }
+            catch (error) {
+                console.debug(
+                    "High entropy device information unavailable.",
+                    error
+                );
+            }
+        }
+
+        if (!deviceName) {
+            if (deviceType === "Tablet") {
+                deviceName =
+                    /iPad/i.test(userAgent)
+                        ? "iPad"
+                        : "Tablet";
+            }
+            else if (deviceType === "Mobile") {
+                deviceName =
+                    /iPhone/i.test(userAgent)
+                        ? "iPhone"
+                        : "Mobile Phone";
+            }
+            else if (/Windows/i.test(userAgent)) {
+                deviceName = "Windows PC";
+            }
+            else if (/Macintosh/i.test(userAgent)) {
+                deviceName = "Mac";
+            }
+            else {
+                deviceName = "Computer";
+            }
+        }
+
+        return {
+            deviceIdentifier:
+                getOrCreateDeviceIdentifier(),
+            deviceName,
+            deviceType,
+            operatingSystem,
+            browser,
+
+            authenticatorAttachment:
+                credential
+                    .authenticatorAttachment ||
+                "Unknown",
+
+            transports:
+                typeof credential.response
+                    .getTransports === "function"
+                    ? credential.response
+                        .getTransports()
+                    : [],
+
+            userAgent
+        };
+    }
+
     function prepareCreationOptions(
         options
     ) {
@@ -186,6 +464,28 @@
         };
     }
 
+    async function readJsonResponse(
+        response
+    ) {
+        const text =
+            await response.text();
+
+        if (!text) {
+            return {};
+        }
+
+        try {
+            return JSON.parse(text);
+        }
+        catch {
+            throw new Error(
+                text.length > 300
+                    ? text.substring(0, 300)
+                    : text
+            );
+        }
+    }
+
     function setRegisterLoading(
         isLoading
     ) {
@@ -202,6 +502,164 @@
                     ? "Waiting for verification..."
                     : "Register Passkey";
         }
+    }
+
+    const bindingModal =
+        document.getElementById(
+            "deviceBindingModal"
+        );
+
+    const bindingQr =
+        document.getElementById(
+            "deviceBindingQr"
+        );
+
+    const bindingStatus =
+        document.getElementById(
+            "deviceBindingStatus"
+        );
+    const cancelBindingButton =
+        document.getElementById(
+            "cancelDeviceBindingButton"
+        );
+
+    let bindingCancelled = false;
+
+    function closeBindingModal() {
+        bindingCancelled = true;
+
+        if (bindingModal) {
+            bindingModal.hidden = true;
+        }
+    }
+
+    cancelBindingButton?.addEventListener(
+        "click",
+        closeBindingModal
+    );
+
+    async function startPhoneDeviceBinding() {
+        bindingCancelled = false;
+
+        const response =
+            await fetch(
+                "/PasskeyDeviceBinding/Start",
+                {
+                    method: "POST",
+                    headers: {
+                        "RequestVerificationToken":
+                            tokenInput.value
+                    }
+                }
+            );
+
+        const data =
+            await readJsonResponse(
+                response
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ||
+                "Unable to start phone verification."
+            );
+        }
+
+        if (bindingQr) {
+            bindingQr.src = data.qrUrl;
+        }
+        if (bindingStatus) {
+            bindingStatus.textContent =
+                "Waiting for the phone or tablet to verify...";
+        }
+
+        if (bindingModal) {
+            bindingModal.hidden = false;
+        }
+
+        const startedAt =
+            Date.now();
+
+        while (!bindingCancelled) {
+            if (
+                Date.now() - startedAt >
+                5 * 60 * 1000
+            ) {
+                throw new Error(
+                    "Device verification expired. Please try again."
+                );
+            }
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        1500
+                    )
+            );
+
+            const statusResponse =
+                await fetch(
+                    "/PasskeyDeviceBinding/Status" +
+                    `?token=${encodeURIComponent(data.token)}`,
+                    {
+                        method: "GET",
+                        cache: "no-store"
+                    }
+                );
+
+            const statusData =
+                await readJsonResponse(
+                    statusResponse
+                );
+
+            if (!statusResponse.ok) {
+                throw new Error(
+                    statusData.message ||
+                    "Unable to check device verification."
+                );
+            }
+
+            if (statusData.status === "Verified") {
+                if (bindingStatus) {
+                    bindingStatus.textContent =
+                        "Device verified. Continuing Passkey registration...";
+                }
+
+                await new Promise(
+                    resolve =>
+                        setTimeout(
+                            resolve,
+                            500
+                        )
+                );
+
+                if (bindingModal) {
+                    bindingModal.hidden = true;
+                }
+
+                return;
+            }
+
+            if (statusData.status === "Blocked") {
+                throw new Error(
+                    "This phone or tablet has reached its 4-account Passkey limit."
+                );
+            }
+
+            if (
+                statusData.status === "Expired" ||
+                statusData.status === "Cancelled"
+            ) {
+                throw new Error(
+                    "Device verification expired or was cancelled."
+                );
+            }
+        }
+
+        throw new Error(
+            "Device verification was cancelled."
+        );
     }
 
     async function registerPasskey() {
@@ -229,12 +687,13 @@
         setRegisterLoading(true);
 
         try {
+            await startPhoneDeviceBinding();
+
             const optionResponse =
                 await fetch(
                     "/MyProfile/CreatePasskeyOptions",
                     {
                         method: "POST",
-
                         headers: {
                             "RequestVerificationToken":
                                 tokenInput.value
@@ -243,7 +702,9 @@
                 );
 
             const optionData =
-                await optionResponse.json();
+                await readJsonResponse(
+                    optionResponse
+                );
 
             if (!optionResponse.ok) {
                 throw new Error(
@@ -252,9 +713,22 @@
                 );
             }
 
+            if (optionData.warningMessage) {
+                const proceed =
+                    window.confirm(
+                        optionData.warningMessage +
+                        "\n\nContinue with Passkey registration?"
+                    );
+
+                if (!proceed) {
+                    setRegisterLoading(false);
+                    return;
+                }
+            }
+
             const publicKeyOptions =
                 prepareCreationOptions(
-                    optionData
+                    optionData.options
                 );
 
             const credential =
@@ -275,12 +749,22 @@
                     credential
                 );
 
+            const deviceInfo =
+                await getDeviceInfo(
+                    credential
+                );
+
+            const registrationRequest = {
+                attestationResponse:
+                    credentialJson,
+                deviceInfo
+            };
+
             const completeResponse =
                 await fetch(
                     "/MyProfile/CompletePasskeyRegistration",
                     {
                         method: "POST",
-
                         headers: {
                             "Content-Type":
                                 "application/json",
@@ -291,13 +775,15 @@
 
                         body:
                             JSON.stringify(
-                                credentialJson
+                                registrationRequest
                             )
                     }
                 );
 
             const completeData =
-                await completeResponse.json();
+                await readJsonResponse(
+                    completeResponse
+                );
 
             if (!completeResponse.ok) {
                 throw new Error(
@@ -319,6 +805,10 @@
         }
         catch (error) {
             console.error(error);
+
+            if (bindingModal) {
+                bindingModal.hidden = true;
+            }
 
             let message =
                 error.message ||
@@ -433,7 +923,9 @@
                 );
 
             const data =
-                await response.json();
+                await readJsonResponse(
+                    response
+                );
 
             if (!response.ok) {
                 throw new Error(

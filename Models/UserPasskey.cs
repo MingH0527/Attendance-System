@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAndMobile.Models;
@@ -7,6 +7,9 @@ public class UserPasskey
 {
     [Key]
     public int UserPasskeyId { get; set; }
+
+    [MaxLength(20)]
+    public string? PasskeyCode { get; set; }
 
     [Required]
     public int UserId { get; set; }
@@ -38,6 +41,13 @@ public class UserPasskey
 
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
+
+
+    [MaxLength(100)]
+    public string? DeviceIdentifier { get; set; }
+
+    [MaxLength(255)]
+    public string? RelyingPartyId { get; set; }
 
     [MaxLength(100)]
     public string? DeviceType { get; set; }

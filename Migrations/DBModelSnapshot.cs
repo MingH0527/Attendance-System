@@ -95,6 +95,22 @@ namespace WebAndMobile.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ChatMessageId"));
 
+                    b.Property<DateTime?>("CallAnsweredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CallDurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CallEndedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CallStartedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CallStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(400)
@@ -105,6 +121,11 @@ namespace WebAndMobile.Migrations
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("ReadAtUtc")
                         .HasColumnType("datetime2");
@@ -229,6 +250,52 @@ namespace WebAndMobile.Migrations
                         .IsUnique();
 
                     b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.PasskeyDeviceBinding", b =>
+                {
+                    b.Property<int>("PasskeyDeviceBindingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PasskeyDeviceBindingId"));
+
+                    b.Property<string>("BindingToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeviceIdentifier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("PasskeyDeviceBindingId");
+
+                    b.HasIndex("BindingToken")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("DeviceIdentifier", "Status");
+
+                    b.ToTable("PasskeyDeviceBindings");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.PaymentSecurity", b =>
@@ -598,6 +665,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("DeviceIdentifier")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("DeviceName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -614,9 +685,17 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("PasskeyCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<byte[]>("PublicKey")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("RelyingPartyId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<long>("SignCount")
                         .HasColumnType("bigint");
@@ -636,7 +715,15 @@ namespace WebAndMobile.Migrations
                     b.HasIndex("CredentialId")
                         .IsUnique();
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("DeviceIdentifier");
+
+                    b.HasIndex("PasskeyCode")
+                        .IsUnique()
+                        .HasFilter("[PasskeyCode] IS NOT NULL");
+
+                    b.HasIndex("UserId", "DeviceIdentifier")
+                        .IsUnique()
+                        .HasFilter("[DeviceIdentifier] IS NOT NULL");
 
                     b.ToTable("UserPasskeys");
                 });
@@ -707,6 +794,17 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.PasskeyDeviceBinding", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.PaymentSecurity", b =>

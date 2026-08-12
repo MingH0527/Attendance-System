@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using QRCoder;
 using Stripe.Checkout;
 using WebAndMobile.Models;
+using WebAndMobile.Configuration;
 
 namespace WebAndMobile.Controllers;
 
@@ -16,7 +17,6 @@ public class PaymentController : Controller
     private const string PendingFeeIdKey = "QrPayment.Pending.FeeId";
     private const string PendingWalletKey = "QrPayment.Pending.Wallet";
     private const string PendingAmountKey = "QrPayment.Pending.Amount";
-    private const string PublicBaseUrlKey = "QrPayment.PublicBaseUrl";
 
     private readonly DB db;
     private readonly IConfiguration configuration;
@@ -57,7 +57,6 @@ public class PaymentController : Controller
         ViewBag.HasPaymentPin = await db.PaymentSecurities
             .AnyAsync(p => p.UserId == userId && p.PinEnabled);
 
-        ViewBag.PublicBaseUrl = HttpContext.Session.GetString(PublicBaseUrlKey) ?? "";
         ViewBag.PublishableKey = configuration["Stripe:PublishableKey"];
         ViewBag.Message = TempData["Message"];
         ViewBag.Error = TempData["Error"];
@@ -89,7 +88,7 @@ public class PaymentController : Controller
         }
 
         long amountInSen = Convert.ToInt64(decimal.Round(finalAmount * 100, 0, MidpointRounding.AwayFromZero));
-        string domain = $"{Request.Scheme}://{Request.Host}";
+        string domain = Cloudflare.GetPublicUrl();
 
         SessionCreateOptions options = new()
         {
@@ -226,8 +225,7 @@ public class PaymentController : Controller
     public async Task<IActionResult> BeginQrPayment(
         int feeId,
         string paymentMethod,
-        decimal? customAmount,
-        string publicBaseUrl)
+        decimal? customAmount)
     {
         int userId = GetCurrentUserId();
         FeeItem? fee = GetFeeItems().FirstOrDefault(f => f.Id == feeId);
@@ -247,16 +245,9 @@ public class PaymentController : Controller
             return RedirectToAction(nameof(Pay), new { feeId });
         }
 
-        if (!TryNormalizePublicBaseUrl(publicBaseUrl, out string normalizedUrl))
-        {
-            TempData["Error"] = "Paste a valid Cloudflare HTTPS URL, for example https://name.trycloudflare.com.";
-            return RedirectToAction(nameof(Pay), new { feeId });
-        }
-
         HttpContext.Session.SetInt32(PendingFeeIdKey, feeId);
         HttpContext.Session.SetString(PendingWalletKey, paymentMethod);
         HttpContext.Session.SetString(PendingAmountKey, amount.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        HttpContext.Session.SetString(PublicBaseUrlKey, normalizedUrl);
 
         bool hasPin = await db.PaymentSecurities.AnyAsync(p => p.UserId == userId && p.PinEnabled);
         if (!hasPin)
@@ -342,14 +333,8 @@ public class PaymentController : Controller
 
         if (transaction == null) return NotFound();
 
-        string? publicBaseUrl = HttpContext.Session.GetString(PublicBaseUrlKey);
-        if (!TryNormalizePublicBaseUrl(publicBaseUrl, out string normalizedUrl))
-        {
-            TempData["Error"] = "Cloudflare public URL is missing. Return to the payment page and paste it again.";
-            return RedirectToAction(nameof(Pay), new { feeId = transaction.FeeId });
-        }
-
-        string mobileUrl = $"{normalizedUrl}/Payment/MobilePay?token={Uri.EscapeDataString(transaction.QrToken)}";
+        string mobileUrl = Cloudflare.BuildPublicUrl(
+            $"/Payment/MobilePay?token={Uri.EscapeDataString(transaction.QrToken)}");
 
         using QRCodeGenerator generator = new();
         using QRCodeData data = generator.CreateQrCode(mobileUrl, QRCodeGenerator.ECCLevel.Q);
@@ -358,7 +343,6 @@ public class PaymentController : Controller
 
         ViewBag.QrDataUrl = "data:image/png;base64," + Convert.ToBase64String(png);
         ViewBag.MobileUrl = mobileUrl;
-        ViewBag.PublicBaseUrl = normalizedUrl;
 
         return View(transaction);
     }
@@ -505,22 +489,6 @@ public class PaymentController : Controller
                 p.Status == "Paid");
 
         return transaction == null ? NotFound() : View(transaction);
-    }
-
-    private static bool TryNormalizePublicBaseUrl(string? value, out string normalized)
-    {
-        normalized = "";
-        string candidate = (value ?? "").Trim().TrimEnd('/');
-
-        if (!Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uri) ||
-            uri.Scheme != Uri.UriSchemeHttps ||
-            string.IsNullOrWhiteSpace(uri.Host))
-        {
-            return false;
-        }
-
-        normalized = uri.GetLeftPart(UriPartial.Authority);
-        return true;
     }
 
     private void ClearPendingQrRequest()

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -16,21 +17,29 @@ public class MyProfileController : Controller
     private const string PasskeyOptionsSessionKey =
         "Passkey.RegistrationOptions";
 
+    private const string PasskeyDeviceSessionKey =
+        "Passkey.RegistrationDeviceIdentifier";
+
+    private const string VerifiedBindingSessionKey =
+        "Passkey.VerifiedPhoneDeviceIdentifier";
+
     private const int MaximumPasskeys = 3;
+    private const int MaximumAccountsPerDevice = 4;
+    private const string DeviceCookieName = "WebAndMobile.PasskeyDevice";
 
     private readonly DB db;
-    private readonly IFido2 fido2;
+    private readonly PasskeyFido2Factory passkeyFido2Factory;
 
     private readonly IPasswordHasher<AdminSecurity>
         adminPinHasher;
 
     public MyProfileController(
         DB db,
-        IFido2 fido2,
+        PasskeyFido2Factory passkeyFido2Factory,
         IPasswordHasher<AdminSecurity> adminPinHasher)
     {
         this.db = db;
-        this.fido2 = fido2;
+        this.passkeyFido2Factory = passkeyFido2Factory;
         this.adminPinHasher = adminPinHasher;
     }
 
@@ -104,6 +113,12 @@ public class MyProfileController : Controller
         ViewBag.MaximumPasskeys =
             MaximumPasskeys;
 
+        ViewBag.PasskeyEnvironment =
+            passkeyFido2Factory.GetMode(Request);
+
+        ViewBag.PasskeyRpId =
+            passkeyFido2Factory.GetCurrentRpId(Request);
+
         User? user =
             await db.Users
                 .AsNoTracking()
@@ -157,72 +172,153 @@ public class MyProfileController : Controller
     public async Task<IActionResult>
         CreatePasskeyOptions()
     {
-        int? userId =
-            GetCurrentUserId();
+        int? userId = GetCurrentUserId();
 
         if (userId == null)
         {
             return Unauthorized(new
             {
                 success = false,
-                message =
-                    "Your login session has expired."
+                message = "Your login session has expired."
             });
         }
 
-        User? user =
-            await db.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    u =>
-                        u.UserId ==
-                        userId.Value
-                );
+        User? user = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                u => u.UserId == userId.Value);
 
         if (user == null)
         {
             return NotFound(new
             {
                 success = false,
-                message =
-                    "User account could not be found."
+                message = "User account could not be found."
             });
         }
 
         List<UserPasskey> existingPasskeys =
             await db.UserPasskeys
                 .AsNoTracking()
-                .Where(
-                    p =>
-                        p.UserId ==
-                        userId.Value
-                )
+                .Where(p => p.UserId == userId.Value)
                 .ToListAsync();
 
-        if (existingPasskeys.Count >=
-            MaximumPasskeys)
+        if (existingPasskeys.Count >= MaximumPasskeys)
         {
             return BadRequest(new
             {
                 success = false,
                 message =
-                    "This account already has " +
-                    "the maximum of 3 passkeys."
+                    "This account already has the maximum of 3 passkeys."
             });
+        }
+
+        string? verifiedPhoneDeviceIdentifier =
+            HttpContext.Session.GetString(
+                VerifiedBindingSessionKey
+            );
+
+        string deviceIdentifier =
+            NormaliseDeviceIdentifier(
+                verifiedPhoneDeviceIdentifier
+            );
+
+        if (string.IsNullOrWhiteSpace(
+                deviceIdentifier))
+        {
+            return StatusCode(
+                StatusCodes.Status428PreconditionRequired,
+                new
+                {
+                    success = false,
+                    code = "PHONE_BINDING_REQUIRED",
+                    message =
+                        "Verify the phone or tablet that will own this Passkey first."
+                });
+        }
+
+        HttpContext.Session.SetString(
+            PasskeyDeviceSessionKey,
+            deviceIdentifier
+        );
+
+        bool sameDeviceAlreadyRegistered =
+            existingPasskeys.Any(
+                p =>
+                    !string.IsNullOrWhiteSpace(
+                        p.DeviceIdentifier) &&
+                    string.Equals(
+                        p.DeviceIdentifier,
+                        deviceIdentifier,
+                        StringComparison.Ordinal));
+
+        if (sameDeviceAlreadyRegistered)
+        {
+            return Conflict(new
+            {
+                success = false,
+                code = "DEVICE_ALREADY_REGISTERED",
+                message =
+                    "This phone or tablet is already registered for this account. " +
+                    "Use a different device."
+            });
+        }
+
+        int deviceAccountCount =
+            await GetDeviceAccountCountAsync(
+                deviceIdentifier);
+
+        if (deviceAccountCount >=
+            MaximumAccountsPerDevice)
+        {
+            HttpContext.Session.Remove(
+                VerifiedBindingSessionKey
+            );
+
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                new
+                {
+                    success = false,
+                    code = "DEVICE_ACCOUNT_LIMIT_REACHED",
+                    deviceAccountCount,
+                    deviceMaximumAccounts =
+                        MaximumAccountsPerDevice,
+                    message =
+                        "Passkey registration blocked. " +
+                        "This phone or tablet is already linked to the maximum of 4 accounts. " +
+                        "Delete a Passkey association from an account you no longer want linked " +
+                        "to this device, then try again."
+                });
+        }
+
+        string? warningMessage = null;
+        string warningLevel = "none";
+
+        if (deviceAccountCount == 2)
+        {
+            warningLevel = "warning";
+            warningMessage =
+                "This device is currently linked to 2 accounts. " +
+                "After registering this account, only 1 Passkey account slot " +
+                "will remain on this device.";
+        }
+        else if (deviceAccountCount == 3)
+        {
+            warningLevel = "final";
+            warningMessage =
+                "This is the final available Passkey account slot on this device. " +
+                "After registering this account, this device will not accept " +
+                "Passkey registration for any additional accounts.";
         }
 
         Fido2User fidoUser = new()
         {
             Id =
                 Encoding.UTF8.GetBytes(
-                    user.UserId.ToString()
-                ),
-
-            Name =
-                user.Username,
-
-            DisplayName =
-                user.Username
+                    user.UserId.ToString()),
+            Name = user.Username,
+            DisplayName = user.Username
         };
 
         List<PublicKeyCredentialDescriptor>
@@ -231,9 +327,7 @@ public class MyProfileController : Controller
                     .Select(
                         p =>
                             new PublicKeyCredentialDescriptor(
-                                p.CredentialId
-                            )
-                    )
+                                p.CredentialId))
                     .ToList();
 
         AuthenticatorSelection
@@ -241,41 +335,49 @@ public class MyProfileController : Controller
             {
                 ResidentKey =
                     ResidentKeyRequirement.Required,
-
                 UserVerification =
                     UserVerificationRequirement.Required
             };
+
+        IFido2 fido2 =
+            passkeyFido2Factory.Create(Request);
 
         CredentialCreateOptions options =
             fido2.RequestNewCredential(
                 new RequestNewCredentialParams
                 {
-                    User =
-                        fidoUser,
-
+                    User = fidoUser,
                     ExcludeCredentials =
                         excludedCredentials,
-
                     AuthenticatorSelection =
                         authenticatorSelection,
-
                     AttestationPreference =
                         AttestationConveyancePreference.None,
-
                     Extensions =
                         new AuthenticationExtensionsClientInputs
                         {
                             CredProps = true
                         }
-                }
-            );
+                });
 
         HttpContext.Session.SetString(
             PasskeyOptionsSessionKey,
-            options.ToJson()
-        );
+            options.ToJson());
 
-        return Json(options);
+        return Json(new
+        {
+            success = true,
+            options,
+            environment =
+                passkeyFido2Factory.GetMode(Request),
+            rpId =
+                passkeyFido2Factory.GetCurrentRpId(Request),
+            deviceAccountCount,
+            deviceMaximumAccounts =
+                MaximumAccountsPerDevice,
+            warningLevel,
+            warningMessage
+        });
     }
 
     // ==================================================
@@ -287,116 +389,188 @@ public class MyProfileController : Controller
     public async Task<IActionResult>
         CompletePasskeyRegistration(
             [FromBody]
-            AuthenticatorAttestationRawResponse
-                attestationResponse,
+            PasskeyRegistrationRequest request,
 
             CancellationToken cancellationToken)
     {
-        int? userId =
-            GetCurrentUserId();
+        int? userId = GetCurrentUserId();
 
         if (userId == null)
         {
             return Unauthorized(new
             {
                 success = false,
-                message =
-                    "Your login session has expired."
+                message = "Your login session has expired."
             });
         }
 
-        string? optionsJson =
-            HttpContext.Session.GetString(
-                PasskeyOptionsSessionKey
-            );
-
-        if (string.IsNullOrWhiteSpace(
-                optionsJson))
+        if (request?.AttestationResponse == null)
         {
             return BadRequest(new
             {
                 success = false,
                 message =
-                    "Passkey registration expired. " +
-                    "Please try again."
+                    "Invalid Passkey registration response."
+            });
+        }
+
+        string? optionsJson =
+            HttpContext.Session.GetString(
+                PasskeyOptionsSessionKey);
+
+        if (string.IsNullOrWhiteSpace(optionsJson))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message =
+                    "Passkey registration expired. Please try again."
+            });
+        }
+
+        string? registrationDeviceIdentifier =
+            HttpContext.Session.GetString(
+                PasskeyDeviceSessionKey
+            );
+
+        HttpContext.Session.Remove(
+            PasskeyOptionsSessionKey);
+
+        HttpContext.Session.Remove(
+            PasskeyDeviceSessionKey);
+
+        if (string.IsNullOrWhiteSpace(
+                registrationDeviceIdentifier))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                code = "DEVICE_SESSION_MISSING",
+                message =
+                    "The device registration session expired. " +
+                    "Please start Passkey registration again."
+            });
+        }
+
+        string deviceIdentifier =
+            NormaliseDeviceIdentifier(
+                registrationDeviceIdentifier
+            );
+
+        if (string.IsNullOrWhiteSpace(
+                deviceIdentifier))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                code = "DEVICE_IDENTIFIER_INVALID",
+                message =
+                    "The verified phone or tablet identity is invalid. " +
+                    "Please restart Passkey registration."
             });
         }
 
         HttpContext.Session.Remove(
-            PasskeyOptionsSessionKey
+            VerifiedBindingSessionKey
         );
 
         try
         {
+            int currentCount =
+                await db.UserPasskeys.CountAsync(
+                    p => p.UserId == userId.Value,
+                    cancellationToken);
+
+            if (currentCount >= MaximumPasskeys)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message =
+                        "This account already has the maximum of 3 passkeys."
+                });
+            }
+
+            bool sameDeviceAlreadyRegistered =
+                await db.UserPasskeys.AnyAsync(
+                    p =>
+                        p.UserId == userId.Value &&
+                        p.DeviceIdentifier ==
+                            deviceIdentifier,
+                    cancellationToken);
+
+            if (sameDeviceAlreadyRegistered)
+            {
+                return Conflict(new
+                {
+                    success = false,
+                    code = "DEVICE_ALREADY_REGISTERED",
+                    message =
+                        "This device is already registered for this account."
+                });
+            }
+
+            int deviceAccountCount =
+                await GetDeviceAccountCountAsync(
+                    deviceIdentifier,
+                    cancellationToken);
+
+            if (deviceAccountCount >=
+                MaximumAccountsPerDevice)
+            {
+                return StatusCode(
+                    StatusCodes.Status429TooManyRequests,
+                    new
+                    {
+                        success = false,
+                        code =
+                            "DEVICE_ACCOUNT_LIMIT_REACHED",
+                        message =
+                            "Passkey registration blocked. " +
+                            "This device is already linked to 4 accounts. " +
+                            "Delete an unwanted account association first."
+                    });
+            }
+
             CredentialCreateOptions originalOptions =
                 CredentialCreateOptions.FromJson(
-                    optionsJson
-                );
+                    optionsJson);
 
             IsCredentialIdUniqueToUserAsyncDelegate
                 uniqueCredentialCallback =
                     async (args, token) =>
                     {
                         bool credentialExists =
-                            await db.UserPasskeys
-                                .AnyAsync(
-                                    p =>
-                                        p.CredentialId ==
-                                        args.CredentialId,
-
-                                    token
-                                );
+                            await db.UserPasskeys.AnyAsync(
+                                p =>
+                                    p.CredentialId ==
+                                    args.CredentialId,
+                                token);
 
                         return !credentialExists;
                     };
+
+            IFido2 fido2 =
+                passkeyFido2Factory.Create(Request);
 
             var result =
                 await fido2.MakeNewCredentialAsync(
                     new MakeNewCredentialParams
                     {
                         AttestationResponse =
-                            attestationResponse,
-
+                            request.AttestationResponse,
                         OriginalOptions =
                             originalOptions,
-
                         IsCredentialIdUniqueToUserCallback =
                             uniqueCredentialCallback
                     },
-
                     cancellationToken:
-                        cancellationToken
-                );
-
-            int currentCount =
-                await db.UserPasskeys.CountAsync(
-                    p =>
-                        p.UserId ==
-                        userId.Value,
-
-                    cancellationToken
-                );
-
-            if (currentCount >=
-                MaximumPasskeys)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message =
-                        "This account already has " +
-                        "the maximum of 3 passkeys."
-                });
-            }
+                        cancellationToken);
 
             bool duplicateExists =
                 await db.UserPasskeys.AnyAsync(
-                    p =>
-                        p.CredentialId ==
-                        result.Id,
-
-                    cancellationToken
-                );
+                    p => p.CredentialId == result.Id,
+                    cancellationToken);
 
             if (duplicateExists)
             {
@@ -404,75 +578,108 @@ public class MyProfileController : Controller
                 {
                     success = false,
                     message =
-                        "This passkey has already " +
-                        "been registered."
+                        "This passkey has already been registered."
                 });
             }
 
             string attachment =
-                "Unknown";
+                CleanDeviceValue(
+                    request.DeviceInfo
+                        .AuthenticatorAttachment,
+                    50,
+                    "Unknown");
 
             string transports =
-                attestationResponse.Response.Transports == null
+                request.DeviceInfo.Transports == null
                     ? ""
                     : string.Join(
                         ",",
-                        attestationResponse.Response.Transports
-                    );
+                        request.DeviceInfo.Transports
+                            .Where(
+                                x =>
+                                    !string.IsNullOrWhiteSpace(
+                                        x))
+                            .Take(10));
+
+            string deviceType =
+                NormaliseDeviceType(
+                    request.DeviceInfo.DeviceType);
+
+            string deviceName =
+                CleanDeviceValue(
+                    request.DeviceInfo.DeviceName,
+                    100,
+                    GetDeviceDisplayName(
+                        attachment,
+                        transports));
+
+            string operatingSystem =
+                CleanDeviceValue(
+                    request.DeviceInfo.OperatingSystem,
+                    100,
+                    "Unknown OS");
+
+            string browser =
+                CleanDeviceValue(
+                    request.DeviceInfo.Browser,
+                    100,
+                    "Unknown Browser");
 
             UserPasskey passkey = new()
             {
-                UserId =
-                    userId.Value,
-
-                CredentialId =
-                    result.Id,
-
-                PublicKey =
-                    result.PublicKey,
-
-                SignCount =
-                    result.SignCount,
-
-                AaGuid =
-                    result.AaGuid,
-
+                UserId = userId.Value,
+                CredentialId = result.Id,
+                PublicKey = result.PublicKey,
+                SignCount = result.SignCount,
+                AaGuid = result.AaGuid,
                 UserHandle =
                     originalOptions.User.Id,
-
-                CredentialType =
-                    "public-key",
-
-                DeviceName =
-                    GetDeviceDisplayName(
-                        attachment,
-                        transports
-                    ),
-
+                CredentialType = "public-key",
+                DeviceIdentifier =
+                    deviceIdentifier,
+                RelyingPartyId =
+                    passkeyFido2Factory
+                        .GetCurrentRpId(Request),
+                DeviceName = deviceName,
+                DeviceType = deviceType,
+                OperatingSystem =
+                    operatingSystem,
+                Browser = browser,
                 AuthenticatorAttachment =
                     attachment,
-
                 AuthenticatorTransports =
-                    transports,
-
-                CreatedAt =
-                    DateTime.UtcNow
+                    CleanDeviceValue(
+                        transports,
+                        200,
+                        ""),
+                UserAgent =
+                    CleanDeviceValue(
+                        request.DeviceInfo.UserAgent,
+                        300,
+                        ""),
+                CreatedAt = DateTime.UtcNow
             };
 
             db.UserPasskeys.Add(passkey);
 
             await db.SaveChangesAsync(
-                cancellationToken
-            );
+                cancellationToken);
+
+            passkey.PasskeyCode =
+                $"USRPK{passkey.UserPasskeyId:D4}";
+
+            await db.SaveChangesAsync(
+                cancellationToken);
 
             int newCount =
                 await db.UserPasskeys.CountAsync(
-                    p =>
-                        p.UserId ==
-                        userId.Value,
+                    p => p.UserId == userId.Value,
+                    cancellationToken);
 
-                    cancellationToken
-                );
+            int newDeviceAccountCount =
+                await GetDeviceAccountCountAsync(
+                    deviceIdentifier,
+                    cancellationToken);
 
             User? currentUser =
                 await db.Users
@@ -481,12 +688,9 @@ public class MyProfileController : Controller
                         u =>
                             u.UserId ==
                             userId.Value,
+                        cancellationToken);
 
-                        cancellationToken
-                    );
-
-            bool requiresAdminPinSetup =
-                false;
+            bool requiresAdminPinSetup = false;
 
             if (currentUser != null &&
                 string.Equals(
@@ -500,38 +704,51 @@ public class MyProfileController : Controller
                             a =>
                                 a.UserId ==
                                 currentUser.UserId &&
-
                                 a.PinEnabled,
-
-                            cancellationToken
-                        );
+                            cancellationToken);
 
                 requiresAdminPinSetup =
                     !hasAdminPin;
             }
 
+            string successMessage =
+                newDeviceAccountCount >=
+                MaximumAccountsPerDevice
+                    ? "Passkey registered successfully. " +
+                      "This device has now reached its 4-account limit."
+                    : requiresAdminPinSetup
+                        ? "Passkey registered. " +
+                          "Please set your Admin Security PIN."
+                        : "Passkey registered successfully.";
+
             return Json(new
             {
                 success = true,
-
-                message =
-                    requiresAdminPinSetup
-                        ? "Passkey registered. " +
-                          "Please set your Admin Security PIN."
-                        : "Passkey registered successfully.",
-
-                count =
-                    newCount,
-
-                maximum =
-                    MaximumPasskeys,
-
+                message = successMessage,
+                passkeyCode =
+                    passkey.PasskeyCode,
+                count = newCount,
+                maximum = MaximumPasskeys,
+                deviceAccountCount =
+                    newDeviceAccountCount,
+                deviceMaximumAccounts =
+                    MaximumAccountsPerDevice,
                 requiresAdminPinSetup,
-
+                environment =
+                    passkeyFido2Factory.GetMode(Request),
                 redirectUrl =
                     requiresAdminPinSetup
                         ? "/MyProfile/SetAdminPin"
                         : "/MyProfile/Passkey"
+            });
+        }
+        catch (DbUpdateException)
+        {
+            return Conflict(new
+            {
+                success = false,
+                message =
+                    "This account/device Passkey association already exists."
             });
         }
         catch (Exception exception)
@@ -539,12 +756,10 @@ public class MyProfileController : Controller
             return BadRequest(new
             {
                 success = false,
-
                 message =
                     "Passkey registration failed. " +
                     GetRealExceptionMessage(
-                        exception
-                    )
+                        exception)
             });
         }
     }
@@ -932,6 +1147,156 @@ public class MyProfileController : Controller
         )
             ? userId
             : null;
+    }
+
+    private string GetRequestDeviceIdentifier()
+    {
+        string? headerValue =
+            Request.Headers[
+                "X-Passkey-Device-Id"
+            ].FirstOrDefault();
+
+        string normalised =
+            NormaliseDeviceIdentifier(
+                headerValue
+            );
+
+        if (!string.IsNullOrWhiteSpace(
+                normalised))
+        {
+            SetDeviceCookie(normalised);
+            return normalised;
+        }
+
+        if (
+            Request.Cookies.TryGetValue(
+                DeviceCookieName,
+                out string? existing)
+        )
+        {
+            normalised =
+                NormaliseDeviceIdentifier(
+                    existing
+                );
+
+            if (!string.IsNullOrWhiteSpace(
+                    normalised))
+            {
+                return normalised;
+            }
+        }
+
+        string generated =
+            Guid.NewGuid().ToString("N");
+
+        SetDeviceCookie(generated);
+
+        return generated;
+    }
+
+    private static string NormaliseDeviceIdentifier(
+        string? value)
+    {
+        string cleaned =
+            (value ?? "")
+                .Trim()
+                .Replace("-", "")
+                .ToLowerInvariant();
+
+        if (
+            cleaned.Length != 32 ||
+            !cleaned.All(
+                character =>
+                    char.IsAsciiHexDigit(
+                        character))
+        )
+        {
+            return "";
+        }
+
+        return cleaned;
+    }
+
+    private void SetDeviceCookie(
+        string deviceIdentifier)
+    {
+        Response.Cookies.Append(
+            DeviceCookieName,
+            deviceIdentifier,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                IsEssential = true,
+                Expires =
+                    DateTimeOffset.UtcNow
+                        .AddYears(2)
+            });
+    }
+
+    private Task<int> GetDeviceAccountCountAsync(
+        string deviceIdentifier,
+        CancellationToken cancellationToken =
+            default)
+    {
+        return db.UserPasskeys
+            .AsNoTracking()
+            .Where(
+                p =>
+                    p.DeviceIdentifier ==
+                    deviceIdentifier)
+            .Select(p => p.UserId)
+            .Distinct()
+            .CountAsync(cancellationToken);
+    }
+
+    private static string NormaliseDeviceType(
+        string? value)
+    {
+        string type =
+            (value ?? "").Trim();
+
+        if (type.Equals(
+                "Mobile",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Mobile";
+        }
+
+        if (type.Equals(
+                "Tablet",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Tablet";
+        }
+
+        if (type.Equals(
+                "Desktop",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Desktop";
+        }
+
+        return "Unknown";
+    }
+
+    private static string CleanDeviceValue(
+        string? value,
+        int maximumLength,
+        string fallback)
+    {
+        string cleaned =
+            (value ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(cleaned))
+        {
+            cleaned = fallback;
+        }
+
+        return cleaned.Length <= maximumLength
+            ? cleaned
+            : cleaned[..maximumLength];
     }
 
     private static string GetDeviceDisplayName(

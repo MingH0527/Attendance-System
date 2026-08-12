@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
-using WebAndMobile.ViewModels;
 
 namespace WebAndMobile.Hubs;
 
@@ -287,160 +286,171 @@ public class ChatHub : Hub
     }
 
     // ==================================================
-    // VIDEO CALL SIGNALING
-    // SignalR transfers call controls, SDP and ICE.
-    // WebRTC transfers the actual audio/video.
+    // VIDEO CALL SIGNALING + DATABASE CALL RECORD
     // ==================================================
 
-    public async Task StartVideoCall(
-        int otherUserId)
+    public async Task<long> StartVideoCall(int otherUserId)
     {
-        int currentUserId =
-            GetCurrentUserId();
+        int currentUserId = GetCurrentUserId();
+        string currentRole = GetCurrentRole();
 
-        string currentRole =
-            GetCurrentRole();
+        User currentUser = await db.Users
+            .AsNoTracking()
+            .SingleAsync(u => u.UserId == currentUserId);
 
-        User currentUser =
-            await db.Users
-                .AsNoTracking()
-                .SingleAsync(
-                    u =>
-                        u.UserId ==
-                        currentUserId
+        await GetAllowedOtherUser(currentUserId, currentRole, otherUserId);
+
+        Conversation conversation = await GetOrCreateConversation(
+            currentUserId,
+            currentRole,
+            otherUserId
+        );
+
+        DateTime now = DateTime.UtcNow;
+
+        ChatMessage callMessage = new()
+        {
+            ConversationId = conversation.ConversationId,
+            SenderId = currentUserId,
+            ReceiverId = otherUserId,
+            Content = "Video call",
+            MessageType = "VideoCall",
+            CallStatus = "Calling",
+            CallStartedAtUtc = now,
+            SentAtUtc = now,
+            IsRead = false
+        };
+
+        conversation.LastMessageAt = now;
+        db.ChatMessages.Add(callMessage);
+        await db.SaveChangesAsync();
+
+        ChatMessageDto dto = ToDto(callMessage);
+
+        await Clients.Group(UserGroup(currentUserId))
+            .SendAsync("ReceiveMessage", dto);
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync("ReceiveMessage", dto);
+
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync("IncomingVideoCall", new
+            {
+                callerId = currentUserId,
+                callerName = currentUser.Username,
+                callerAvatar = string.IsNullOrWhiteSpace(currentUser.Avatar)
+                    ? "default.png"
+                    : currentUser.Avatar,
+                callMessageId = callMessage.ChatMessageId
+            });
+
+        await NotifyConversationUpdated(
+            currentUserId,
+            otherUserId,
+            conversation.ConversationId
+        );
+
+        return callMessage.ChatMessageId;
+    }
+
+    public async Task AcceptVideoCall(long callMessageId, int callerId)
+    {
+        int currentUserId = GetCurrentUserId();
+        string currentRole = GetCurrentRole();
+
+        await GetAllowedOtherUser(currentUserId, currentRole, callerId);
+
+        ChatMessage call = await GetCallMessage(callMessageId, callerId, currentUserId);
+        DateTime now = DateTime.UtcNow;
+
+        call.CallStatus = "Connected";
+        call.CallAnsweredAtUtc = now;
+        await db.SaveChangesAsync();
+
+        await BroadcastCallRecord(call);
+
+        await Clients.Group(UserGroup(callerId))
+            .SendAsync("VideoCallAccepted", currentUserId, callMessageId, now);
+    }
+
+    public async Task RejectVideoCall(long callMessageId, int callerId)
+    {
+        int currentUserId = GetCurrentUserId();
+        string currentRole = GetCurrentRole();
+
+        await GetAllowedOtherUser(currentUserId, currentRole, callerId);
+
+        ChatMessage call = await GetCallMessage(callMessageId, callerId, currentUserId);
+        DateTime now = DateTime.UtcNow;
+
+        call.CallStatus = "Declined";
+        call.CallEndedAtUtc = now;
+        call.CallDurationSeconds = 0;
+        await db.SaveChangesAsync();
+
+        await BroadcastCallRecord(call);
+
+        await Clients.Group(UserGroup(callerId))
+            .SendAsync("VideoCallRejected", currentUserId, callMessageId);
+    }
+
+    public async Task SendWebRtcOffer(int otherUserId, string offerJson)
+    {
+        await ValidateCallTarget(otherUserId);
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync("ReceiveWebRtcOffer", GetCurrentUserId(), offerJson);
+    }
+
+    public async Task SendWebRtcAnswer(int otherUserId, string answerJson)
+    {
+        await ValidateCallTarget(otherUserId);
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync("ReceiveWebRtcAnswer", GetCurrentUserId(), answerJson);
+    }
+
+    public async Task SendIceCandidate(int otherUserId, string candidateJson)
+    {
+        await ValidateCallTarget(otherUserId);
+        await Clients.Group(UserGroup(otherUserId))
+            .SendAsync("ReceiveIceCandidate", GetCurrentUserId(), candidateJson);
+    }
+
+    public async Task EndVideoCall(long callMessageId, int otherUserId)
+    {
+        int currentUserId = GetCurrentUserId();
+        await ValidateCallTarget(otherUserId);
+
+        ChatMessage? call = await db.ChatMessages
+            .FirstOrDefaultAsync(m =>
+                m.ChatMessageId == callMessageId &&
+                m.MessageType == "VideoCall" &&
+                ((m.SenderId == currentUserId && m.ReceiverId == otherUserId) ||
+                 (m.SenderId == otherUserId && m.ReceiverId == currentUserId)));
+
+        if (call != null && call.CallStatus is not ("Declined" or "Completed" or "Missed"))
+        {
+            DateTime now = DateTime.UtcNow;
+            call.CallEndedAtUtc = now;
+
+            if (call.CallAnsweredAtUtc.HasValue)
+            {
+                call.CallStatus = "Completed";
+                call.CallDurationSeconds = Math.Max(
+                    0,
+                    (int)Math.Floor((now - call.CallAnsweredAtUtc.Value).TotalSeconds)
                 );
+            }
+            else
+            {
+                call.CallStatus = "Missed";
+                call.CallDurationSeconds = 0;
+            }
 
-        await GetAllowedOtherUser(
-            currentUserId,
-            currentRole,
-            otherUserId
-        );
-
-        await Clients.Group(UserGroup(otherUserId))
-            .SendAsync(
-                "IncomingVideoCall",
-                new
-                {
-                    callerId =
-                        currentUserId,
-
-                    callerName =
-                        currentUser.Username,
-
-                    callerAvatar =
-                        string.IsNullOrWhiteSpace(
-                            currentUser.Avatar
-                        )
-                            ? "default.png"
-                            : currentUser.Avatar
-                }
-            );
-    }
-
-    public async Task AcceptVideoCall(
-        int callerId)
-    {
-        int currentUserId =
-            GetCurrentUserId();
-
-        string currentRole =
-            GetCurrentRole();
-
-        await GetAllowedOtherUser(
-            currentUserId,
-            currentRole,
-            callerId
-        );
-
-        await Clients.Group(UserGroup(callerId))
-            .SendAsync(
-                "VideoCallAccepted",
-                currentUserId
-            );
-    }
-
-    public async Task RejectVideoCall(
-        int callerId)
-    {
-        int currentUserId =
-            GetCurrentUserId();
-
-        string currentRole =
-            GetCurrentRole();
-
-        await GetAllowedOtherUser(
-            currentUserId,
-            currentRole,
-            callerId
-        );
-
-        await Clients.Group(UserGroup(callerId))
-            .SendAsync(
-                "VideoCallRejected",
-                currentUserId
-            );
-    }
-
-    public async Task SendWebRtcOffer(
-        int otherUserId,
-        string offerJson)
-    {
-        await ValidateCallTarget(
-            otherUserId
-        );
+            await db.SaveChangesAsync();
+            await BroadcastCallRecord(call);
+        }
 
         await Clients.Group(UserGroup(otherUserId))
-            .SendAsync(
-                "ReceiveWebRtcOffer",
-                GetCurrentUserId(),
-                offerJson
-            );
-    }
-
-    public async Task SendWebRtcAnswer(
-        int otherUserId,
-        string answerJson)
-    {
-        await ValidateCallTarget(
-            otherUserId
-        );
-
-        await Clients.Group(UserGroup(otherUserId))
-            .SendAsync(
-                "ReceiveWebRtcAnswer",
-                GetCurrentUserId(),
-                answerJson
-            );
-    }
-
-    public async Task SendIceCandidate(
-        int otherUserId,
-        string candidateJson)
-    {
-        await ValidateCallTarget(
-            otherUserId
-        );
-
-        await Clients.Group(UserGroup(otherUserId))
-            .SendAsync(
-                "ReceiveIceCandidate",
-                GetCurrentUserId(),
-                candidateJson
-            );
-    }
-
-    public async Task EndVideoCall(
-        int otherUserId)
-    {
-        await ValidateCallTarget(
-            otherUserId
-        );
-
-        await Clients.Group(UserGroup(otherUserId))
-            .SendAsync(
-                "VideoCallEnded",
-                GetCurrentUserId()
-            );
+            .SendAsync("VideoCallEnded", currentUserId, callMessageId);
     }
 
     // ==================================================
@@ -461,6 +471,94 @@ public class ChatHub : Hub
             currentRole,
             otherUserId
         );
+    }
+
+    private async Task<Conversation> GetOrCreateConversation(
+        int currentUserId,
+        string currentRole,
+        int otherUserId)
+    {
+        int studentId = currentRole == "Student" ? currentUserId : otherUserId;
+        int teacherId = currentRole == "Teacher" ? currentUserId : otherUserId;
+
+        Conversation? conversation = await db.Conversations
+            .FirstOrDefaultAsync(c =>
+                c.StudentId == studentId &&
+                c.TeacherId == teacherId);
+
+        if (conversation != null)
+        {
+            return conversation;
+        }
+
+        DateTime now = DateTime.UtcNow;
+        conversation = new Conversation
+        {
+            StudentId = studentId,
+            TeacherId = teacherId,
+            CreatedAt = now,
+            LastMessageAt = now
+        };
+
+        db.Conversations.Add(conversation);
+        await db.SaveChangesAsync();
+        return conversation;
+    }
+
+    private async Task<ChatMessage> GetCallMessage(
+        long callMessageId,
+        int callerId,
+        int receiverId)
+    {
+        ChatMessage? call = await db.ChatMessages
+            .FirstOrDefaultAsync(m =>
+                m.ChatMessageId == callMessageId &&
+                m.MessageType == "VideoCall" &&
+                m.SenderId == callerId &&
+                m.ReceiverId == receiverId);
+
+        if (call == null)
+        {
+            throw new HubException("Video call record was not found.");
+        }
+
+        return call;
+    }
+
+    private async Task BroadcastCallRecord(ChatMessage call)
+    {
+        ChatMessageDto dto = ToDto(call);
+
+        await Clients.Group(UserGroup(call.SenderId))
+            .SendAsync("CallRecordUpdated", dto);
+        await Clients.Group(UserGroup(call.ReceiverId))
+            .SendAsync("CallRecordUpdated", dto);
+
+        await NotifyConversationUpdated(
+            call.SenderId,
+            call.ReceiverId,
+            call.ConversationId
+        );
+    }
+
+    private static ChatMessageDto ToDto(ChatMessage message)
+    {
+        return new ChatMessageDto
+        {
+            MessageId = message.ChatMessageId,
+            ConversationId = message.ConversationId,
+            SenderId = message.SenderId,
+            ReceiverId = message.ReceiverId,
+            Content = message.Content,
+            SentAtUtc = DateTime.SpecifyKind(message.SentAtUtc, DateTimeKind.Utc),
+            IsRead = message.IsRead,
+            MessageType = message.MessageType,
+            CallStatus = message.CallStatus,
+            CallStartedAtUtc = message.CallStartedAtUtc,
+            CallAnsweredAtUtc = message.CallAnsweredAtUtc,
+            CallEndedAtUtc = message.CallEndedAtUtc,
+            CallDurationSeconds = message.CallDurationSeconds
+        };
     }
 
     private async Task<User>
