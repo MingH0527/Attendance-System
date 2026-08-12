@@ -33,7 +33,6 @@ public class UserController : Controller
                     Gender = u.Gender,
                     Position = u.Position,
                     Status = u.Status,
-                    Avatar = u.Avatar
                 })
                 .ToListAsync();
 
@@ -67,7 +66,6 @@ public class UserController : Controller
             Gender = user.Gender,
             Position = user.Position,
             Status = user.Status,
-            Avatar = user.Avatar
         };
 
         return View(model);
