@@ -23,27 +23,27 @@ body {
 
 .register-page {
     min-height: 100vh;
-    padding: 34px 20px;
+    padding: 20px 16px;
     display: grid;
     place-items: center;
     background: radial-gradient( circle at 10% 10%, rgba(96, 165, 250, 0.26), transparent 32% ), radial-gradient( circle at 90% 85%, rgba(99, 102, 241, 0.18), transparent 30% ), #edf4ff;
 }
 
 .register-shell {
-    width: min(1080px, 100%);
-    min-height: 690px;
+    width: min(980px, 100%);
+    min-height: 620px;
     display: grid;
-    grid-template-columns: 38% 62%;
+    grid-template-columns: 36% 64%;
     overflow: hidden;
     border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 26px;
+    border-radius: 22px;
     background: var(--surface);
     box-shadow: 0 24px 70px rgba(30, 64, 175, 0.14);
 }
 
 .register-side {
     position: relative;
-    padding: 38px;
+    padding: 30px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -79,7 +79,7 @@ body {
 
     .side-copy h1 {
         margin: 12px 0 16px;
-        font-size: clamp(32px, 4vw, 48px);
+        font-size: clamp(28px, 3.2vw, 40px);
         line-height: 1.08;
     }
 
@@ -87,7 +87,7 @@ body {
         max-width: 360px;
         margin: 0;
         color: rgba(255, 255, 255, 0.78);
-        font-size: 16px;
+        font-size: 14px;
         line-height: 1.7;
     }
 
@@ -109,7 +109,7 @@ body {
 }
 
 .register-card {
-    padding: 42px 48px 28px;
+    padding: 28px 34px 24px;
     overflow: auto;
 }
 
@@ -122,7 +122,7 @@ body {
 
     .form-header h2 {
         margin: 7px 0 0;
-        font-size: 28px;
+        font-size: 24px;
     }
 
     .form-header .eyebrow {
@@ -143,7 +143,7 @@ body {
     position: relative;
     display: flex;
     justify-content: space-between;
-    margin: 34px 4px 42px;
+    margin: 24px 4px 30px;
 }
 
 .stepper-line {
@@ -178,8 +178,8 @@ body {
 }
 
     .step-node > span {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         display: grid;
         place-items: center;
         border: 2px solid #d8e0ec;
@@ -229,7 +229,7 @@ body {
 .field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 19px;
+    gap: 14px;
 }
 
 .field.full {
@@ -252,7 +252,7 @@ body {
 }
 
 .input-box {
-    min-height: 50px;
+    min-height: 42px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -398,7 +398,7 @@ body {
 
 #map {
     width: 100%;
-    height: 330px;
+    height: 250px;
     margin-top: 14px;
     border: 1px solid var(--line);
     border-radius: 15px;
@@ -448,7 +448,7 @@ body {
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    margin-top: 28px;
+    margin-top: 20px;
 }
 
     .form-actions.single {
@@ -456,7 +456,7 @@ body {
     }
 
 .btn {
-    min-height: 46px;
+    min-height: 42px;
     padding: 0 19px;
     border: 1px solid transparent;
     border-radius: 11px;
@@ -506,7 +506,7 @@ body {
     }
 
 .login-link {
-    margin: 28px 0 0;
+    margin: 20px 0 0;
     text-align: center;
     color: var(--muted);
     font-size: 13px;
@@ -637,7 +637,7 @@ body {
 
     .side-copy h1 {
         margin-bottom: 0;
-        font-size: 28px;
+        font-size: 24px;
     }
 
     .register-card {
@@ -832,3 +832,40 @@ body {
         cursor: not-allowed;
         transform: none;
     }
+
+/* ==================================================
+   SAFE COMPACT DESKTOP FIX
+   Keep all form buttons visible.
+   ================================================== */
+
+@media (min-width: 851px) {
+    .register-page {
+        align-items: center;
+    }
+
+    .register-shell {
+        height: auto;
+        max-height: none;
+        overflow: hidden;
+    }
+
+    .register-card {
+        height: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .form-step.active {
+        overflow: visible;
+    }
+
+    .form-actions {
+        position: static;
+        margin-top: 20px;
+        padding-bottom: 2px;
+    }
+
+    #map {
+        height: 250px;
+    }
+}

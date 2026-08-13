@@ -954,32 +954,27 @@
         const longitudeValue =
             longitude?.value.trim() || "";
 
-        const invalidAddressValues = [
-            "Finding address…",
-            "Invalid location",
-            "Address not found",
-            "Error fetching address"
-        ];
-
-        const valid =
+        const hasCompleteLocation =
             Boolean(addressValue) &&
             Boolean(latitudeValue) &&
-            Boolean(longitudeValue) &&
-            !invalidAddressValues.includes(
-                addressValue
-            );
+            Boolean(longitudeValue);
+
+        const valid =
+            hasCompleteLocation &&
+            locationSelectionIsValid;
 
         if (!valid) {
             setLocationMessage(
-                "Please select a valid residential or building location before continuing.",
+                "Please select a valid residential address, road or building before continuing.",
                 true
             );
-        }
-        else {
-            clearLocationMessage();
+
+            return false;
         }
 
-        return valid;
+        clearLocationMessage();
+
+        return true;
     }
 
     // ==================================================
@@ -1313,19 +1308,28 @@
         defaultZoom: 13,
         selectedZoom: 17,
 
-        excellentAccuracy: 30,
-        acceptableAccuracy: 100,
-        maximumAcceptedAccuracy: 300,
+        excellentAccuracy: 25,
+        acceptableAccuracy: 80,
+        maximumAcceptedAccuracy: 250,
 
-        minimumSamples: 3,
-        maximumSamples: 10,
-        watchTimeoutMs: 20000
+        minimumSamples: 2,
+        maximumSamples: 8,
+        watchTimeoutMs: 10000
     };
 
     let map = null;
     let marker = null;
     let accuracyCircle = null;
     let locationWatchId = null;
+
+    // Location mode prevents old Geolocation callbacks from
+    // overriding a point that the user selected manually.
+    let locationMode = "idle";
+    let locationSessionNumber = 0;
+
+    // True only when the currently selected location has passed
+    // all residential/building validation rules.
+    let locationSelectionIsValid = false;
 
     /*
      * Used to prevent an older reverse-geocoding
@@ -1413,7 +1417,7 @@
         map.on(
             "click",
             async event => {
-                stopLocationWatch();
+                cancelAutomaticLocation();
 
                 await setLocation(
                     event.latlng.lat,
@@ -1428,7 +1432,7 @@
         marker.on(
             "dragend",
             async event => {
-                stopLocationWatch();
+                cancelAutomaticLocation();
 
                 const point =
                     event.target.getLatLng();
@@ -1549,6 +1553,8 @@
     function clearStoredLocation(
         hideMarker = true
     ) {
+        locationSelectionIsValid = false;
+
         if (latitude) {
             latitude.value = "";
         }
@@ -1700,7 +1706,13 @@
             "islet",
             "sandbank",
             "bay",
-            "coastline"
+            "coastline",
+            "mountain",
+            "hill",
+            "peak",
+            "nature reserve",
+            "national park",
+            "protected area"
         ];
 
         const blockedTypes = [
@@ -1714,7 +1726,12 @@
             "wood",
             "desert",
             "wetland",
-            "bay"
+            "bay",
+            "peak",
+            "cliff",
+            "scrub",
+            "heath",
+            "grassland"
         ];
 
         const keywordBlocked =
@@ -1749,7 +1766,25 @@
                 valid: false,
 
                 reason:
-                    "Sea, forest, river, lake and other non-residential locations are not allowed."
+                    "Sea, forest, mountain, river, lake and other non-residential locations are not allowed."
+            };
+        }
+
+        const naturalOrLeisureArea =
+            ["natural", "leisure"].includes(
+                locationClass
+            ) &&
+            !addressDetails.house_number &&
+            !addressDetails.building &&
+            !addressDetails.road &&
+            !addressDetails.residential;
+
+        if (naturalOrLeisureArea) {
+            return {
+                valid: false,
+
+                reason:
+                    "This natural or recreational area is not a valid residential address. Please select a road or building."
             };
         }
 
@@ -1801,16 +1836,32 @@
             );
 
             /*
-             * If Nominatim had to search too far for an address,
-             * the selected position is probably sea, forest,
-             * empty land or another unmapped location.
+             * Distance between the exact selected point and the
+             * coordinate returned by Nominatim.
+             *
+             * For residential/building selection:
+             * - <= 100m: acceptable
+             * - 101m-250m: still usable, but approximate
+             * - > 250m: reject because the returned address is too far
+             *
+             * Do not show huge distance values to the user. They are
+             * technically correct but confusing when the point is in
+             * the sea, forest, empty land or another unmapped area.
              */
-            if (distanceMetres > 500) {
+            if (distanceMetres > 250) {
                 return {
                     valid: false,
 
                     reason:
-                        `No valid address exists at the selected point. The nearest recognised address is approximately ${Math.round(distanceMetres)} metres away. Please place the marker on a road or building.`
+                        "This point is too far from a recognised road or building. Please place the marker on a valid residential or building location."
+                };
+            }
+
+            if (distanceMetres > 100) {
+                return {
+                    valid: false,
+                    reason:
+                        "The selected point is too far from an exact road or building. Please move the marker to your actual residential address."
                 };
             }
         }
@@ -1863,30 +1914,22 @@
         // 4. REQUIRE LOCAL ADDRESS INFORMATION
         // ==================================================
 
-        const hasUsefulLocalContext =
+        const hasExactAddressContext =
             addressDetails.house_number ||
             addressDetails.building ||
             addressDetails.amenity ||
             addressDetails.shop ||
             addressDetails.office ||
-            addressDetails.tourism ||
             addressDetails.road ||
             addressDetails.pedestrian ||
-            addressDetails.residential ||
-            addressDetails.neighbourhood ||
-            addressDetails.suburb ||
-            addressDetails.quarter ||
-            addressDetails.village ||
-            addressDetails.town ||
-            addressDetails.city ||
-            addressDetails.city_district;
+            addressDetails.residential;
 
-        if (!hasUsefulLocalContext) {
+        if (!hasExactAddressContext) {
             return {
                 valid: false,
 
                 reason:
-                    "No detailed local address was found. Move the marker closer to a road or building."
+                    "This location does not contain a recognised residential address, road or building. Please select your actual address."
             };
         }
 
@@ -1965,6 +2008,8 @@
         accuracy = null,
         manualSelection = false
     ) {
+        locationSelectionIsValid = false;
+
         const numericLat =
             Number(lat);
 
@@ -2026,7 +2071,7 @@
             if (locationAccuracyInfo) {
                 locationAccuracyInfo.textContent =
                     manualSelection
-                        ? "Manual map selection — place the marker on your exact building or road."
+                        ? "Manual location selected — place the marker on your exact building or road."
                         : "";
             }
         }
@@ -2085,30 +2130,41 @@
                     `${numericLat.toFixed(7)}, ${numericLng.toFixed(7)}`;
             }
 
+            locationSelectionIsValid = true;
+
             if (
                 accuracy !== null &&
                 Number(accuracy) >
                 LOCATION_CONFIG
                     .maximumAcceptedAccuracy
             ) {
+                locationSelectionIsValid = false;
+
                 setLocationMessage(
-                    `The detected location may be inaccurate by about ${Math.round(Number(accuracy))} metres. Drag the marker to your exact building before continuing.`,
+                    `The detected location may be inaccurate by about ${Math.round(Number(accuracy))} metres. Please drag the marker to your exact building or use your location again.`,
                     true
                 );
+
+                return false;
             }
-            else if (
+
+            if (
                 accuracy !== null &&
                 Number(accuracy) >
                 LOCATION_CONFIG
                     .acceptableAccuracy
             ) {
+                locationSelectionIsValid = false;
+
                 setLocationMessage(
-                    "The detected position is approximate. Check the marker and move it if necessary."
+                    "The detected position is still too approximate. Please wait for a better reading, drag the marker to your exact building, or use your location again.",
+                    true
                 );
+
+                return false;
             }
-            else {
-                clearLocationMessage();
-            }
+
+            clearLocationMessage();
 
             return true;
         }
@@ -2147,15 +2203,15 @@
                     .originalLabel ||
                 locateMeButton.textContent;
 
-            locateMeButton.disabled =
-                true;
+            // Keep the button clickable.
+            // Pressing it again starts a fresh Geolocation session.
+            locateMeButton.disabled = false;
 
             locateMeButton.textContent =
-                "Improving location accuracy…";
+                "↻ Locating…";
         }
         else {
-            locateMeButton.disabled =
-                false;
+            locateMeButton.disabled = false;
 
             locateMeButton.textContent =
                 locateMeButton.dataset
@@ -2182,6 +2238,17 @@
         }
     }
 
+    function cancelAutomaticLocation() {
+        locationMode = "manual";
+        locationSessionNumber++;
+
+        stopLocationWatch();
+        setLocateButtonBusy(false);
+
+        clearAccuracyCircle();
+        setAccuracyMessage(NaN);
+    }
+
     function useCurrentLocation() {
         closeLocationModal();
 
@@ -2194,7 +2261,17 @@
             return;
         }
 
+        // Always start a completely fresh automatic-location session.
+        // This lets the user return to the real current position no
+        // matter how many manual points were selected before.
         stopLocationWatch();
+        setLocateButtonBusy(false);
+
+        locationSelectionIsValid = false;
+        locationMode = "automatic";
+
+        const currentSession =
+            ++locationSessionNumber;
 
         setLocateButtonBusy(true);
 
@@ -2204,15 +2281,31 @@
 
         setAccuracyMessage(NaN);
 
+        // Do not show a stale accuracy circle from a previous result
+        // while a new location is being calculated.
+        clearAccuracyCircle();
+
         const samples = [];
 
         const startedAt =
             Date.now();
 
         let finished = false;
+        let initialNavigationDone = false;
+
+        function sessionIsStillActive() {
+            return (
+                locationMode === "automatic" &&
+                currentSession ===
+                locationSessionNumber
+            );
+        }
 
         async function finishWithBestSample() {
-            if (finished) {
+            if (
+                finished ||
+                !sessionIsStillActive()
+            ) {
                 return;
             }
 
@@ -2231,7 +2324,8 @@
                         ) &&
                         Number.isFinite(
                             sample.accuracy
-                        )
+                        ) &&
+                        sample.accuracy > 0
                     )
                     .sort(
                         (first, second) =>
@@ -2243,24 +2337,44 @@
                 validSamples[0];
 
             if (!bestSample) {
-                setLocationMessage(
-                    "No location reading was received. Select your location manually on the map.",
-                    true
-                );
+                if (
+                    sessionIsStillActive()
+                ) {
+                    locationMode = "idle";
 
-                setLocateButtonBusy(false);
+                    setLocationMessage(
+                        "No location reading was received. Select your location manually on the map.",
+                        true
+                    );
+
+                    setLocateButtonBusy(false);
+                }
 
                 return;
             }
 
-            await setLocation(
-                bestSample.latitude,
-                bestSample.longitude,
-                true,
-                bestSample.accuracy,
-                false
-            );
+            // Re-check immediately before changing the map.
+            // If the user clicked or dragged the map while location
+            // was being calculated, the automatic result is ignored.
+            if (!sessionIsStillActive()) {
+                return;
+            }
 
+            const locationSet =
+                await setLocation(
+                    bestSample.latitude,
+                    bestSample.longitude,
+                    true,
+                    bestSample.accuracy,
+                    false
+                );
+
+            if (!sessionIsStillActive()) {
+                setLocateButtonBusy(false);
+                return;
+            }
+
+            locationMode = "idle";
             setLocateButtonBusy(false);
         }
 
@@ -2268,6 +2382,13 @@
             navigator.geolocation
                 .watchPosition(
                     position => {
+                        if (
+                            finished ||
+                            !sessionIsStillActive()
+                        ) {
+                            return;
+                        }
+
                         const sample = {
                             latitude:
                                 position.coords
@@ -2287,11 +2408,83 @@
                                 position.timestamp
                         };
 
+                        if (
+                            !Number.isFinite(
+                                sample.latitude
+                            ) ||
+                            !Number.isFinite(
+                                sample.longitude
+                            ) ||
+                            !Number.isFinite(
+                                sample.accuracy
+                            ) ||
+                            sample.accuracy <= 0
+                        ) {
+                            return;
+                        }
+
+                        /*
+                         * First valid reading:
+                         * immediately take the user to the detected area.
+                         *
+                         * IMPORTANT:
+                         * This happens only once per Use my location session.
+                         * Later readings improve accuracy in the background
+                         * without repeatedly pulling the map back.
+                         */
+                        if (!initialNavigationDone) {
+                            initialNavigationDone = true;
+
+                            marker
+                                ?.setLatLng([
+                                    sample.latitude,
+                                    sample.longitude
+                                ])
+                                .setOpacity(1);
+
+                            map?.setView(
+                                [
+                                    sample.latitude,
+                                    sample.longitude
+                                ],
+                                LOCATION_CONFIG
+                                    .selectedZoom
+                            );
+
+                            showAccuracyCircle(
+                                sample.latitude,
+                                sample.longitude,
+                                sample.accuracy
+                            );
+                        }
+                        else {
+                            /*
+                             * Real-time position refinement:
+                             * update the marker and accuracy circle,
+                             * but DO NOT recenter the map again.
+                             *
+                             * This keeps the location live without
+                             * making the map jump back repeatedly.
+                             */
+                            marker
+                                ?.setLatLng([
+                                    sample.latitude,
+                                    sample.longitude
+                                ])
+                                .setOpacity(1);
+
+                            showAccuracyCircle(
+                                sample.latitude,
+                                sample.longitude,
+                                sample.accuracy
+                            );
+                        }
+
                         samples.push(sample);
 
                         /*
-                         * Keep only the most recent
-                         * maximum number of samples.
+                         * Keep only the most recent maximum
+                         * number of samples.
                          */
                         if (
                             samples.length >
@@ -2311,7 +2504,8 @@
                                     value =>
                                         Number.isFinite(
                                             value
-                                        )
+                                        ) &&
+                                        value > 0
                                 );
 
                         const bestAccuracy =
@@ -2321,23 +2515,14 @@
                                 )
                                 : NaN;
 
+                        /*
+                         * Keep the accuracy text live while better samples
+                         * are collected. The marker and accuracy circle may
+                         * update, but the map view itself is not recentered
+                         * after the first valid reading.
+                         */
                         setAccuracyMessage(
                             bestAccuracy
-                        );
-
-                        map?.setView(
-                            [
-                                sample.latitude,
-                                sample.longitude
-                            ],
-                            LOCATION_CONFIG
-                                .selectedZoom
-                        );
-
-                        showAccuracyCircle(
-                            sample.latitude,
-                            sample.longitude,
-                            sample.accuracy
                         );
 
                         const enoughSamples =
@@ -2372,6 +2557,13 @@
                     },
 
                     error => {
+                        if (
+                            finished ||
+                            !sessionIsStillActive()
+                        ) {
+                            return;
+                        }
+
                         console.error(
                             "Location error:",
                             error
@@ -2384,7 +2576,16 @@
                             return;
                         }
 
+                        finished = true;
                         stopLocationWatch();
+
+                        if (
+                            !sessionIsStillActive()
+                        ) {
+                            return;
+                        }
+
+                        locationMode = "idle";
                         setLocateButtonBusy(false);
 
                         if (
@@ -2424,6 +2625,7 @@
 
                     {
                         enableHighAccuracy: true,
+
                         timeout:
                             LOCATION_CONFIG
                                 .watchTimeoutMs,
@@ -2438,10 +2640,14 @@
          */
         window.setTimeout(
             () => {
-                if (!finished) {
+                if (
+                    !finished &&
+                    sessionIsStillActive()
+                ) {
                     finishWithBestSample();
                 }
             },
+
             LOCATION_CONFIG
                 .watchTimeoutMs +
             1000
@@ -2466,10 +2672,11 @@
         "click",
         () => {
             closeLocationModal();
-            stopLocationWatch();
+
+            cancelAutomaticLocation();
 
             setLocationMessage(
-                "Click the map or drag the marker to select your location manually."
+                "Click the map or drag the marker to select your location manually. You can use Use my location at any time to return to your current position."
             );
 
             setTimeout(() => {
@@ -2590,6 +2797,9 @@
             }
 
             closeLocationModal();
+
+            locationMode = "idle";
+            locationSessionNumber++;
             stopLocationWatch();
 
             if (submitButton) {
@@ -2609,6 +2819,8 @@
     window.addEventListener(
         "beforeunload",
         () => {
+            locationMode = "idle";
+            locationSessionNumber++;
             stopLocationWatch();
         }
     );
