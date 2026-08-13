@@ -61,21 +61,48 @@ public class MyProfileController : Controller
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.UserId == userId.Value);
 
-        if (user != null)
+        if (user == null)
         {
-            bool hasCompletedRegistration = user.Position switch
-            {
-                "Student" => await db.StudentClasses.AnyAsync(sc => sc.UserId == userId.Value),
-                "Teacher" => await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId.Value),
-                _ => true
-            };
+            return RedirectToAction("Login", "Account");
+        }
 
-            ViewBag.ShowRegisterCourseCard = !hasCompletedRegistration;
+        // STUDENT
+        if (user.Position == "Student")
+        {
+            StudentClass? studentClass = await db.StudentClasses
+                .Include(sc => sc.Program)
+                .Include(sc => sc.ClassGroup)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+
+            if (studentClass != null)
+            {
+                ViewBag.StudentId = studentClass.StudentId;
+                ViewBag.ProgramName = studentClass.Program?.ProgramName;
+                ViewBag.ClassName = studentClass.ClassGroup?.ClassName;
+
+                ViewBag.ShowRegisterCourseCard = false;
+            }
+            else
+            {
+                ViewBag.ShowRegisterCourseCard = true;
+            }
+        }
+        // TEACHER
+        else if (user.Position == "Teacher")
+        {
+            bool registered = await db.TeacherCourses
+                .AnyAsync(tc => tc.UserId == userId.Value);
+
+            ViewBag.ShowRegisterCourseCard = !registered;
+        }
+        else
+        {
+            ViewBag.ShowRegisterCourseCard = false;
         }
 
         return View();
     }
-
     // ==================================================
     // PASSKEY PAGE
     // ==================================================

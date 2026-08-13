@@ -61,9 +61,41 @@
 
         @if (ViewBag.Error != null)
         {
-            <div class="login-message @errorClass">
-                @ViewBag.Error
-            </div>
+            if (warningLevel == "locked" && ViewBag.LockoutEndUtc != null)
+            {
+                <div class="login-message login-warning-locked lockout-card"
+                     id="lockoutCard"
+                     data-lockout-end="@ViewBag.LockoutEndUtc">
+
+                    <div class="lockout-title">
+                        🔒 ACCOUNT TEMPORARILY LOCKED
+                    </div>
+
+                    <div class="lockout-countdown-row">
+                        <span>Try again after</span>
+
+                        <span id="lockoutTimer"
+                              class="lockout-timer">
+                            15:00
+                        </span>
+                    </div>
+
+                    <div class="lockout-final-warning">
+                        After the lock expires, you have
+                        <strong>ONE FINAL ATTEMPT</strong>.
+                        Another incorrect password will
+                        <strong>PERMANENTLY BLOCK</strong>
+                        your account.
+                    </div>
+
+                </div>
+            }
+            else
+            {
+                <div class="login-message @errorClass">
+                    @ViewBag.Error
+                </div>
+            }
         }
 
         <div id="passkeyLoginMessage"

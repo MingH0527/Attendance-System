@@ -22,6 +22,12 @@
     const loginButton =
         document.getElementById("loginButton");
 
+    const rememberMe =
+        document.getElementById("rememberMe");
+
+    const rememberContainer =
+        rememberMe?.closest(".remember-container");
+
     const usernameLoginTab =
         document.getElementById("usernameLoginTab");
 
@@ -54,6 +60,187 @@
             '#passkeyLoginTokenForm ' +
             'input[name="__RequestVerificationToken"]'
         );
+
+    // ==================================================
+    // REMEMBER ME MESSAGE
+    // ==================================================
+
+    let rememberMessage = null;
+    let rememberMessageTimer = null;
+
+    if (rememberContainer) {
+        rememberMessage = document.createElement("div");
+        rememberMessage.className = "remember-message";
+        rememberMessage.hidden = true;
+        document.body.appendChild(rememberMessage);
+    }
+
+    function hideRememberMessage() {
+        if (!rememberMessage || rememberMessage.hidden) {
+            return;
+        }
+
+        rememberMessage.classList.add("remember-message-hide");
+
+        window.setTimeout(() => {
+            if (!rememberMessage) {
+                return;
+            }
+
+            rememberMessage.hidden = true;
+            rememberMessage.classList.remove("remember-message-hide");
+        }, 200);
+    }
+
+    function updateRememberMessage(showMessage = true) {
+        if (!rememberMe || !rememberMessage) {
+            return;
+        }
+
+        if (rememberMessageTimer) {
+            window.clearTimeout(rememberMessageTimer);
+            rememberMessageTimer = null;
+        }
+
+        rememberMessage.classList.remove(
+            "remember-message-enabled",
+            "remember-message-disabled",
+            "remember-message-hide"
+        );
+
+        if (rememberMe.checked) {
+            rememberMessage.textContent =
+                "✓ Remember Me enabled — you will stay signed in on this device for 30 days.";
+            rememberMessage.classList.add("remember-message-enabled");
+        } else {
+            rememberMessage.textContent =
+                "Remember Me disabled — the 30-day persistent login cookie will not be used.";
+            rememberMessage.classList.add("remember-message-disabled");
+        }
+
+        rememberMessage.hidden = !showMessage;
+
+        if (showMessage) {
+            rememberMessageTimer = window.setTimeout(
+                hideRememberMessage,
+                10000
+            );
+        }
+    }
+
+    rememberMe?.addEventListener("change", () => {
+        updateRememberMessage(true);
+    });
+
+    // ==================================================
+    // LOGIN LOCKOUT COUNTDOWN
+    // ==================================================
+
+    const lockoutCard =
+        document.getElementById("lockoutCard");
+
+    const lockoutTimer =
+        document.getElementById("lockoutTimer");
+
+    let lockoutCountdownInterval = null;
+
+    function formatLockoutTime(totalSeconds) {
+        const minutes =
+            Math.floor(totalSeconds / 60);
+
+        const seconds =
+            totalSeconds % 60;
+
+        return (
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0")
+        );
+    }
+
+    function updateLockoutCountdown() {
+        if (!lockoutCard || !lockoutTimer) {
+            return;
+        }
+
+        const lockoutEndValue =
+            lockoutCard.dataset.lockoutEnd;
+
+        if (!lockoutEndValue) {
+            return;
+        }
+
+        const lockoutEnd =
+            new Date(lockoutEndValue).getTime();
+
+        if (Number.isNaN(lockoutEnd)) {
+            return;
+        }
+
+        const remainingMilliseconds =
+            Math.max(0, lockoutEnd - Date.now());
+
+        const remainingSeconds =
+            Math.ceil(
+                remainingMilliseconds / 1000
+            );
+
+        lockoutTimer.textContent =
+            formatLockoutTime(
+                remainingSeconds
+            );
+
+        if (remainingSeconds <= 0) {
+            if (lockoutCountdownInterval) {
+                window.clearInterval(
+                    lockoutCountdownInterval
+                );
+
+                lockoutCountdownInterval = null;
+            }
+
+            lockoutCard.classList.add(
+                "lockout-expired"
+            );
+
+            lockoutCard.innerHTML =
+                '<div class="lockout-title">' +
+                '🔓 TEMPORARY LOCK EXPIRED' +
+                '</div>' +
+                '<div class="lockout-expired-message">' +
+                'You now have <strong>ONE FINAL ATTEMPT</strong>. ' +
+                'Another incorrect password will ' +
+                '<strong>PERMANENTLY BLOCK</strong> your account.' +
+                '</div>';
+
+            if (loginButton) {
+                loginButton.disabled = false;
+                loginButton.textContent = "Login";
+            }
+
+            if (passwordInput) {
+                passwordInput.disabled = false;
+            }
+        }
+    }
+
+    if (lockoutCard && lockoutTimer) {
+        if (loginButton) {
+            loginButton.disabled = true;
+        }
+
+        if (passwordInput) {
+            passwordInput.disabled = true;
+        }
+
+        updateLockoutCountdown();
+
+        lockoutCountdownInterval =
+            window.setInterval(
+                updateLockoutCountdown,
+                1000
+            );
+    }
 
     // ==================================================
     // LOGIN METHOD TABS

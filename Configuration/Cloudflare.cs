@@ -13,7 +13,7 @@ public static class Cloudflare
     //
 
     public const string PublicUrl =
-        "https://alternate-speaking-magnet-freeze.trycloudflare.com";
+        "https://recorders-activists-subsequently-infrared.trycloudflare.com";
 
     // ==================================================
     // CONFIGURATION CHECK
