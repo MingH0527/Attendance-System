@@ -42,6 +42,21 @@ public class PaymentController : Controller
 
     [HttpGet]
     public IActionResult SelectFee() => View(GetFeeItems());
+   
+    [HttpGet]
+    public async Task<IActionResult> History()
+    {
+        int userId = GetCurrentUserId();
+
+        List<PaymentTransaction> transactions =
+            await db.PaymentTransactions
+                .AsNoTracking()
+                .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+
+        return View(transactions);
+    }
 
     [HttpGet]
     public async Task<IActionResult> Pay(int feeId)

@@ -1,0 +1,105 @@
+﻿@model List<WebAndMobile.Models.PaymentTransaction>
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Payment History";
+}
+
+<link rel="stylesheet" href="~/css/Payment.css" />
+
+<div class="payment-page">
+    <div class="payment-history-container">
+
+        <span class="eyebrow">
+            Attendance System
+        </span>
+
+        <h1>Payment History</h1>
+
+        <p class="subtitle">
+            View your previous payment transactions.
+        </p>
+
+        @if (Model == null || Model.Count == 0)
+        {
+            <div class="payment-empty">
+                <div class="payment-empty__icon">💳</div>
+
+                <h2>No payment history</h2>
+
+                <p>You have not made any payments yet.</p>
+
+                <a asp-controller="Payment"
+                   asp-action="SelectFee"
+                   class="payment-button">
+                    Make a Payment
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="payment-history-table-wrapper">
+                <table class="payment-history-table">
+
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Fee</th>
+                            <th>Payment Method</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var payment in Model)
+                        {
+                            <tr>
+                                <td>
+                                    #@payment.PaymentTransactionId
+                                </td>
+
+                                <td>
+                                    @payment.FeeName
+                                </td>
+
+                                <td>
+                                    @payment.PaymentMethod
+                                </td>
+
+                                <td>
+                                    @if (payment.PaidAt.HasValue)
+                                    {
+                                        <span>
+                                            @payment.PaidAt.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            @payment.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")
+                                        </span>
+                                    }
+                                </td>
+
+                                <td>
+                                    RM @payment.Amount.ToString("N2")
+                                </td>
+
+                                <td>
+                                    <span class="payment-status
+                                        payment-status--@payment.Status.ToLowerInvariant()">
+                                        @payment.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            </div>
+        }
+
+    </div>
+</div>
