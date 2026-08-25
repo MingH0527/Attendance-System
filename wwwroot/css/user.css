@@ -1299,3 +1299,73 @@
         right: 0;
     }
 }
+
+/* =========================================================
+   User Management V3 - Filter / Sort / Empty Result Fixes
+========================================================= */
+
+/*
+ * The filter panel is positioned inside .user-card.
+ * overflow:hidden clipped the panel whenever the table became
+ * short (especially when a filter returned 0 users).
+ */
+.user-card {
+    overflow: visible;
+}
+
+/* Keep the toolbar/card top corners clean after overflow becomes visible. */
+.table-toolbar {
+    border-radius: 13px 13px 0 0;
+}
+
+/* The table itself still handles horizontal overflow. */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+/* Ensure the popup stays above the table and footer. */
+.filter-area {
+    z-index: 80;
+}
+
+.filter-panel {
+    z-index: 100;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+/* A slightly cleaner empty-result state. */
+.empty-message {
+    height: 110px;
+    vertical-align: middle;
+}
+
+/* Keep the footer visually attached to the card. */
+.table-footer {
+    border-radius: 0 0 13px 13px;
+}
+
+/* =========================================================
+   User Management V4 - User ID + Default NO Sorting
+========================================================= */
+
+.user-id-column,
+.user-id-value {
+    width: 90px;
+}
+
+.user-id-value {
+    color: #64748b !important;
+    font-weight: 600;
+}
+
+.no-column,
+.row-number {
+    width: 62px;
+}
+
+@media (max-width: 900px) {
+    .user-table {
+        min-width: 820px;
+    }
+}

@@ -22,21 +22,41 @@
         tableBody.querySelectorAll(".user-row")
     );
 
+    /*
+     * originalIndex is the stable default display order received from the server.
+     * originalNo is the fixed display number assigned once when the page loads.
+     * NO never changes after Search, Filter, Sort or Pagination.
+     * User ID is the real database key and is shown separately.
+     */
     allRows.forEach((row, index) => {
+        const originalNo = index + 1;
+
         row.dataset.originalIndex = index.toString();
+        row.dataset.originalNo = originalNo.toString();
+
+        const rowNumber =
+            row.querySelector(".row-number");
+
+        if (rowNumber) {
+            rowNumber.textContent =
+                originalNo.toString();
+        }
     });
 
     let currentPage = 1;
+
     let activeRole = "all";
     let activeStatus = "all";
-    let activeSort = "default";
+
+    let activeSortBy = "default";
+    let activeSortOrder = "asc";
 
     function getCheckedValue(name) {
         const checked = document.querySelector(
             `input[name="${name}"]:checked`
         );
 
-        return checked ? checked.value : "all";
+        return checked ? checked.value : "";
     }
 
     function setCheckedValue(name, value) {
@@ -49,19 +69,39 @@
         }
     }
 
-    function getFilteredRows() {
+    /*
+     * Processing order:
+     *
+     * Search
+     *   ↓
+     * Filter
+     *   ↓
+     * Sort ALL matching results
+     *   ↓
+     * Reorder the table rows
+     *   ↓
+     * Keep original NO
+     *   ↓
+     * Pagination LAST
+     */
+    function getProcessedRows() {
         const searchText = searchInput.value
             .trim()
             .toLowerCase();
 
+        // 1. SEARCH + FILTER ALL USERS FIRST
         let rows = allRows.filter(row => {
-            const username = (row.dataset.username || "")
-                .toLowerCase();
+            const username = (
+                row.dataset.username || ""
+            ).toLowerCase();
 
-            const role = row.dataset.position || "";
-            const status = row.dataset.status || "";
+            const role =
+                row.dataset.position || "";
 
-            const matchesUsername =
+            const status =
+                row.dataset.status || "";
+
+            const matchesSearch =
                 username.includes(searchText);
 
             const matchesRole =
@@ -72,47 +112,105 @@
                 activeStatus === "all" ||
                 status === activeStatus;
 
-            return matchesUsername &&
+            return matchesSearch &&
                 matchesRole &&
                 matchesStatus;
         });
 
-        if (activeSort === "az") {
-            rows.sort((a, b) =>
-                (a.dataset.username || "").localeCompare(
+        // 2. SORT THE COMPLETE FILTERED RESULT
+        rows.sort((a, b) => {
+            let comparison = 0;
+
+            if (activeSortBy === "id") {
+                comparison =
+                    Number(a.dataset.userId) -
+                    Number(b.dataset.userId);
+            }
+            else if (activeSortBy === "username") {
+                comparison = (
+                    a.dataset.username || ""
+                ).localeCompare(
                     b.dataset.username || "",
                     undefined,
-                    { sensitivity: "base" }
-                )
-            );
-        }
-        else if (activeSort === "za") {
-            rows.sort((a, b) =>
-                (b.dataset.username || "").localeCompare(
-                    a.dataset.username || "",
-                    undefined,
-                    { sensitivity: "base" }
-                )
-            );
-        }
-        else {
-            rows.sort(
-                (a, b) =>
+                    {
+                        sensitivity: "base",
+                        numeric: true
+                    }
+                );
+            }
+            else {
+                // Default (NO): keep the original list order from the server.
+                comparison =
                     Number(a.dataset.originalIndex) -
-                    Number(b.dataset.originalIndex)
-            );
-        }
+                    Number(b.dataset.originalIndex);
+            }
+
+            return activeSortOrder === "desc"
+                ? -comparison
+                : comparison;
+        });
 
         return rows;
     }
 
     function renderUsers() {
-        const filteredRows = getFilteredRows();
-        const totalItems = filteredRows.length;
-        const totalPages = Math.max(
-            1,
-            Math.ceil(totalItems / PAGE_SIZE)
-        );
+        const processedRows =
+            getProcessedRows();
+
+        const totalItems =
+            processedRows.length;
+
+        // Hide every real row first.
+        allRows.forEach(row => {
+            row.hidden = true;
+        });
+
+        /*
+         * IMPORTANT:
+         * Physically reorder the DOM rows according to the complete
+         * processed result. Previously the JS sorted an Array only,
+         * but the HTML table stayed in its old order. That caused
+         * strange visible sequences such as 5,4,3,2,1 or mixed pages.
+         */
+        processedRows.forEach(row => {
+            tableBody.appendChild(row);
+        });
+
+        // Keep the empty row as the final row.
+        tableBody.appendChild(emptyRow);
+
+        // 3. KEEP THE ORIGINAL NO
+        // NO is a fixed display number assigned when the page first loads.
+        // Search, Filter, Sort and Pagination must never change it.
+        processedRows.forEach(row => {
+            const rowNumber =
+                row.querySelector(".row-number");
+
+            if (rowNumber) {
+                rowNumber.textContent =
+                    row.dataset.originalNo || "";
+            }
+        });
+
+        // NO MATCHES
+        if (totalItems === 0) {
+            currentPage = 1;
+
+            emptyRow.hidden = false;
+
+            paginationSummary.textContent =
+                "No matching users";
+
+            pagination.innerHTML = "";
+
+            return;
+        }
+
+        emptyRow.hidden = true;
+
+        // 4. PAGINATION IS ALWAYS THE LAST STEP
+        const totalPages =
+            Math.ceil(totalItems / PAGE_SIZE);
 
         if (currentPage > totalPages) {
             currentPage = totalPages;
@@ -122,38 +220,23 @@
             currentPage = 1;
         }
 
-        allRows.forEach(row => {
-            row.hidden = true;
-        });
-
-        if (totalItems === 0) {
-            emptyRow.hidden = false;
-            paginationSummary.textContent = "0 users";
-            pagination.innerHTML = "";
-            return;
-        }
-
-        emptyRow.hidden = true;
-
         const startIndex =
             (currentPage - 1) * PAGE_SIZE;
 
         const endIndex =
-            Math.min(startIndex + PAGE_SIZE, totalItems);
+            Math.min(
+                startIndex + PAGE_SIZE,
+                totalItems
+            );
 
         const rowsForCurrentPage =
-            filteredRows.slice(startIndex, endIndex);
+            processedRows.slice(
+                startIndex,
+                endIndex
+            );
 
-        rowsForCurrentPage.forEach((row, pageIndex) => {
+        rowsForCurrentPage.forEach(row => {
             row.hidden = false;
-
-            const rowNumber =
-                row.querySelector(".row-number");
-
-            if (rowNumber) {
-                rowNumber.textContent =
-                    (startIndex + pageIndex + 1).toString();
-            }
         });
 
         paginationSummary.textContent =
@@ -179,7 +262,11 @@
             )
         );
 
-        for (let page = 1; page <= totalPages; page++) {
+        for (
+            let page = 1;
+            page <= totalPages;
+            page++
+        ) {
             pagination.appendChild(
                 createPaginationButton(
                     page.toString(),
@@ -216,27 +303,42 @@
         button.className = "page-button";
         button.textContent = text;
         button.disabled = disabled;
-        button.setAttribute("aria-label", label);
+
+        button.setAttribute(
+            "aria-label",
+            label
+        );
 
         if (active) {
             button.classList.add("active");
-            button.setAttribute("aria-current", "page");
+
+            button.setAttribute(
+                "aria-current",
+                "page"
+            );
         }
 
-        button.addEventListener("click", () => {
-            if (disabled || page === currentPage) {
-                return;
-            }
+        button.addEventListener(
+            "click",
+            () => {
+                if (
+                    disabled ||
+                    page === currentPage
+                ) {
+                    return;
+                }
 
-            currentPage = page;
-            renderUsers();
-        });
+                currentPage = page;
+                renderUsers();
+            }
+        );
 
         return button;
     }
 
     function openFilter() {
         filterPanel.hidden = false;
+
         filterTrigger.setAttribute(
             "aria-expanded",
             "true"
@@ -245,6 +347,7 @@
 
     function closeFilter() {
         filterPanel.hidden = true;
+
         filterTrigger.setAttribute(
             "aria-expanded",
             "false"
@@ -262,23 +365,40 @@
             count++;
         }
 
-        if (activeSort !== "default") {
+        /*
+         * Sort counts as ONE active filter group even if
+         * both Sort By and Order are changed.
+         */
+        if (
+            activeSortBy !== "default" ||
+            activeSortOrder !== "asc"
+        ) {
             count++;
         }
 
-        filterCount.textContent = count.toString();
-        filterCount.hidden = count === 0;
+        filterCount.textContent =
+            count.toString();
+
+        filterCount.hidden =
+            count === 0;
     }
 
     function applyFilters() {
         activeRole =
-            getCheckedValue("roleFilter");
+            getCheckedValue("roleFilter") ||
+            "all";
 
         activeStatus =
-            getCheckedValue("statusFilter");
+            getCheckedValue("statusFilter") ||
+            "all";
 
-        activeSort =
-            getCheckedValue("sortFilter");
+        activeSortBy =
+            getCheckedValue("sortByFilter") ||
+            "default";
+
+        activeSortOrder =
+            getCheckedValue("sortOrderFilter") ||
+            "asc";
 
         currentPage = 1;
 
@@ -290,11 +410,29 @@
     function resetFilters() {
         activeRole = "all";
         activeStatus = "all";
-        activeSort = "default";
 
-        setCheckedValue("roleFilter", "all");
-        setCheckedValue("statusFilter", "all");
-        setCheckedValue("sortFilter", "default");
+        activeSortBy = "default";
+        activeSortOrder = "asc";
+
+        setCheckedValue(
+            "roleFilter",
+            "all"
+        );
+
+        setCheckedValue(
+            "statusFilter",
+            "all"
+        );
+
+        setCheckedValue(
+            "sortByFilter",
+            "default"
+        );
+
+        setCheckedValue(
+            "sortOrderFilter",
+            "asc"
+        );
 
         currentPage = 1;
 
@@ -306,29 +444,78 @@
         const username =
             row.dataset.username || "-";
 
-        setText("detailUsername", username);
-        setText("detailUsernameValue", username);
-        setText("detailEmail", row.dataset.email || "-");
-        setText("detailPhone", row.dataset.phone || "-");
-        setText("detailAddress", row.dataset.address || "-");
-        setText("detailGender", row.dataset.gender || "-");
-        setText("detailPosition", row.dataset.position || "-");
-        setText("detailRole", row.dataset.position || "-");
-        setText("detailStatus", row.dataset.status || "-");
+        setText(
+            "detailUserId",
+            row.dataset.userId || "-"
+        );
 
-        showAvatar(row.dataset.avatar);
+        setText(
+            "detailUsername",
+            username
+        );
+
+        setText(
+            "detailUsernameValue",
+            username
+        );
+
+        setText(
+            "detailEmail",
+            row.dataset.email || "-"
+        );
+
+        setText(
+            "detailPhone",
+            row.dataset.phone || "-"
+        );
+
+        setText(
+            "detailAddress",
+            row.dataset.address || "-"
+        );
+
+        setText(
+            "detailGender",
+            row.dataset.gender || "-"
+        );
+
+        setText(
+            "detailPosition",
+            row.dataset.position || "-"
+        );
+
+        setText(
+            "detailRole",
+            row.dataset.position || "-"
+        );
+
+        setText(
+            "detailStatus",
+            row.dataset.status || "-"
+        );
+
+        showAvatar(
+            row.dataset.avatar
+        );
 
         detailOverlay.hidden = false;
-        document.body.classList.add("drawer-open");
+
+        document.body.classList.add(
+            "drawer-open"
+        );
     }
 
     function closeUserDetail() {
         detailOverlay.hidden = true;
-        document.body.classList.remove("drawer-open");
+
+        document.body.classList.remove(
+            "drawer-open"
+        );
     }
 
     function setText(id, value) {
-        const element = document.getElementById(id);
+        const element =
+            document.getElementById(id);
 
         if (element) {
             element.textContent = value;
@@ -337,20 +524,30 @@
 
     function showAvatar(avatarValue) {
         const image =
-            document.getElementById("detailAvatar");
+            document.getElementById(
+                "detailAvatar"
+            );
 
         const fallback =
-            document.getElementById("detailAvatarFallback");
+            document.getElementById(
+                "detailAvatarFallback"
+            );
 
         const username =
-            document.getElementById("detailUsername")?.textContent || "?";
+            document.getElementById(
+                "detailUsername"
+            )?.textContent || "?";
 
         image.hidden = true;
         image.removeAttribute("src");
 
         fallback.hidden = false;
+
         fallback.textContent =
-            username.trim().charAt(0).toUpperCase() || "👤";
+            username
+                .trim()
+                .charAt(0)
+                .toUpperCase() || "👤";
 
         if (
             !avatarValue ||
@@ -367,7 +564,9 @@
             avatarValue.startsWith("http://") ||
             avatarValue.startsWith("https://")
         ) {
-            candidates.push(avatarValue);
+            candidates.push(
+                avatarValue
+            );
         }
         else {
             candidates.push(
@@ -381,13 +580,18 @@
         let candidateIndex = 0;
 
         const tryNext = () => {
-            if (candidateIndex >= candidates.length) {
+            if (
+                candidateIndex >=
+                candidates.length
+            ) {
                 image.hidden = true;
                 fallback.hidden = false;
                 return;
             }
 
-            image.src = candidates[candidateIndex];
+            image.src =
+                candidates[candidateIndex];
+
             candidateIndex++;
         };
 
@@ -402,8 +606,11 @@
     }
 
     async function promoteTeacher(row) {
-        const id = row.dataset.userId;
-        const username = row.dataset.username;
+        const id =
+            row.dataset.userId;
+
+        const username =
+            row.dataset.username;
 
         const confirmed = confirm(
             `Promote ${username} to Teacher?`
@@ -422,7 +629,9 @@
             );
 
             if (!response.ok) {
-                const message = await response.text();
+                const message =
+                    await response.text();
+
                 alert(message);
                 return;
             }
@@ -443,8 +652,11 @@
     }
 
     async function cancelTeacher(row) {
-        const id = row.dataset.userId;
-        const username = row.dataset.username;
+        const id =
+            row.dataset.userId;
+
+        const username =
+            row.dataset.username;
 
         const confirmed = confirm(
             `Remove Teacher role from ${username}?`
@@ -463,7 +675,9 @@
             );
 
             if (!response.ok) {
-                const message = await response.text();
+                const message =
+                    await response.text();
+
                 alert(message);
                 return;
             }
@@ -483,68 +697,111 @@
         }
     }
 
-    refreshUsers.addEventListener("click", () => {
-        window.location.reload();
-    });
-
-    searchInput.addEventListener("input", () => {
-        currentPage = 1;
-        renderUsers();
-    });
-
-    filterTrigger.addEventListener("click", event => {
-        event.stopPropagation();
-
-        if (filterPanel.hidden) {
-            openFilter();
+    refreshUsers.addEventListener(
+        "click",
+        () => {
+            window.location.reload();
         }
-        else {
-            closeFilter();
+    );
+
+    /*
+     * Search is live.
+     * It uses the current filters, processes ALL matches,
+     * renumbers them, then paginates.
+     */
+    searchInput.addEventListener(
+        "input",
+        () => {
+            currentPage = 1;
+            renderUsers();
         }
-    });
+    );
 
-    filterClose.addEventListener("click", closeFilter);
-    filterApply.addEventListener("click", applyFilters);
-    filterReset.addEventListener("click", resetFilters);
+    filterTrigger.addEventListener(
+        "click",
+        event => {
+            event.stopPropagation();
 
-    document.addEventListener("click", event => {
-        if (
-            !filterPanel.hidden &&
-            !filterPanel.contains(event.target) &&
-            !filterTrigger.contains(event.target)
-        ) {
-            closeFilter();
+            if (filterPanel.hidden) {
+                openFilter();
+            }
+            else {
+                closeFilter();
+            }
         }
-    });
+    );
 
-    tableBody.addEventListener("click", event => {
-        const actionButton =
-            event.target.closest("[data-action]");
+    filterClose.addEventListener(
+        "click",
+        closeFilter
+    );
 
-        if (!actionButton) {
-            return;
+    filterApply.addEventListener(
+        "click",
+        applyFilters
+    );
+
+    filterReset.addEventListener(
+        "click",
+        resetFilters
+    );
+
+    document.addEventListener(
+        "click",
+        event => {
+            if (
+                !filterPanel.hidden &&
+                !filterPanel.contains(
+                    event.target
+                ) &&
+                !filterTrigger.contains(
+                    event.target
+                )
+            ) {
+                closeFilter();
+            }
         }
+    );
 
-        const row =
-            actionButton.closest(".user-row");
+    tableBody.addEventListener(
+        "click",
+        event => {
+            const actionButton =
+                event.target.closest(
+                    "[data-action]"
+                );
 
-        if (!row) {
-            return;
-        }
+            if (!actionButton) {
+                return;
+            }
 
-        const action =
-            actionButton.dataset.action;
+            const row =
+                actionButton.closest(
+                    ".user-row"
+                );
 
-        if (action === "detail") {
-            openUserDetail(row);
+            if (!row) {
+                return;
+            }
+
+            const action =
+                actionButton.dataset.action;
+
+            if (action === "detail") {
+                openUserDetail(row);
+            }
+            else if (
+                action === "promote"
+            ) {
+                promoteTeacher(row);
+            }
+            else if (
+                action === "cancel-teacher"
+            ) {
+                cancelTeacher(row);
+            }
         }
-        else if (action === "promote") {
-            promoteTeacher(row);
-        }
-        else if (action === "cancel-teacher") {
-            cancelTeacher(row);
-        }
-    });
+    );
 
     detailClose.addEventListener(
         "click",
@@ -554,23 +811,33 @@
     detailOverlay.addEventListener(
         "click",
         event => {
-            if (event.target === detailOverlay) {
+            if (
+                event.target ===
+                detailOverlay
+            ) {
                 closeUserDetail();
             }
         }
     );
 
-    document.addEventListener("keydown", event => {
-        if (event.key === "Escape") {
-            if (!detailOverlay.hidden) {
-                closeUserDetail();
-            }
+    document.addEventListener(
+        "keydown",
+        event => {
+            if (event.key === "Escape") {
+                if (
+                    !detailOverlay.hidden
+                ) {
+                    closeUserDetail();
+                }
 
-            if (!filterPanel.hidden) {
-                closeFilter();
+                if (
+                    !filterPanel.hidden
+                ) {
+                    closeFilter();
+                }
             }
         }
-    });
+    );
 
     updateFilterCount();
     renderUsers();

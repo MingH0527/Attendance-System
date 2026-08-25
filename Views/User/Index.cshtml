@@ -147,19 +147,33 @@
                             </div>
 
                             <div class="filter-section">
-                                <span class="filter-title">Sort</span>
+                                <span class="filter-title">Sort By</span>
                                 <div class="filter-options-row">
                                     <label class="filter-chip">
-                                        <input type="radio" name="sortFilter" value="default" checked />
-                                        <span>Default</span>
+                                        <input type="radio" name="sortByFilter" value="default" checked />
+                                        <span>Default (NO)</span>
                                     </label>
                                     <label class="filter-chip">
-                                        <input type="radio" name="sortFilter" value="az" />
-                                        <span>A → Z</span>
+                                        <input type="radio" name="sortByFilter" value="id" />
+                                        <span>User ID</span>
                                     </label>
                                     <label class="filter-chip">
-                                        <input type="radio" name="sortFilter" value="za" />
-                                        <span>Z → A</span>
+                                        <input type="radio" name="sortByFilter" value="username" />
+                                        <span>Username</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="filter-section">
+                                <span class="filter-title">Order</span>
+                                <div class="filter-options-row">
+                                    <label class="filter-chip">
+                                        <input type="radio" name="sortOrderFilter" value="asc" checked />
+                                        <span>Ascending ↑</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="sortOrderFilter" value="desc" />
+                                        <span>Descending ↓</span>
                                     </label>
                                 </div>
                             </div>
@@ -189,6 +203,7 @@
                     <thead>
                         <tr>
                             <th class="no-column">NO</th>
+                            <th class="user-id-column">User ID</th>
                             <th>Username</th>
                             <th>Position</th>
                             <th>Status</th>
@@ -213,6 +228,10 @@
                                     data-avatar="@user.Avatar">
 
                                     <td class="row-number"></td>
+
+                                    <td class="user-id-value">
+                                        @user.UserId
+                                    </td>
 
                                     <td class="username">
                                         @user.Username
@@ -307,7 +326,7 @@
                         }
 
                         <tr id="emptyRow" hidden>
-                            <td colspan="5"
+                            <td colspan="6"
                                 class="empty-message">
                                 No users found.
                             </td>
@@ -376,6 +395,11 @@
         </div>
 
         <div class="detail-list">
+            <div class="detail-item">
+                <span class="detail-label">User ID</span>
+                <strong id="detailUserId">-</strong>
+            </div>
+
             <div class="detail-item">
                 <span class="detail-label">Username</span>
                 <strong id="detailUsernameValue">-</strong>
