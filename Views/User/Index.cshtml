@@ -1,5 +1,4 @@
-﻿
-@model List<WebAndMobile.Models.UserListItemDto>
+﻿@model List<WebAndMobile.Models.UserListItemDto>
 
 @{
     ViewData["Title"] = "User Management";
@@ -17,18 +16,20 @@
     <div class="user-container">
 
         <!-- Page Header -->
-
         <div class="page-header">
-            <h1>User Management</h1>
 
-            <p>
-                Manage system users, account roles and access status.
-            </p>
+            <div>
+                <h1>User Management</h1>
+
+                <p>
+                    Manage system users, account roles and access status.
+                </p>
+            </div>
+
         </div>
 
 
         <!-- Statistics Cards -->
-
         <div class="stats-grid">
 
             <div class="stat-card">
@@ -108,20 +109,21 @@
 
         </div>
 
-         <a asp-controller ="Admin"
-            asp-action ="Index"
-            class="back-button">
-            ← Back
-          </a>
 
+        <!-- Back Button -->
+        <a asp-controller="Admin"
+           asp-action="Index"
+           class="back-button">
+
+            ← Back
+
+        </a>
 
 
         <!-- User Table -->
-
         <div class="user-card">
 
             <!-- Search and Filter -->
-
             <div class="table-toolbar">
 
                 <div class="search-box">
@@ -169,7 +171,6 @@
 
 
             <!-- Table -->
-
             <div class="table-wrapper">
 
                 <table class="user-table"
@@ -251,10 +252,11 @@
 
                                         <div class="actions">
 
-                                            @* Admin has no action buttons *@
-
+                                            <!-- Admin cannot be changed -->
                                             @if (user.Position != "Admin")
                                             {
+
+                                                <!-- Block / Unblock -->
                                                 @if (user.Status == "Active")
                                                 {
                                                     <form asp-controller="User"
@@ -268,7 +270,9 @@
                                                         <button type="submit"
                                                                 class="action-button deactivate-button"
                                                                 onclick="return confirm('Are you sure you want to block this user?');">
+
                                                             Block
+
                                                         </button>
 
                                                     </form>
@@ -285,11 +289,40 @@
 
                                                         <button type="submit"
                                                                 class="action-button activate-button">
+
                                                             Unblock
+
                                                         </button>
 
                                                     </form>
                                                 }
+
+
+                                                <!-- Student -> Teacher -->
+                                                @if (user.Position == "Student")
+                                                {
+                                                    <button type="button"
+                                                            class="action-button teacher-button"
+                                                            onclick="promoteTeacher(@user.UserId, '@user.Username')">
+
+                                                        Make Teacher
+
+                                                    </button>
+                                                }
+
+
+                                                <!-- Teacher -> Student -->
+                                                @if (user.Position == "Teacher")
+                                                {
+                                                    <button type="button"
+                                                            class="action-button cancel-teacher-button"
+                                                            onclick="cancelTeacher(@user.UserId, '@user.Username')">
+
+                                                        Remove Teacher
+
+                                                    </button>
+                                                }
+
                                             }
 
                                         </div>
@@ -326,18 +359,17 @@
 </div>
 
 
-<!-- Search and Role Filter -->
-
 <script>
+
+    //=====================================================
+    // SEARCH + ROLE FILTER
+    //=====================================================
 
     const searchInput =
         document.getElementById("userSearch");
 
     const roleFilter =
         document.getElementById("roleFilter");
-
-    const tableRows =
-        document.querySelectorAll("#userTable tbody tr");
 
 
     function filterUsers() {
@@ -348,8 +380,15 @@
         const selectedRole =
             roleFilter.value;
 
+        const tableRows =
+            document.querySelectorAll("#userTable tbody tr");
+
 
         tableRows.forEach(row => {
+
+            if (row.cells.length < 8) {
+                return;
+            }
 
             const username =
                 row.cells[1]?.textContent
@@ -383,18 +422,13 @@
 
 
             if (matchesSearch && matchesRole) {
-
                 row.style.display = "";
-
             }
             else {
-
                 row.style.display = "none";
-
             }
 
         });
-
     }
 
 
@@ -409,5 +443,122 @@
         filterUsers
     );
 
-</script>
 
+
+    //=====================================================
+    // PROMOTE STUDENT TO TEACHER
+    //=====================================================
+
+    async function promoteTeacher(id, username) {
+
+        const confirmed = confirm(
+            "Promote " + username + " to Teacher?"
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response = await fetch(
+                "/Admin/PromoteToTeacher?id=" + id,
+                {
+                    method: "POST"
+                }
+            );
+
+
+            if (!response.ok) {
+
+                const message =
+                    await response.text();
+
+                alert(message);
+
+                return;
+            }
+
+
+            alert(
+                username +
+                " has been promoted to Teacher."
+            );
+
+
+            window.location.reload();
+
+        }
+        catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Unable to promote user to Teacher."
+            );
+        }
+
+    }
+
+
+
+    //=====================================================
+    // CANCEL TEACHER ROLE
+    //=====================================================
+
+    async function cancelTeacher(id, username) {
+
+        const confirmed = confirm(
+            "Remove Teacher role from " +
+            username +
+            "?"
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        try {
+
+            const response = await fetch(
+                "/Admin/CancelTeacherRole?id=" + id,
+                {
+                    method: "POST"
+                }
+            );
+
+
+            if (!response.ok) {
+
+                const message =
+                    await response.text();
+
+                alert(message);
+
+                return;
+            }
+
+
+            alert(
+                username +
+                " is now a Student."
+            );
+
+
+            window.location.reload();
+
+        }
+        catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Unable to remove Teacher role."
+            );
+        }
+
+    }
+
+</script>
