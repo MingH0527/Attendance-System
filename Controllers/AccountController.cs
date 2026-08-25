@@ -672,23 +672,6 @@ public class AccountController : Controller
 
         string attemptKey = GetLoginAttemptsKey(model.Username);
         string lockoutKey = GetLoginLockoutKey(model.Username);
-        DateTime? lockoutEnd = GetSessionDateTime(lockoutKey);
-
-        if (lockoutEnd.HasValue && lockoutEnd.Value > DateTime.UtcNow)
-        {
-            TimeSpan remaining = lockoutEnd.Value - DateTime.UtcNow;
-            ViewBag.Error =
-                $"Login attempts have been used up. Try again after " +
-                $"{remaining.Minutes} minute(s) and {remaining.Seconds} second(s).";
-            ViewBag.LoginWarningLevel = "locked";
-            return View(model);
-        }
-
-        if (lockoutEnd.HasValue)
-        {
-            HttpContext.Session.Remove(lockoutKey);
-            HttpContext.Session.Remove(attemptKey);
-        }
 
         User? user = await db.Users.FirstOrDefaultAsync(u =>
             u.Username.ToLower() == model.Username.ToLower());
@@ -697,6 +680,44 @@ public class AccountController : Controller
         {
             ViewBag.Error = "Invalid username or password.";
             return View(model);
+        }
+
+        // A permanently blocked account cannot use username/password login.
+        if (string.Equals(user.Status, "Blocked", StringComparison.OrdinalIgnoreCase))
+        {
+            HttpContext.Session.Remove(attemptKey);
+            HttpContext.Session.Remove(lockoutKey);
+
+            ViewBag.Error =
+                "ACCOUNT PERMANENTLY BLOCKED. This account can no longer sign in.";
+            ViewBag.LoginWarningLevel = "locked";
+            return View(model);
+        }
+
+        // Keep the old Active-status protection for any other inactive status.
+        if (!string.Equals(user.Status, "Active", StringComparison.OrdinalIgnoreCase))
+        {
+            ViewBag.Error = "This account is not active.";
+            ViewBag.LoginWarningLevel = "locked";
+            return View(model);
+        }
+
+        DateTime? lockoutEnd = GetSessionDateTime(lockoutKey);
+
+        if (lockoutEnd.HasValue && lockoutEnd.Value > DateTime.UtcNow)
+        {
+            ViewBag.Error = "ACCOUNT TEMPORARILY LOCKED.";
+            ViewBag.LoginWarningLevel = "locked";
+            ViewBag.LockoutEndUtc = lockoutEnd.Value.ToString("O");
+            return View(model);
+        }
+
+        // The 15-minute lock has expired.
+        // IMPORTANT: remove only the timer. Keep Attempts = 4 so the next
+        // incorrect password becomes attempt #5 and permanently blocks the account.
+        if (lockoutEnd.HasValue)
+        {
+            HttpContext.Session.Remove(lockoutKey);
         }
 
         PasswordVerificationResult result =
@@ -708,26 +729,53 @@ public class AccountController : Controller
             {
                 int attempts =
                     (HttpContext.Session.GetInt32(attemptKey) ?? 0) + 1;
+
                 HttpContext.Session.SetInt32(attemptKey, attempts);
 
-                if (attempts >= 4)
+                // Fifth incorrect password: permanent database block.
+                if (attempts >= 5)
                 {
-                    DateTime end = DateTime.UtcNow.AddMinutes(15);
-                    HttpContext.Session.SetString(lockoutKey, end.ToString("O"));
-                    ViewBag.Error = "Login attempts have been used up.";
+                    user.Status = "Blocked";
+                    await db.SaveChangesAsync();
+
+                    HttpContext.Session.Remove(attemptKey);
+                    HttpContext.Session.Remove(lockoutKey);
+
+                    ViewBag.Error =
+                        "ACCOUNT PERMANENTLY BLOCKED. You used your final login attempt. " +
+                        "This account can no longer sign in.";
                     ViewBag.LoginWarningLevel = "locked";
                     return View(model);
                 }
 
-                int remainingAttempts = 4 - attempts;
-                ViewBag.Error =
-                    $"Password incorrect. You have {remainingAttempts} attempt(s) remaining.";
-                ViewBag.LoginWarningLevel = remainingAttempts switch
+                // Fourth incorrect password: 15-minute temporary lock.
+                if (attempts == 4)
+                {
+                    DateTime end = DateTime.UtcNow.AddMinutes(15);
+                    HttpContext.Session.SetString(lockoutKey, end.ToString("O"));
+
+                    ViewBag.Error = "ACCOUNT TEMPORARILY LOCKED.";
+                    ViewBag.LoginWarningLevel = "locked";
+                    ViewBag.LockoutEndUtc = end.ToString("O");
+                    return View(model);
+                }
+
+                int remainingBeforeTemporaryLock = 4 - attempts;
+
+                ViewBag.Error = remainingBeforeTemporaryLock switch
+                {
+                    3 => "Password incorrect. You have 3 attempts remaining.",
+                    2 => "Password incorrect. You have 2 attempts remaining.",
+                    _ => "Password incorrect. You have 1 attempt remaining before a 15-minute lock."
+                };
+
+                ViewBag.LoginWarningLevel = remainingBeforeTemporaryLock switch
                 {
                     3 => "yellow",
                     2 => "orange",
                     _ => "red"
                 };
+
                 return View(model);
             }
 
@@ -735,14 +783,9 @@ public class AccountController : Controller
             return View(model);
         }
 
+        // Correct password: clear the failed-attempt state.
         HttpContext.Session.Remove(attemptKey);
         HttpContext.Session.Remove(lockoutKey);
-
-        if (!string.Equals(user.Status, "Active", StringComparison.OrdinalIgnoreCase))
-        {
-            ViewBag.Error = "This account is not active.";
-            return View(model);
-        }
 
         List<Claim> claims =
         [
@@ -756,6 +799,9 @@ public class AccountController : Controller
             claims,
             CookieAuthenticationDefaults.AuthenticationScheme);
 
+        // Real ASP.NET Core authentication cookie.
+        // Remember Me ON  -> persistent cookie for 30 days.
+        // Remember Me OFF -> non-persistent authentication session.
         AuthenticationProperties properties = new()
         {
             IsPersistent = model.RememberMe,
@@ -772,21 +818,12 @@ public class AccountController : Controller
 
         if (user.Position == "Teacher")
         {
-            if (user.Position == "Teacher")
-            {
-                return RedirectToAction(
-                    "Index",
-                    "Teacher"
-                );
-            }
+            return RedirectToAction("Index", "Teacher");
         }
 
         if (user.Position == "Student")
         {
-            if (user.Position == "Student")
-            {
-                return RedirectToAction("Index", "Student");
-            }
+            return RedirectToAction("Index", "Student");
         }
 
         return RedirectToAction("Index", "Admin");

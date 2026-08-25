@@ -72,8 +72,22 @@
                 <strong>@role</strong>
             </div>
 
-        </div>
+     
+             <div class="information-row">
+                 <span>Student ID</span>
+                 <strong>@(ViewBag.StudentId ?? "Not registered")</strong>
+             </div>
 
+             <div class="information-row">
+                 <span>Program</span>
+                 <strong>@(ViewBag.ProgramName ?? "Not registered")</strong>
+             </div>
+
+              <div class="information-row">
+                  <span>Class</span>
+                  <strong>@(ViewBag.ClassName ?? "Not registered")</strong>
+              </div>
+            
         <div class="profile-actions">
 
             @if (ViewBag.ShowRegisterCourseCard == true)

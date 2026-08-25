@@ -646,3 +646,138 @@ body {
         padding: 24px 16px;
     }
 }
+
+/* ==================================================
+   REMEMBER ME STATUS MESSAGE
+   Top-right toast, auto-dismissed by login.js
+   ================================================== */
+
+.remember-message {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2000;
+    width: min(360px, calc(100vw - 32px));
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+    animation: rememberToastIn 0.22s ease;
+}
+
+.remember-message-enabled {
+    color: #18794e;
+    background-color: #ecfdf3;
+    border: 1px solid #b7ebcc;
+}
+
+.remember-message-disabled {
+    color: #475569;
+    background-color: #f8fafc;
+    border: 1px solid #dbe3ec;
+}
+
+.remember-message.remember-message-hide {
+    animation: rememberToastOut 0.2s ease forwards;
+}
+
+@keyframes rememberToastIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rememberToastOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+@media (max-width: 600px) {
+    .remember-message {
+        top: 14px;
+        right: 14px;
+        width: calc(100vw - 28px);
+        font-size: 12px;
+    }
+}
+
+
+/* ==================================================
+   LOGIN LOCKOUT COUNTDOWN
+   ================================================== */
+
+.lockout-card {
+    padding: 18px 20px;
+}
+
+.lockout-title {
+    margin-bottom: 12px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
+.lockout-countdown-row {
+    margin-bottom: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.lockout-timer {
+    min-width: 88px;
+    padding: 7px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.lockout-final-warning {
+    line-height: 1.55;
+}
+
+.lockout-expired {
+    color: #14532d;
+    background-color: #ecfdf3;
+    border-color: #86efac;
+}
+
+.lockout-expired-message {
+    line-height: 1.55;
+}
+
+@media (max-width: 600px) {
+    .lockout-countdown-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .lockout-timer {
+        min-width: 100px;
+        font-size: 20px;
+    }
+}
