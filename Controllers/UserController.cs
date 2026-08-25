@@ -30,9 +30,11 @@ public class UserController : Controller
                     Username = u.Username,
                     Email = u.Email,
                     Phone = u.Phone,
+                    Address = u.Address,
                     Gender = u.Gender,
                     Position = u.Position,
                     Status = u.Status,
+                    Avatar = u.Avatar
                 })
                 .ToListAsync();
 

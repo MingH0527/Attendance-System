@@ -3,235 +3,226 @@
 @{
     ViewData["Title"] = "User Management";
 
-    int totalUsers = Model.Count;
-    int activeUsers = Model.Count(u => u.Status == "Active");
-    int teacherCount = Model.Count(u => u.Position == "Teacher");
-    int studentCount = Model.Count(u => u.Position == "Student");
+    int totalUsers = Model?.Count ?? 0;
+    int activeUsers = Model?.Count(u => u.Status == "Active") ?? 0;
+    int teacherCount = Model?.Count(u => u.Position == "Teacher") ?? 0;
+    int studentCount = Model?.Count(u => u.Position == "Student") ?? 0;
 }
 
 <link rel="stylesheet" href="~/css/user.css" />
 
 <div class="user-page">
-
     <div class="user-container">
 
-        <!-- Page Header -->
         <div class="page-header">
-
             <div>
                 <h1>User Management</h1>
-
-                <p>
-                    Manage system users, account roles and access status.
-                </p>
+                <p>Manage system users, account roles and access status.</p>
             </div>
-
         </div>
 
-
-        <!-- Statistics Cards -->
         <div class="stats-grid">
-
             <div class="stat-card">
-
-                <div class="stat-icon total-icon">
-                    👥
-                </div>
-
+                <div class="stat-icon total-icon">👥</div>
                 <div>
-                    <span class="stat-label">
-                        Total Users
-                    </span>
-
-                    <strong class="stat-number">
-                        @totalUsers
-                    </strong>
+                    <span class="stat-label">Total Users</span>
+                    <strong class="stat-number">@totalUsers</strong>
                 </div>
-
             </div>
 
-
             <div class="stat-card">
-
-                <div class="stat-icon active-icon">
-                    ✓
-                </div>
-
+                <div class="stat-icon active-icon">✓</div>
                 <div>
-                    <span class="stat-label">
-                        Active Users
-                    </span>
-
-                    <strong class="stat-number">
-                        @activeUsers
-                    </strong>
+                    <span class="stat-label">Active Users</span>
+                    <strong class="stat-number">@activeUsers</strong>
                 </div>
-
             </div>
 
-
             <div class="stat-card">
-
-                <div class="stat-icon teacher-icon">
-                    👨‍🏫
-                </div>
-
+                <div class="stat-icon teacher-icon">👨‍🏫</div>
                 <div>
-                    <span class="stat-label">
-                        Teachers
-                    </span>
-
-                    <strong class="stat-number">
-                        @teacherCount
-                    </strong>
+                    <span class="stat-label">Teachers</span>
+                    <strong class="stat-number">@teacherCount</strong>
                 </div>
-
             </div>
 
-
             <div class="stat-card">
-
-                <div class="stat-icon student-icon">
-                    🎓
-                </div>
-
+                <div class="stat-icon student-icon">🎓</div>
                 <div>
-                    <span class="stat-label">
-                        Students
-                    </span>
-
-                    <strong class="stat-number">
-                        @studentCount
-                    </strong>
+                    <span class="stat-label">Students</span>
+                    <strong class="stat-number">@studentCount</strong>
                 </div>
-
             </div>
-
         </div>
 
-
-        <!-- Back Button -->
         <a asp-controller="Admin"
            asp-action="Index"
            class="back-button">
-
             ← Back
-
         </a>
 
-
-        <!-- User Table -->
         <div class="user-card">
 
-            <!-- Search and Filter -->
             <div class="table-toolbar">
-
                 <div class="search-box">
-
-                    <span class="search-icon">
-                        🔍
-                    </span>
-
+                    <span class="search-icon">🔍</span>
                     <input type="text"
                            id="userSearch"
-                           placeholder="Search username, email or phone..." />
-
+                           autocomplete="off"
+                           placeholder="Search username..." />
                 </div>
 
+                <div class="toolbar-actions">
+                    <button type="button"
+                            class="refresh-button"
+                            id="refreshUsers"
+                            title="Refresh user data">
+                        <span>↻</span>
+                        Refresh
+                    </button>
 
-                <div class="filter-box">
+                    <div class="filter-area">
+                        <button type="button"
+                                class="filter-trigger"
+                                id="filterTrigger"
+                                aria-expanded="false"
+                                aria-controls="filterPanel">
+                            <span class="filter-trigger-icon">☰</span>
+                            <span>Filter</span>
+                            <span class="filter-count" id="filterCount" hidden>0</span>
+                        </button>
 
-                    <label for="roleFilter">
-                        Role
-                    </label>
+                        <div class="filter-panel"
+                             id="filterPanel"
+                             hidden>
 
-                    <select id="roleFilter">
+                            <div class="filter-panel-header">
+                                <strong>Filter users</strong>
+                                <button type="button"
+                                        class="filter-close"
+                                        id="filterClose"
+                                        aria-label="Close filter">
+                                    ×
+                                </button>
+                            </div>
 
-                        <option value="all">
-                            All Roles
-                        </option>
+                            <div class="filter-section">
+                                <span class="filter-title">Role</span>
+                                <div class="filter-options-row">
+                                    <label class="filter-chip">
+                                        <input type="radio" name="roleFilter" value="all" checked />
+                                        <span>All</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="roleFilter" value="Admin" />
+                                        <span>Admin</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="roleFilter" value="Teacher" />
+                                        <span>Teacher</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="roleFilter" value="Student" />
+                                        <span>Student</span>
+                                    </label>
+                                </div>
+                            </div>
 
-                        <option value="Admin">
-                            Admin
-                        </option>
+                            <div class="filter-section">
+                                <span class="filter-title">Status</span>
+                                <div class="filter-options-row">
+                                    <label class="filter-chip">
+                                        <input type="radio" name="statusFilter" value="all" checked />
+                                        <span>All</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="statusFilter" value="Active" />
+                                        <span>Active</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="statusFilter" value="Inactive" />
+                                        <span>Inactive</span>
+                                    </label>
+                                </div>
+                            </div>
 
-                        <option value="Teacher">
-                            Teacher
-                        </option>
+                            <div class="filter-section">
+                                <span class="filter-title">Sort</span>
+                                <div class="filter-options-row">
+                                    <label class="filter-chip">
+                                        <input type="radio" name="sortFilter" value="default" checked />
+                                        <span>Default</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="sortFilter" value="az" />
+                                        <span>A → Z</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="sortFilter" value="za" />
+                                        <span>Z → A</span>
+                                    </label>
+                                </div>
+                            </div>
 
-                        <option value="Student">
-                            Student
-                        </option>
+                            <div class="filter-actions">
+                                <button type="button"
+                                        class="filter-reset"
+                                        id="filterReset">
+                                    Reset
+                                </button>
 
-                    </select>
-
+                                <button type="button"
+                                        class="filter-apply"
+                                        id="filterApply">
+                                    Apply Filter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
             </div>
 
-
-            <!-- Table -->
             <div class="table-wrapper">
-
                 <table class="user-table"
                        id="userTable">
 
                     <thead>
-
                         <tr>
-                            <th>User ID</th>
+                            <th class="no-column">NO</th>
                             <th>Username</th>
-                            <th>Email</th>
-                            <th>Phone</th>
-                            <th>Gender</th>
                             <th>Position</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
-
                     </thead>
 
-
-                    <tbody>
-
+                    <tbody id="userTableBody">
                         @if (Model != null && Model.Any())
                         {
                             @foreach (var user in Model)
                             {
-                                <tr>
+                                <tr class="user-row"
+                                    data-user-id="@user.UserId"
+                                    data-username="@user.Username"
+                                    data-email="@user.Email"
+                                    data-phone="@user.Phone"
+                                    data-address="@user.Address"
+                                    data-gender="@user.Gender"
+                                    data-position="@user.Position"
+                                    data-status="@user.Status"
+                                    data-avatar="@user.Avatar">
 
-                                    <td class="user-id">
-                                        @user.UserId
-                                    </td>
-
+                                    <td class="row-number"></td>
 
                                     <td class="username">
                                         @user.Username
                                     </td>
 
-
-                                    <td class="email">
-                                        @user.Email
-                                    </td>
-
-
-                                    <td>
-                                        @user.Phone
-                                    </td>
-
-
-                                    <td>
-                                        @user.Gender
-                                    </td>
-
-
                                     <td class="position">
                                         @user.Position
                                     </td>
 
-
                                     <td>
-
                                         @if (user.Status == "Active")
                                         {
                                             <span class="status status-active">
@@ -244,19 +235,19 @@
                                                 Inactive
                                             </span>
                                         }
-
                                     </td>
 
-
                                     <td>
-
                                         <div class="actions">
 
-                                            <!-- Admin cannot be changed -->
+                                            <button type="button"
+                                                    class="action-button detail-button"
+                                                    data-action="detail">
+                                                Detail
+                                            </button>
+
                                             @if (user.Position != "Admin")
                                             {
-
-                                                <!-- Block / Unblock -->
                                                 @if (user.Status == "Active")
                                                 {
                                                     <form asp-controller="User"
@@ -270,11 +261,8 @@
                                                         <button type="submit"
                                                                 class="action-button deactivate-button"
                                                                 onclick="return confirm('Are you sure you want to block this user?');">
-
                                                             Block
-
                                                         </button>
-
                                                     </form>
                                                 }
                                                 else
@@ -289,276 +277,141 @@
 
                                                         <button type="submit"
                                                                 class="action-button activate-button">
-
                                                             Unblock
-
                                                         </button>
-
                                                     </form>
                                                 }
 
-
-                                                <!-- Student -> Teacher -->
                                                 @if (user.Position == "Student")
                                                 {
                                                     <button type="button"
                                                             class="action-button teacher-button"
-                                                            onclick="promoteTeacher(@user.UserId, '@user.Username')">
-
+                                                            data-action="promote">
                                                         Make Teacher
-
                                                     </button>
                                                 }
 
-
-                                                <!-- Teacher -> Student -->
                                                 @if (user.Position == "Teacher")
                                                 {
                                                     <button type="button"
                                                             class="action-button cancel-teacher-button"
-                                                            onclick="cancelTeacher(@user.UserId, '@user.Username')">
-
+                                                            data-action="cancel-teacher">
                                                         Remove Teacher
-
                                                     </button>
                                                 }
-
                                             }
-
                                         </div>
-
                                     </td>
-
                                 </tr>
                             }
                         }
-                        else
-                        {
-                            <tr>
 
-                                <td colspan="8"
-                                    class="empty-message">
-
-                                    No users found.
-
-                                </td>
-
-                            </tr>
-                        }
-
+                        <tr id="emptyRow" hidden>
+                            <td colspan="5"
+                                class="empty-message">
+                                No users found.
+                            </td>
+                        </tr>
                     </tbody>
-
                 </table>
-
             </div>
 
+            <div class="table-footer">
+                <div class="pagination-summary"
+                     id="paginationSummary">
+                </div>
+
+                <div class="pagination"
+                     id="pagination"
+                     aria-label="User list pagination">
+                </div>
+            </div>
         </div>
-
     </div>
-
 </div>
 
-
-<script>
-
-    //=====================================================
-    // SEARCH + ROLE FILTER
-    //=====================================================
-
-    const searchInput =
-        document.getElementById("userSearch");
-
-    const roleFilter =
-        document.getElementById("roleFilter");
-
-
-    function filterUsers() {
-
-        const searchText =
-            searchInput.value.toLowerCase().trim();
-
-        const selectedRole =
-            roleFilter.value;
-
-        const tableRows =
-            document.querySelectorAll("#userTable tbody tr");
-
-
-        tableRows.forEach(row => {
-
-            if (row.cells.length < 8) {
-                return;
-            }
-
-            const username =
-                row.cells[1]?.textContent
-                    .toLowerCase()
-                    .trim() || "";
-
-            const email =
-                row.cells[2]?.textContent
-                    .toLowerCase()
-                    .trim() || "";
-
-            const phone =
-                row.cells[3]?.textContent
-                    .toLowerCase()
-                    .trim() || "";
-
-            const role =
-                row.cells[5]?.textContent
-                    .trim() || "";
-
-
-            const matchesSearch =
-                username.includes(searchText) ||
-                email.includes(searchText) ||
-                phone.includes(searchText);
-
-
-            const matchesRole =
-                selectedRole === "all" ||
-                role === selectedRole;
-
-
-            if (matchesSearch && matchesRole) {
-                row.style.display = "";
-            }
-            else {
-                row.style.display = "none";
-            }
-
-        });
-    }
-
-
-    searchInput.addEventListener(
-        "input",
-        filterUsers
-    );
-
-
-    roleFilter.addEventListener(
-        "change",
-        filterUsers
-    );
-
-
-
-    //=====================================================
-    // PROMOTE STUDENT TO TEACHER
-    //=====================================================
-
-    async function promoteTeacher(id, username) {
-
-        const confirmed = confirm(
-            "Promote " + username + " to Teacher?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-
-        try {
-
-            const response = await fetch(
-                "/Admin/PromoteToTeacher?id=" + id,
-                {
-                    method: "POST"
-                }
-            );
-
-
-            if (!response.ok) {
-
-                const message =
-                    await response.text();
-
-                alert(message);
-
-                return;
-            }
-
-
-            alert(
-                username +
-                " has been promoted to Teacher."
-            );
-
-
-            window.location.reload();
-
-        }
-        catch (error) {
-
-            console.error(error);
-
-            alert(
-                "Unable to promote user to Teacher."
-            );
-        }
-
-    }
-
-
-
-    //=====================================================
-    // CANCEL TEACHER ROLE
-    //=====================================================
-
-    async function cancelTeacher(id, username) {
-
-        const confirmed = confirm(
-            "Remove Teacher role from " +
-            username +
-            "?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-
-        try {
-
-            const response = await fetch(
-                "/Admin/CancelTeacherRole?id=" + id,
-                {
-                    method: "POST"
-                }
-            );
-
-
-            if (!response.ok) {
-
-                const message =
-                    await response.text();
-
-                alert(message);
-
-                return;
-            }
-
-
-            alert(
-                username +
-                " is now a Student."
-            );
-
-
-            window.location.reload();
-
-        }
-        catch (error) {
-
-            console.error(error);
-
-            alert(
-                "Unable to remove Teacher role."
-            );
-        }
-
-    }
-
-</script>
+<div class="detail-overlay"
+     id="detailOverlay"
+     hidden>
+
+    <aside class="detail-drawer"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="detailTitle">
+
+        <div class="detail-header">
+            <div>
+                <span class="detail-eyebrow">User profile</span>
+                <h2 id="detailTitle">User Details</h2>
+            </div>
+
+            <button type="button"
+                    class="detail-close"
+                    id="detailClose"
+                    aria-label="Close user details">
+                ×
+            </button>
+        </div>
+
+        <div class="detail-profile">
+            <div class="detail-avatar-wrap">
+                <img id="detailAvatar"
+                     class="detail-avatar"
+                     alt="User avatar"
+                     hidden />
+
+                <div class="detail-avatar-fallback"
+                     id="detailAvatarFallback">
+                    👤
+                </div>
+            </div>
+
+            <div>
+                <h3 id="detailUsername">-</h3>
+                <span class="detail-role"
+                      id="detailRole">
+                    -
+                </span>
+            </div>
+        </div>
+
+        <div class="detail-list">
+            <div class="detail-item">
+                <span class="detail-label">Username</span>
+                <strong id="detailUsernameValue">-</strong>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Email</span>
+                <strong id="detailEmail">-</strong>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Phone</span>
+                <strong id="detailPhone">-</strong>
+            </div>
+
+            <div class="detail-item detail-item-wide">
+                <span class="detail-label">Address</span>
+                <strong id="detailAddress">-</strong>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Gender</span>
+                <strong id="detailGender">-</strong>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Position</span>
+                <strong id="detailPosition">-</strong>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Status</span>
+                <strong id="detailStatus">-</strong>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script src="~/js/usermanagement.js"></script>
