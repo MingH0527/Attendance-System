@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using WebAndMobile.Models;
 
 namespace WebAndMobile.ViewModels;
@@ -7,18 +7,18 @@ namespace WebAndMobile.ViewModels;
 public class TimetableRequest
 {
     // Only present when editing an existing entry.
-    public int? TimetableId { get; set; }
+    public string? TimetableId { get; set; }
 
     [Required(ErrorMessage = "Please select a teacher.")]
-    public int TeacherId { get; set; }
+    public string TeacherId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Please select a course.")]
-    public int CourseId { get; set; }
+    public string CourseId { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Please select a class.")]
-    public int ClassId { get; set; }
+    public string ClassId { get; set; } = string.Empty;
 
-    public int? ClassroomId { get; set; }
+    public string? ClassroomId { get; set; }
 
     [Required]
     public DayOfWeek DayOfWeek { get; set; }
@@ -37,14 +37,14 @@ public class TimetableRequest
 // Returned to the client to render each populated cell in the grid.
 public class TimetableSlotDto
 {
-    public int TimetableId { get; set; }
-    public int TeacherId { get; set; }
+    public string TimetableId { get; set; } = string.Empty;
+    public string TeacherId { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
-    public int CourseId { get; set; }
+    public string CourseId { get; set; } = string.Empty;
     public string CourseName { get; set; } = string.Empty;
-    public int ClassId { get; set; }
+    public string ClassId { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
-    public int? ClassroomId { get; set; }
+    public string? ClassroomId { get; set; }
     public string? RoomName { get; set; }
     public DayOfWeek DayOfWeek { get; set; }
     public string StartTime { get; set; } = string.Empty; // "HH:mm"
@@ -54,13 +54,13 @@ public class TimetableSlotDto
 
 public class TeacherLookupDto
 {
-    public int TeacherId { get; set; }
+    public string TeacherId { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
 }
 
 public class SimpleLookupDto
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
 }
 
@@ -75,7 +75,7 @@ public class ValidationResult
 
 public class UserRoleDto
 {
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string Position { get; set; } = string.Empty;
 }

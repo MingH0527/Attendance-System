@@ -1,22 +1,29 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WebAndMobile.Models
+namespace WebAndMobile.Models;
+
+[Index(nameof(UserId), nameof(CourseId), IsUnique = true)]
+public class TeacherCourse
 {
-    // 单纯声明"这位老师教这门课", 跟 Timetable 的具体排课时段无关(那部分仍由管理员另外安排)
-    public class TeacherCourse
-    {
-        [Key]
-        public int TeacherCourseId { get; set; }
+    [Key]
+    [MaxLength(20)]
+    public string TeacherCourseId { get; set; } = string.Empty;
 
-        [ForeignKey(nameof(User))]
-        public int UserId { get; set; }
-        public User? User { get; set; }
+    [MaxLength(20)]
+    public string UserId { get; set; } = string.Empty;
 
-        [ForeignKey(nameof(Course))]
-        public int CourseId { get; set; }
-        public Course? Course { get; set; }
+    [ForeignKey(nameof(UserId))]
+    [DeleteBehavior(DeleteBehavior.Cascade)]
+    public User? User { get; set; }
 
-        public DateTime RegisteredDate { get; set; } = DateTime.Now;
-    }
+    [MaxLength(20)]
+    public string CourseId { get; set; } = string.Empty;
+
+    [ForeignKey(nameof(CourseId))]
+    [DeleteBehavior(DeleteBehavior.Restrict)]
+    public Course? Course { get; set; }
+
+    public DateTime RegisteredDate { get; set; } = DateTime.Now;
 }

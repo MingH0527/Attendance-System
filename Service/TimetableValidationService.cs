@@ -96,12 +96,12 @@ public class TimetableValidationService :
                 "The selected class does not exist.");
         }
 
-        if (request.ClassroomId.HasValue)
+        if (!string.IsNullOrWhiteSpace(request.ClassroomId))
         {
             bool classroomExists =
                 await _context.Classrooms.AnyAsync(
                     c => c.ClassroomId ==
-                         request.ClassroomId.Value);
+                         request.ClassroomId);
 
             if (!classroomExists)
             {
@@ -115,11 +115,11 @@ public class TimetableValidationService :
             .Where(t =>
                 t.DayOfWeek == request.DayOfWeek);
 
-        if (request.TimetableId.HasValue)
+        if (!string.IsNullOrWhiteSpace(request.TimetableId))
         {
             sameDayQuery = sameDayQuery.Where(
                 t => t.TimetableId !=
-                     request.TimetableId.Value);
+                     request.TimetableId);
         }
 
         var sameDayEntries =
@@ -150,10 +150,10 @@ public class TimetableValidationService :
                 "This class already has another lesson during this time.");
         }
 
-        if (request.ClassroomId.HasValue &&
+        if (!string.IsNullOrWhiteSpace(request.ClassroomId) &&
             sameDayEntries.Any(t =>
                 t.ClassroomId ==
-                    request.ClassroomId.Value &&
+                    request.ClassroomId &&
                 Overlaps(t, start, end)))
         {
             return ValidationResult.Fail(

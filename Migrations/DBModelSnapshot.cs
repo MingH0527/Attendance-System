@@ -24,11 +24,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.AcademicProgram", b =>
                 {
-                    b.Property<int>("ProgramId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProgramId"));
+                    b.Property<string>("ProgramId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ProgramCode")
                         .IsRequired()
@@ -47,11 +45,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.AdminSecurity", b =>
                 {
-                    b.Property<int>("AdminSecurityId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AdminSecurityId"));
+                    b.Property<string>("AdminSecurityId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -76,8 +72,10 @@ namespace WebAndMobile.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("AdminSecurityId");
 
@@ -89,11 +87,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>
                 {
-                    b.Property<long>("ChatMessageId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ChatMessageId"));
+                    b.Property<string>("ChatMessageId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("CallAnsweredAtUtc")
                         .HasColumnType("datetime2");
@@ -116,8 +112,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(400)
                         .HasColumnType("nvarchar(400)");
 
-                    b.Property<int>("ConversationId")
-                        .HasColumnType("int");
+                    b.Property<string>("ConversationId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
@@ -130,11 +128,15 @@ namespace WebAndMobile.Migrations
                     b.Property<DateTime?>("ReadAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ReceiverId")
-                        .HasColumnType("int");
+                    b.Property<string>("ReceiverId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("SenderId")
-                        .HasColumnType("int");
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("SentAtUtc")
                         .HasColumnType("datetime2");
@@ -152,19 +154,19 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>
                 {
-                    b.Property<int>("ClassId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ClassId"));
+                    b.Property<string>("ClassId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("ClassName")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int>("ProgramId")
-                        .HasColumnType("int");
+                    b.Property<string>("ProgramId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("ClassId");
 
@@ -178,11 +180,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.Classroom", b =>
                 {
-                    b.Property<int>("ClassroomId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ClassroomId"));
+                    b.Property<string>("ClassroomId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("RoomName")
                         .IsRequired()
@@ -199,11 +199,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.Conversation", b =>
                 {
-                    b.Property<int>("ConversationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -211,11 +209,15 @@ namespace WebAndMobile.Migrations
                     b.Property<DateTime>("LastMessageAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("StudentId")
-                        .HasColumnType("int");
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("TeacherId")
-                        .HasColumnType("int");
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("ConversationId");
 
@@ -229,11 +231,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.Course", b =>
                 {
-                    b.Property<int>("CourseId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CourseId"));
+                    b.Property<string>("CourseId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("CourseCode")
                         .HasMaxLength(30)
@@ -254,11 +254,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.PasskeyDeviceBinding", b =>
                 {
-                    b.Property<int>("PasskeyDeviceBindingId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PasskeyDeviceBindingId"));
+                    b.Property<string>("PasskeyDeviceBindingId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("BindingToken")
                         .IsRequired()
@@ -280,8 +278,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("VerifiedAt")
                         .HasColumnType("datetime2");
@@ -300,11 +300,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.PaymentSecurity", b =>
                 {
-                    b.Property<int>("PaymentSecurityId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaymentSecurityId"));
+                    b.Property<string>("PaymentSecurityId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -323,8 +321,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("PaymentSecurityId");
 
@@ -336,11 +336,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.PaymentTransaction", b =>
                 {
-                    b.Property<int>("PaymentTransactionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaymentTransactionId"));
+                    b.Property<string>("PaymentTransactionId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
@@ -378,8 +376,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("PaymentTransactionId");
 
@@ -393,17 +393,19 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
                 {
-                    b.Property<int>("StudentClassId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.Property<string>("StudentClassId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StudentClassId"));
+                    b.Property<string>("ClassId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("ClassId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProgramId")
-                        .HasColumnType("int");
+                    b.Property<string>("ProgramId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("RegisteredDate")
                         .HasColumnType("datetime2");
@@ -413,8 +415,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("StudentClassId");
 
@@ -430,11 +434,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.Teacher", b =>
                 {
-                    b.Property<int>("TeacherId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeacherId"));
+                    b.Property<string>("TeacherId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("HireDate")
                         .HasColumnType("datetime2");
@@ -449,8 +451,10 @@ namespace WebAndMobile.Migrations
                     b.Property<string>("Subject")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("TeacherId");
 
@@ -461,20 +465,22 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.TeacherCourse", b =>
                 {
-                    b.Property<int>("TeacherCourseId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.Property<string>("TeacherCourseId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TeacherCourseId"));
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("int");
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("RegisteredDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("TeacherCourseId");
 
@@ -488,23 +494,26 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
                 {
-                    b.Property<int>("TimetableId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                    b.Property<string>("TimetableId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TimetableId"));
-
-                    b.Property<int>("ClassId")
-                        .HasColumnType("int");
+                    b.Property<string>("ClassId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("ClassType")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ClassroomId")
-                        .HasColumnType("int");
+                    b.Property<string>("ClassroomId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("CourseId")
-                        .HasColumnType("int");
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("DayOfWeek")
                         .HasColumnType("int");
@@ -515,8 +524,10 @@ namespace WebAndMobile.Migrations
                     b.Property<TimeSpan>("StartTime")
                         .HasColumnType("time");
 
-                    b.Property<int>("TeacherId")
-                        .HasColumnType("int");
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("TimetableId");
 
@@ -533,11 +544,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.User", b =>
                 {
-                    b.Property<int>("UserId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
+                    b.Property<string>("UserId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -600,11 +609,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.UserFaceProfile", b =>
                 {
-                    b.Property<int>("UserFaceProfileId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserFaceProfileId"));
+                    b.Property<string>("UserFaceProfileId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("EmbeddingJson")
                         .IsRequired()
@@ -619,8 +626,10 @@ namespace WebAndMobile.Migrations
                     b.Property<DateTime>("RegisteredAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("UserFaceProfileId");
 
@@ -632,11 +641,9 @@ namespace WebAndMobile.Migrations
 
             modelBuilder.Entity("WebAndMobile.Models.UserPasskey", b =>
                 {
-                    b.Property<int>("UserPasskeyId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserPasskeyId"));
+                    b.Property<string>("UserPasskeyId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<Guid>("AaGuid")
                         .HasColumnType("uniqueidentifier");
@@ -685,10 +692,6 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("PasskeyCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
                     b.Property<byte[]>("PublicKey")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
@@ -707,8 +710,10 @@ namespace WebAndMobile.Migrations
                     b.Property<byte[]>("UserHandle")
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("UserPasskeyId");
 
@@ -716,10 +721,6 @@ namespace WebAndMobile.Migrations
                         .IsUnique();
 
                     b.HasIndex("DeviceIdentifier");
-
-                    b.HasIndex("PasskeyCode")
-                        .IsUnique()
-                        .HasFilter("[PasskeyCode] IS NOT NULL");
 
                     b.HasIndex("UserId", "DeviceIdentifier")
                         .IsUnique()
@@ -905,7 +906,7 @@ namespace WebAndMobile.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("WebAndMobile.Models.User", null)
+                    b.HasOne("WebAndMobile.Models.User", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -916,6 +917,8 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Classroom");
 
                     b.Navigation("Course");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.UserFaceProfile", b =>

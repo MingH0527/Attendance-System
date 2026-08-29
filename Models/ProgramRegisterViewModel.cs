@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebAndMobile.Models
 {
@@ -12,10 +12,10 @@ namespace WebAndMobile.Models
 
        
         [Required(ErrorMessage = "Please select a program")]
-        public int SelectedProgramId { get; set; }
-        public int? SelectedClassId { get; set; }
+        public string SelectedProgramId { get; set; } = string.Empty;
+        public string? SelectedClassId { get; set; }
 
-        public List<int> SelectedCourseIds { get; set; } = new();
+        public List<string> SelectedCourseIds { get; set; } = new();
 
         public string? CurrentStudentId { get; set; }
         public string? CurrentProgramName { get; set; }

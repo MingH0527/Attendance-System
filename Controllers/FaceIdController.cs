@@ -28,7 +28,7 @@ public class FaceIdController : Controller
     [HttpGet]
     public async Task<IActionResult> Manage(int? returnFeeId = null)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         UserFaceProfile? profile = await db.UserFaceProfiles
             .AsNoTracking()
@@ -46,7 +46,7 @@ public class FaceIdController : Controller
     [HttpGet]
     public async Task<IActionResult> Register(int? returnFeeId = null, string? returnUrl = null)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         bool alreadyRegistered = await db.UserFaceProfiles
             .AnyAsync(p => p.UserId == userId && p.IsActive);
@@ -78,7 +78,7 @@ public class FaceIdController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RegisterFrame([FromBody] FaceFrameRequest request)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         bool alreadyRegistered = await db.UserFaceProfiles
             .AnyAsync(p => p.UserId == userId && p.IsActive);
@@ -117,6 +117,11 @@ public class FaceIdController : Controller
 
         UserFaceProfile profile = new()
         {
+            UserFaceProfileId = await FormattedIdGenerator.NextAsync(
+                db.UserFaceProfiles,
+                p => p.UserFaceProfileId,
+                "FCE"
+            ),
             UserId = userId,
             EmbeddingJson = JsonSerializer.Serialize(analysis.Embedding),
             RegisteredAt = DateTime.UtcNow,
@@ -136,7 +141,7 @@ public class FaceIdController : Controller
     [HttpGet]
     public async Task<IActionResult> Verify(int? feeId = null, string? returnUrl = null)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         bool hasFace = await db.UserFaceProfiles
             .AnyAsync(p => p.UserId == userId && p.IsActive);
@@ -164,7 +169,7 @@ public class FaceIdController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> VerifyFrame([FromBody] FaceFrameRequest request)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         if (!request.IsStable)
         {
@@ -275,13 +280,15 @@ public class FaceIdController : Controller
     private bool IsSafeLocalUrl(string? url) =>
         !string.IsNullOrWhiteSpace(url) && Url.IsLocalUrl(url);
 
-    private int GetCurrentUserId()
+    private string GetCurrentUserId()
     {
-        string? value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (!int.TryParse(value, out int userId))
+        if (string.IsNullOrWhiteSpace(userId))
         {
-            throw new UnauthorizedAccessException("The login session is invalid.");
+            throw new UnauthorizedAccessException(
+                "The login session is invalid."
+            );
         }
 
         return userId;

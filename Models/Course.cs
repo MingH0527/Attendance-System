@@ -1,11 +1,14 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebAndMobile.Models;
 
+[Index(nameof(CourseName), IsUnique = true)]
 public class Course
 {
     [Key]
-    public int CourseId { get; set; }
+    [MaxLength(20)]
+    public string CourseId { get; set; } = string.Empty;
 
     [Required]
     [MaxLength(150)]

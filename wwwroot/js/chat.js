@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
     "use strict";
 
     const app =
@@ -9,15 +9,12 @@
     }
 
     const currentUserId =
-        Number(
-            app.dataset.currentUserId
-        );
+        app.dataset.currentUserId ||
+        "";
 
     const initialSelectedUserId =
-        Number(
-            app.dataset.selectedUserId ||
-            0
-        );
+        app.dataset.selectedUserId ||
+        "";
 
     const searchInput =
         document.getElementById(
@@ -175,16 +172,16 @@
         );
 
     let selectedUserId =
-        0;
+        "";
 
     let selectedConversationId =
-        0;
+        "";
 
     let selectedUserName =
         "";
 
     let oldestMessageId =
-        0;
+        "";
 
     let searchTimer =
         null;
@@ -193,13 +190,13 @@
         false;
 
     let pendingCallerId =
-        0;
+        "";
 
     let pendingCallerName =
         "";
 
     let callPeerUserId =
-        0;
+        "";
 
     let callPeerName =
         "";
@@ -220,10 +217,10 @@
         false;
 
     let activeCallMessageId =
-        0;
+        "";
 
     let pendingCallMessageId =
-        0;
+        "";
 
     let callConnectedAt =
         null;
@@ -478,7 +475,9 @@
     }
 
     function messageHtml(message) {
-        const mine = Number(message.senderId) === currentUserId;
+        const mine =
+            String(message.senderId || "") ===
+            currentUserId;
         const isCall = (message.messageType || "Text") === "VideoCall";
 
         let contentHtml;
@@ -572,18 +571,10 @@
                 )
             );
 
-        oldestMessageId =
-            oldestMessageId === 0
-                ? Number(
-                    message.messageId
-                )
-                : Math.min(
-                    oldestMessageId,
-
-                    Number(
-                        message.messageId
-                    )
-                );
+        if (!oldestMessageId) {
+            oldestMessageId =
+                String(message.messageId || "");
+        }
 
         if (scroll) {
             messageArea.scrollTop =
@@ -612,9 +603,10 @@
 
         if (messages.length > 0) {
             oldestMessageId =
-                Number(
+                String(
                     messages[0]
-                        .messageId
+                        .messageId ||
+                    ""
                 );
         }
 
@@ -629,15 +621,13 @@
         clearError();
 
         selectedUserId =
-            Number(
-                otherUserId
-            );
+            String(otherUserId || "");
 
         selectedConversationId =
-            0;
+            "";
 
         oldestMessageId =
-            0;
+            "";
 
         messageList.innerHTML =
             "";
@@ -656,9 +646,7 @@
                         .toggle(
                             "active",
 
-                            Number(
-                                item.dataset.userId
-                            ) ===
+                            item.dataset.userId ===
                             selectedUserId
                         );
                 }
@@ -680,9 +668,8 @@
                 await response.json();
 
             selectedConversationId =
-                Number(
-                    data.conversationId
-                );
+                data.conversationId ||
+                "";
 
             selectedUserName =
                 data.otherUser.username;
@@ -727,8 +714,7 @@
                 messageArea.scrollHeight;
 
             if (
-                selectedConversationId >
-                    0 &&
+                selectedConversationId &&
 
                 connection.state ===
                     signalR
@@ -992,9 +978,7 @@
                             <button
                                 type="button"
                                 class="conversation-item ${
-                                    Number(
-                                        item.otherUserId
-                                    ) ===
+                                    String(item.otherUserId || "") ===
                                     selectedUserId
                                         ? "active"
                                         : ""
@@ -1355,7 +1339,7 @@
             true;
 
         pendingCallerId =
-            0;
+            "";
 
         pendingCallerName =
             "";
@@ -1393,7 +1377,7 @@
             );
 
             activeCallMessageId =
-                Number(
+                String(
                     await connection.invoke(
                         "StartVideoCall",
                         callPeerUserId
@@ -1510,9 +1494,7 @@
         callerId,
         offerJson) {
         callPeerUserId =
-            Number(
-                callerId
-            );
+            String(callerId || "");
 
         if (!localStream) {
             await ensureLocalMedia();
@@ -1745,7 +1727,7 @@
             0;
 
         callPeerUserId =
-            0;
+            "";
 
         callPeerName =
             "";
@@ -1754,10 +1736,10 @@
             false;
 
         activeCallMessageId =
-            0;
+            "";
 
         pendingCallMessageId =
-            0;
+            "";
 
         microphoneEnabled =
             true;
@@ -1836,9 +1818,7 @@
                 "";
 
             openConversation(
-                Number(
-                    button.dataset.userId
-                )
+                button.dataset.userId
             );
         }
     );
@@ -1856,9 +1836,7 @@
             }
 
             openConversation(
-                Number(
-                    button.dataset.userId
-                )
+                button.dataset.userId
             );
         }
     );
@@ -1965,14 +1943,10 @@
         "ReceiveMessage",
         async message => {
             const belongsToOpenChat =
-                Number(
-                    message.senderId
-                ) ===
+                String(message.senderId || "") ===
                     selectedUserId ||
 
-                Number(
-                    message.receiverId
-                ) ===
+                String(message.receiverId || "") ===
                     selectedUserId;
 
             if (belongsToOpenChat) {
@@ -1981,13 +1955,10 @@
                 );
 
                 if (
-                    Number(
-                        message.receiverId
-                    ) ===
+                    String(message.receiverId || "") ===
                         currentUserId &&
 
-                    selectedConversationId >
-                        0
+                    selectedConversationId
                 ) {
                     await connection.invoke(
                         "MarkConversationAsRead",
@@ -2012,14 +1983,10 @@
             readerId
         ) => {
             if (
-                Number(
-                    conversationId
-                ) !==
+                String(conversationId || "") !==
                     selectedConversationId ||
 
-                Number(
-                    readerId
-                ) ===
+                String(readerId || "") ===
                     currentUserId
             ) {
                 return;
@@ -2045,12 +2012,8 @@
                 connection
                     .invoke(
                         "RejectVideoCall",
-                        Number(
-                            caller.callMessageId
-                        ),
-                        Number(
-                            caller.callerId
-                        )
+                        String(caller.callMessageId || ""),
+                        String(caller.callerId || "")
                     )
                     .catch(
                         () => {}
@@ -2060,14 +2023,10 @@
             }
 
             pendingCallerId =
-                Number(
-                    caller.callerId
-                );
+                String(caller.callerId || "");
 
             pendingCallMessageId =
-                Number(
-                    caller.callMessageId
-                );
+                String(caller.callMessageId || "");
 
             pendingCallerName =
                 caller.callerName;
@@ -2099,16 +2058,14 @@
             callMessageId
         ) => {
             if (
-                Number(
-                    accepterId
-                ) !==
+                String(accepterId || "") !==
                 callPeerUserId
             ) {
                 return;
             }
 
             activeCallMessageId =
-                Number(callMessageId);
+                String(callMessageId || "");
 
             videoCallStatus.textContent =
                 "Connecting…";
@@ -2121,9 +2078,7 @@
         "VideoCallRejected",
         rejecterId => {
             if (
-                Number(
-                    rejecterId
-                ) !==
+                String(rejecterId || "") !==
                 callPeerUserId
             ) {
                 return;
@@ -2169,9 +2124,7 @@
             answerJson
         ) => {
             if (
-                Number(
-                    answererId
-                ) !==
+                String(answererId || "") !==
                 callPeerUserId
             ) {
                 return;
@@ -2202,9 +2155,7 @@
             candidateJson
         ) => {
             if (
-                Number(
-                    senderId
-                ) !==
+                String(senderId || "") !==
                 callPeerUserId
             ) {
                 return;
@@ -2236,9 +2187,7 @@
             callMessageId
         ) => {
             if (
-                Number(
-                    senderId
-                ) !==
+                String(senderId || "") !==
                 callPeerUserId
             ) {
                 return;
@@ -2282,8 +2231,7 @@
             await connection.start();
 
             if (
-                initialSelectedUserId >
-                0
+                initialSelectedUserId
             ) {
                 await openConversation(
                     initialSelectedUserId

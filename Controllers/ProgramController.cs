@@ -1,8 +1,9 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -20,7 +21,7 @@ public class ProgramController : Controller
     [HttpGet]
     public async Task<IActionResult> RegisterProgram()
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -29,7 +30,7 @@ public class ProgramController : Controller
 
         User? user = await db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.UserId == userId.Value);
+            .FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
         {
@@ -49,7 +50,7 @@ public class ProgramController : Controller
             StudentClass? existing = await db.StudentClasses
                 .Include(sc => sc.Program)
                 .Include(sc => sc.ClassGroup)
-                .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+                .FirstOrDefaultAsync(sc => sc.UserId == userId);
 
             if (existing != null)
             {
@@ -64,7 +65,7 @@ public class ProgramController : Controller
         {
             List<TeacherCourse> existing = await db.TeacherCourses
                 .Include(tc => tc.Course)
-                .Where(tc => tc.UserId == userId.Value)
+                .Where(tc => tc.UserId == userId)
                 .ToListAsync();
 
             model.SelectedCourseIds = existing.Select(tc => tc.CourseId).ToList();
@@ -79,14 +80,14 @@ public class ProgramController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RegisterProgram(ProgramRegisterViewModel model)
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
             return RedirectToAction("Login", "Account");
         }
 
-        User? user = await db.Users.FindAsync(userId.Value);
+        User? user = await db.Users.FindAsync(userId);
 
         if (user == null)
         {
@@ -95,10 +96,10 @@ public class ProgramController : Controller
 
         if (user.Position == "Student")
         {
-            if (model.SelectedProgramId <= 0)
+            if (string.IsNullOrWhiteSpace(model.SelectedProgramId))
                 ModelState.AddModelError(nameof(model.SelectedProgramId), "请选择科系/学位");
 
-            if (model.SelectedClassId == null)
+            if (string.IsNullOrWhiteSpace(model.SelectedClassId))
                 ModelState.AddModelError(nameof(model.SelectedClassId), "请选择班级");
         }
 
@@ -119,13 +120,13 @@ public class ProgramController : Controller
         if (user.Position == "Student")
         {
             StudentClass? existing = await db.StudentClasses
-                .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+                .FirstOrDefaultAsync(sc => sc.UserId == userId);
 
             if (existing != null)
             {
                
                 existing.ProgramId = model.SelectedProgramId;
-                existing.ClassId = model.SelectedClassId!.Value;
+                existing.ClassId = model.SelectedClassId!;
                 existing.RegisteredDate = DateTime.Now;
             }
             else
@@ -135,23 +136,33 @@ public class ProgramController : Controller
 
                 db.StudentClasses.Add(new StudentClass
                 {
-                    UserId = userId.Value,
+                    StudentClassId = await FormattedIdGenerator.NextAsync(
+                        db.StudentClasses,
+                        sc => sc.StudentClassId,
+                        "STC"
+                    ),
+                    UserId = userId,
                     StudentId = newStudentId,
                     ProgramId = model.SelectedProgramId,
-                    ClassId = model.SelectedClassId!.Value
+                    ClassId = model.SelectedClassId!
                 });
             }
         }
         else if (user.Position == "Teacher")
         {
-            var oldRecords = db.TeacherCourses.Where(tc => tc.UserId == userId.Value);
+            var oldRecords = db.TeacherCourses.Where(tc => tc.UserId == userId);
             db.TeacherCourses.RemoveRange(oldRecords);
 
-            foreach (int courseId in model.SelectedCourseIds)
+            foreach (string courseId in model.SelectedCourseIds)
             {
                 db.TeacherCourses.Add(new TeacherCourse
                 {
-                    UserId = userId.Value,
+                    TeacherCourseId = await FormattedIdGenerator.NextAsync(
+                        db.TeacherCourses,
+                        tc => tc.TeacherCourseId,
+                        "TCR"
+                    ),
+                    UserId = userId,
                     CourseId = courseId
                 });
             }
@@ -175,10 +186,8 @@ public class ProgramController : Controller
         return $"{prefix}{(countThisYear + 1):D3}";
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
-        string? userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        return int.TryParse(userIdValue, out int userId) ? userId : null;
+        return User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 }

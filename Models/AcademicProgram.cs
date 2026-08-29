@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebAndMobile.Models
 {
@@ -6,7 +6,8 @@ namespace WebAndMobile.Models
     public class AcademicProgram
     {
         [Key]
-        public int ProgramId { get; set; }
+        [MaxLength(20)]
+        public string ProgramId { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(20)]

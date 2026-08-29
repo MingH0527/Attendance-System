@@ -1,12 +1,17 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAndMobile.Models;
 
+[Index(nameof(Username), IsUnique = true)]
+[Index(nameof(Email), IsUnique = true)]
+[Index(nameof(Phone), IsUnique = true)]
 public class User
 {
     [Key]
-    public int UserId { get; set; }
+    [MaxLength(20)]
+    public string UserId { get; set; } = string.Empty;
 
     [Required]
     [MaxLength(30)]
@@ -50,6 +55,3 @@ public class User
 
     public AdminSecurity? AdminSecurity { get; set; }
 }
-
-
-   

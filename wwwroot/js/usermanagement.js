@@ -123,8 +123,11 @@
 
             if (activeSortBy === "id") {
                 comparison =
-                    Number(a.dataset.userId) -
-                    Number(b.dataset.userId);
+                    (a.dataset.userId || "").localeCompare(
+                        b.dataset.userId || "",
+                        undefined,
+                        { numeric: true, sensitivity: "base" }
+                    );
             }
             else if (activeSortBy === "username") {
                 comparison = (

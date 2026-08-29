@@ -1,8 +1,8 @@
-﻿namespace WebAndMobile.Models;
+namespace WebAndMobile.Models;
 
 public class UserEditViewModel
 {
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     public string Username { get; set; } = "";
 

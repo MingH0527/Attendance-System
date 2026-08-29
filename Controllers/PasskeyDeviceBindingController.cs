@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QRCoder;
 using WebAndMobile.Configuration;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -27,7 +29,7 @@ public class PasskeyDeviceBindingController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start()
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -63,7 +65,7 @@ public class PasskeyDeviceBindingController : Controller
             await db.PasskeyDeviceBindings
                 .Where(
                     x =>
-                        x.UserId == userId.Value &&
+                        x.UserId == userId &&
                         x.Status == "Pending")
                 .ToListAsync();
 
@@ -79,8 +81,13 @@ public class PasskeyDeviceBindingController : Controller
 
         PasskeyDeviceBinding binding = new()
         {
+            PasskeyDeviceBindingId = await FormattedIdGenerator.NextAsync(
+                db.PasskeyDeviceBindings,
+                p => p.PasskeyDeviceBindingId,
+                "PDB"
+            ),
             BindingToken = token,
-            UserId = userId.Value,
+            UserId = userId,
             Status = "Pending",
             CreatedAt = now,
             ExpiresAt = now.AddMinutes(5)
@@ -239,7 +246,7 @@ qrUrl,
     [HttpGet]
     public async Task<IActionResult> Status(string token)
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -256,7 +263,7 @@ qrUrl,
                 .FirstOrDefaultAsync(
                     x =>
                         x.BindingToken == token &&
-                        x.UserId == userId.Value
+                        x.UserId == userId
                 );
 
         if (binding == null)
@@ -365,18 +372,11 @@ qrUrl,
             );
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
-        string? value =
-            User.FindFirst(
-                System.Security.Claims.ClaimTypes.NameIdentifier
-            )?.Value;
-
-        return int.TryParse(
-            value,
-            out int userId)
-                ? userId
-                : null;
+        return User.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier
+        )?.Value;
     }
 
     private static string NormaliseDeviceIdentifier(

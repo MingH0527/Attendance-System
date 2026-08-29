@@ -1,30 +1,40 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace WebAndMobile.Models
+namespace WebAndMobile.Models;
+
+[Index(nameof(UserId), IsUnique = true)]
+public class StudentClass
 {
-    public class StudentClass
-    {
-        [Key]
-        public int StudentClassId { get; set; }
+    [Key]
+    [MaxLength(20)]
+    public string StudentClassId { get; set; } = string.Empty;
 
-        [ForeignKey(nameof(User))]
-        public int UserId { get; set; }
-        public User? User { get; set; }
+    [MaxLength(20)]
+    public string UserId { get; set; } = string.Empty;
 
-     
-        [Required]
-        [MaxLength(20)]
-        public string StudentId { get; set; } = "";
+    [ForeignKey(nameof(UserId))]
+    [DeleteBehavior(DeleteBehavior.Cascade)]
+    public User? User { get; set; }
 
-        [ForeignKey(nameof(Program))]
-        public int ProgramId { get; set; }
-        public AcademicProgram? Program { get; set; }
+    [Required]
+    [MaxLength(20)]
+    public string StudentId { get; set; } = "";
 
-        [ForeignKey(nameof(ClassGroup))]
-        public int ClassId { get; set; }
-        public ClassGroup? ClassGroup { get; set; }
+    [MaxLength(20)]
+    public string ProgramId { get; set; } = string.Empty;
 
-        public DateTime RegisteredDate { get; set; } = DateTime.Now;
-    }
+    [ForeignKey(nameof(ProgramId))]
+    [DeleteBehavior(DeleteBehavior.Cascade)]
+    public AcademicProgram? Program { get; set; }
+
+    [MaxLength(20)]
+    public string ClassId { get; set; } = string.Empty;
+
+    [ForeignKey(nameof(ClassId))]
+    [DeleteBehavior(DeleteBehavior.Restrict)]
+    public ClassGroup? ClassGroup { get; set; }
+
+    public DateTime RegisteredDate { get; set; } = DateTime.Now;
 }

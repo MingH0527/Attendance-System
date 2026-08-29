@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Hubs;
 
@@ -21,10 +22,10 @@ public class ChatHub : Hub
     // ==================================================
 
     public async Task SendMessage(
-        int otherUserId,
+        string otherUserId,
         string content)
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         string currentRole =
@@ -55,12 +56,12 @@ public class ChatHub : Hub
                 otherUserId
             );
 
-        int studentId =
+        string studentId =
             currentRole == "Student"
                 ? currentUserId
                 : otherUserId;
 
-        int teacherId =
+        string teacherId =
             currentRole == "Teacher"
                 ? currentUserId
                 : otherUserId;
@@ -84,6 +85,11 @@ public class ChatHub : Hub
             conversation =
                 new Conversation
                 {
+                    ConversationId = await FormattedIdGenerator.NextAsync(
+                        db.Conversations,
+                        c => c.ConversationId,
+                        "CON"
+                    ),
                     StudentId =
                         studentId,
 
@@ -110,6 +116,12 @@ public class ChatHub : Hub
         ChatMessage message =
             new()
             {
+                ChatMessageId = await FormattedIdGenerator.NextAsync(
+                    db.ChatMessages,
+                    m => m.ChatMessageId,
+                    "MSG",
+                    digits: 6
+                ),
                 ConversationId =
                     conversation
                         .ConversationId,
@@ -185,9 +197,9 @@ public class ChatHub : Hub
 
     public async Task
         MarkConversationAsRead(
-            int conversationId)
+            string conversationId)
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         bool belongsToUser =
@@ -248,7 +260,7 @@ public class ChatHub : Hub
 
         await db.SaveChangesAsync();
 
-        int otherUserId =
+        string otherUserId =
             await db.Conversations
                 .Where(
                     c =>
@@ -289,9 +301,9 @@ public class ChatHub : Hub
     // VIDEO CALL SIGNALING + DATABASE CALL RECORD
     // ==================================================
 
-    public async Task<long> StartVideoCall(int otherUserId)
+    public async Task<string> StartVideoCall(string otherUserId)
     {
-        int currentUserId = GetCurrentUserId();
+        string currentUserId = GetCurrentUserId();
         string currentRole = GetCurrentRole();
 
         User currentUser = await db.Users
@@ -310,6 +322,12 @@ public class ChatHub : Hub
 
         ChatMessage callMessage = new()
         {
+            ChatMessageId = await FormattedIdGenerator.NextAsync(
+                db.ChatMessages,
+                m => m.ChatMessageId,
+                "MSG",
+                digits: 6
+            ),
             ConversationId = conversation.ConversationId,
             SenderId = currentUserId,
             ReceiverId = otherUserId,
@@ -352,9 +370,9 @@ public class ChatHub : Hub
         return callMessage.ChatMessageId;
     }
 
-    public async Task AcceptVideoCall(long callMessageId, int callerId)
+    public async Task AcceptVideoCall(string callMessageId, string callerId)
     {
-        int currentUserId = GetCurrentUserId();
+        string currentUserId = GetCurrentUserId();
         string currentRole = GetCurrentRole();
 
         await GetAllowedOtherUser(currentUserId, currentRole, callerId);
@@ -372,9 +390,9 @@ public class ChatHub : Hub
             .SendAsync("VideoCallAccepted", currentUserId, callMessageId, now);
     }
 
-    public async Task RejectVideoCall(long callMessageId, int callerId)
+    public async Task RejectVideoCall(string callMessageId, string callerId)
     {
-        int currentUserId = GetCurrentUserId();
+        string currentUserId = GetCurrentUserId();
         string currentRole = GetCurrentRole();
 
         await GetAllowedOtherUser(currentUserId, currentRole, callerId);
@@ -393,30 +411,30 @@ public class ChatHub : Hub
             .SendAsync("VideoCallRejected", currentUserId, callMessageId);
     }
 
-    public async Task SendWebRtcOffer(int otherUserId, string offerJson)
+    public async Task SendWebRtcOffer(string otherUserId, string offerJson)
     {
         await ValidateCallTarget(otherUserId);
         await Clients.Group(UserGroup(otherUserId))
             .SendAsync("ReceiveWebRtcOffer", GetCurrentUserId(), offerJson);
     }
 
-    public async Task SendWebRtcAnswer(int otherUserId, string answerJson)
+    public async Task SendWebRtcAnswer(string otherUserId, string answerJson)
     {
         await ValidateCallTarget(otherUserId);
         await Clients.Group(UserGroup(otherUserId))
             .SendAsync("ReceiveWebRtcAnswer", GetCurrentUserId(), answerJson);
     }
 
-    public async Task SendIceCandidate(int otherUserId, string candidateJson)
+    public async Task SendIceCandidate(string otherUserId, string candidateJson)
     {
         await ValidateCallTarget(otherUserId);
         await Clients.Group(UserGroup(otherUserId))
             .SendAsync("ReceiveIceCandidate", GetCurrentUserId(), candidateJson);
     }
 
-    public async Task EndVideoCall(long callMessageId, int otherUserId)
+    public async Task EndVideoCall(string callMessageId, string otherUserId)
     {
-        int currentUserId = GetCurrentUserId();
+        string currentUserId = GetCurrentUserId();
         await ValidateCallTarget(otherUserId);
 
         ChatMessage? call = await db.ChatMessages
@@ -458,9 +476,9 @@ public class ChatHub : Hub
     // ==================================================
 
     private async Task ValidateCallTarget(
-        int otherUserId)
+        string otherUserId)
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         string currentRole =
@@ -474,12 +492,12 @@ public class ChatHub : Hub
     }
 
     private async Task<Conversation> GetOrCreateConversation(
-        int currentUserId,
+        string currentUserId,
         string currentRole,
-        int otherUserId)
+        string otherUserId)
     {
-        int studentId = currentRole == "Student" ? currentUserId : otherUserId;
-        int teacherId = currentRole == "Teacher" ? currentUserId : otherUserId;
+        string studentId = currentRole == "Student" ? currentUserId : otherUserId;
+        string teacherId = currentRole == "Teacher" ? currentUserId : otherUserId;
 
         Conversation? conversation = await db.Conversations
             .FirstOrDefaultAsync(c =>
@@ -494,6 +512,11 @@ public class ChatHub : Hub
         DateTime now = DateTime.UtcNow;
         conversation = new Conversation
         {
+            ConversationId = await FormattedIdGenerator.NextAsync(
+                db.Conversations,
+                c => c.ConversationId,
+                "CON"
+            ),
             StudentId = studentId,
             TeacherId = teacherId,
             CreatedAt = now,
@@ -506,9 +529,9 @@ public class ChatHub : Hub
     }
 
     private async Task<ChatMessage> GetCallMessage(
-        long callMessageId,
-        int callerId,
-        int receiverId)
+        string callMessageId,
+        string callerId,
+        string receiverId)
     {
         ChatMessage? call = await db.ChatMessages
             .FirstOrDefaultAsync(m =>
@@ -563,9 +586,9 @@ public class ChatHub : Hub
 
     private async Task<User>
         GetAllowedOtherUser(
-            int currentUserId,
+            string currentUserId,
             string currentRole,
-            int otherUserId)
+            string otherUserId)
     {
         User? otherUser =
             await db.Users
@@ -606,9 +629,9 @@ public class ChatHub : Hub
 
     private async Task
         NotifyConversationUpdated(
-            int firstUserId,
-            int secondUserId,
-            int conversationId)
+            string firstUserId,
+            string secondUserId,
+            string conversationId)
     {
         await Clients.Group(UserGroup(firstUserId))
             .SendAsync(
@@ -623,17 +646,14 @@ public class ChatHub : Hub
             );
     }
 
-    private int GetCurrentUserId()
+    private string GetCurrentUserId()
     {
-        string? value =
-            Context.User?
-                .FindFirstValue(
-                    ClaimTypes.NameIdentifier
-                );
+        string? userId = Context.User?
+            .FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
 
-        if (!int.TryParse(
-                value,
-                out int userId))
+        if (string.IsNullOrWhiteSpace(userId))
         {
             throw new HubException(
                 "Your login session has expired."
@@ -663,7 +683,7 @@ public class ChatHub : Hub
     }
     public override async Task OnConnectedAsync()
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         string groupName =
@@ -696,10 +716,9 @@ public class ChatHub : Hub
                     ClaimTypes.NameIdentifier
                 );
 
-        if (int.TryParse(
-                value,
-                out int currentUserId))
+        if (!string.IsNullOrWhiteSpace(value))
         {
+            string currentUserId = value;
             await Groups.RemoveFromGroupAsync(
                 Context.ConnectionId,
                 UserGroup(
@@ -721,7 +740,7 @@ public class ChatHub : Hub
     }
 
     private static string UserGroup(
-        int userId)
+        string userId)
     {
         return $"user-{userId}";
     }
