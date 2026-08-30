@@ -1,640 +1,309 @@
-﻿(function () {
-    "use strict";
-
-    const HOURS = [9, 10, 11, 12, 13, 14, 15, 16]; // 9:00 - 17:00, 8 one-hour slots
-    const SCHOOL_DAYS = [1, 2, 3, 4, 5];   // Monday .. Friday (JS/C# DayOfWeek: Sun=0)
-    const TUITION_DAYS = [6, 0];           // Saturday, Sunday
-    const DAY_NAMES = { 0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday" };
-
-    const state = {
-        classType: "School",
-        classId: null,
-        courses: [],
-        classes: [],
-        classrooms: [],
-        entries: []
-    };
-
-    document.addEventListener("DOMContentLoaded", init);
-
-    async function init() {
-        bindTabs();
-        bindToolbar();
-        bindModal();
-        bindLookupModal();
-
-        await Promise.all([loadTeachers(), loadCourses(), loadClasses(), loadClassrooms()]);
-        renderGridSkeleton();
-        await loadGrid();
-    }
-
-    function bindTabs() {
-        document.querySelectorAll(".tt-tab").forEach(tab => {
-            tab.addEventListener("click", async () => {
-                document.querySelectorAll(".tt-tab").forEach(t => t.classList.remove("active"));
-                tab.classList.add("active");
-                state.classType = tab.dataset.classtype;
-                renderGridSkeleton();
-                await loadGrid();
-            });
-        });
-    }
-
-    function bindToolbar() {
-        document.getElementById("classFilter").addEventListener("change", async (e) => {
-            state.classId = e.target.value || null;
-            await loadGrid();
-        });
-
-        document.getElementById("manageLookupsBtn").addEventListener("click", () => {
-            openLookupModal();
-        });
-    }
-
-    // ------------------------------------------------------------------
-    // Loading lookups
-    // ------------------------------------------------------------------
-
-    async function loadTeachers() {
-        const res = await fetch("/Admin/GetTeachers");
-        const teachers = await res.json();
-        const list = document.getElementById("teacherList");
-        list.innerHTML = "";
-        teachers.forEach(t => {
-            const li = document.createElement("li");
-            li.textContent = t.teacherName;
-            li.draggable = true;
-            li.dataset.teacherId = t.teacherId;
-            li.dataset.teacherName = t.teacherName;
-            li.addEventListener("dragstart", (e) => {
-                e.dataTransfer.setData("teacherId", t.teacherId);
-                e.dataTransfer.setData("teacherName", t.teacherName);
-            });
-            list.appendChild(li);
-        });
-    }
-    async function loadTeacherCourses(
-        teacherId,
-        selectedCourseId = null
-    ) {
-        const select =
-            document.getElementById("fCourseId");
-
-        select.disabled = true;
-
-        select.innerHTML =
-            '<option value="">Loading...</option>';
-
-
-        const res = await fetch(
-            `/Admin/GetTeacherCourses?teacherId=${encodeURIComponent(teacherId)}`
-        );
-
-
-        if (!res.ok) {
-            select.innerHTML =
-                '<option value="">Unable to load courses</option>';
-
-            return;
-        }
-
-
-        const courses = await res.json();
-
-
-        // Teacher did not register any course
-        if (courses.length === 0) {
-
-            select.innerHTML =
-                '<option value="">No registered courses</option>';
-
-            select.disabled = true;
-
-            return;
-        }
-
-
-        // Teacher teaches only ONE course
-        if (courses.length === 1) {
-
-            select.innerHTML = "";
-
-            const option =
-                document.createElement("option");
-
-            option.value =
-                courses[0].id;
-
-            option.textContent =
-                courses[0].name;
-
-            select.appendChild(option);
-
-
-            // Automatically fixed to this course
-            select.value =
-                courses[0].id;
-
-            select.disabled = true;
-
-            return;
-        }
-
-
-        // Teacher teaches MORE THAN ONE course
-        select.disabled = false;
-
-        select.innerHTML =
-            '<option value="">-- select course --</option>';
-
-
-        courses.forEach(course => {
-
-            const option =
-                document.createElement("option");
-
-            option.value =
-                course.id;
-
-            option.textContent =
-                course.name;
-
-            select.appendChild(option);
-        });
-
-
-        // Editing existing timetable
-        if (selectedCourseId) {
-
-            select.value =
-                selectedCourseId;
-        }
-    }
-
-    async function loadCourses() {
-        const res = await fetch("/Admin/GetCourses");
-
-        state.courses = await res.json();
-
-        // Do not put all courses into Assign Lesson.
-        // Course will be loaded according to teacher.
-        const select = document.getElementById("fCourseId");
-
-        select.innerHTML =
-            '<option value="">-- select teacher first --</option>';
-    }
-
-    async function loadClasses() {
-        const res = await fetch("/Admin/GetClasses");
-        state.classes = await res.json();
-        fillSelect(document.getElementById("fClassId"), state.classes, "-- select class --");
-
-        const filter = document.getElementById("classFilter");
-        filter.innerHTML = '<option value="">All classes</option>';
-        state.classes.forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c.id;
-            opt.textContent = c.name;
-            filter.appendChild(opt);
-        });
-    }
-
-    async function loadClassrooms() {
-        const res = await fetch("/Admin/GetClassrooms");
-        state.classrooms = await res.json();
-        const select = document.getElementById("fClassroomId");
-        select.innerHTML = '<option value="">-- none --</option>';
-        state.classrooms.forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c.id;
-            opt.textContent = c.name;
-            select.appendChild(opt);
-        });
-    }
-
-    function fillSelect(select, items, placeholder) {
-        select.innerHTML = `<option value="">${placeholder}</option>`;
-        items.forEach(i => {
-            const opt = document.createElement("option");
-            opt.value = i.id;
-            opt.textContent = i.name;
-            select.appendChild(opt);
-        });
-    }
-
-    // ------------------------------------------------------------------
-    // Grid rendering
-    // ------------------------------------------------------------------
-
-    function currentDays() {
-        return state.classType === "School" ? SCHOOL_DAYS : TUITION_DAYS;
-    }
-
-    function renderGridSkeleton() {
-        const headerRow = document.getElementById("gridHeaderRow");
-        headerRow.innerHTML = "<th>Day / Time</th>";
-        HOURS.forEach(h => {
-            const th = document.createElement("th");
-            th.textContent = `${formatHour(h)} - ${formatHour(h + 1)}`;
-            headerRow.appendChild(th);
-        });
-
-        const body = document.getElementById("gridBody");
-        body.innerHTML = "";
-        currentDays().forEach(day => {
-            const row = document.createElement("tr");
-            row.dataset.day = day;
-
-            const label = document.createElement("td");
-            label.className = "tt-day-label";
-            label.textContent = DAY_NAMES[day];
-            row.appendChild(label);
-
-            HOURS.forEach(h => {
-                const cell = document.createElement("td");
-                cell.className = "tt-cell";
-                cell.dataset.day = day;
-                cell.dataset.hour = h;
-                bindCellDragDrop(cell);
-                row.appendChild(cell);
-            });
-
-            body.appendChild(row);
-        });
-    }
-
-    function bindCellDragDrop(cell) {
-        cell.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            cell.classList.add("drag-over");
-        });
-        cell.addEventListener("dragleave", () => cell.classList.remove("drag-over"));
-        cell.addEventListener("drop", (e) => {
-            e.preventDefault();
-            cell.classList.remove("drag-over");
-            const teacherId = e.dataTransfer.getData("teacherId");
-            const teacherName = e.dataTransfer.getData("teacherName");
-            const day = parseInt(cell.dataset.day, 10);
-            const hour = parseInt(cell.dataset.hour, 10);
-            openModalForCreate(day, teacherId, teacherName, hour);
-        });
-    }
-
-    async function loadGrid() {
-        const res = await fetch(`/Admin/GetTimetableGrid?classType=${state.classType}`);
-        if (!res.ok) {
-            state.entries = [];
-        } else {
-            state.entries = await res.json();
-        }
-        renderEntries();
-    }
-
-    function renderEntries() {
-        // Clear existing lesson blocks and restore plain cells first.
-        document.querySelectorAll("#gridBody td.tt-cell").forEach(td => {
-            td.innerHTML = "";
-            td.style.display = "";
-            td.removeAttribute("colspan");
-        });
-
-        const visibleEntries = state.classId
-            ? state.entries.filter(e => e.classId === state.classId)
-            : state.entries;
-
-        visibleEntries.forEach(entry => {
-            const startHour = parseInt(entry.startTime.split(":")[0], 10);
-            const endHour = parseInt(entry.endTime.split(":")[0], 10);
-            const span = Math.max(1, endHour - startHour);
-
-            const row = document.querySelector(`#gridBody tr[data-day="${entry.dayOfWeek}"]`);
-            if (!row) return;
-            const startCell = row.querySelector(`td.tt-cell[data-hour="${startHour}"]`);
-            if (!startCell) return;
-
-            startCell.colSpan = span;
-            const block = document.createElement("div");
-            block.className = "tt-lesson-block";
-            block.innerHTML = `<span class="course">${escapeHtml(entry.courseName)}</span>
-                                ${escapeHtml(entry.className)}<br/>
-                                ${escapeHtml(entry.teacherName)}${entry.roomName ? " @ " + escapeHtml(entry.roomName) : ""}`;
-            block.addEventListener("click", () => openModalForEdit(entry));
-            startCell.appendChild(block);
-
-            // Hide the cells this lesson now spans over.
-            for (let h = startHour + 1; h < startHour + span; h++) {
-                const covered = row.querySelector(`td.tt-cell[data-hour="${h}"]`);
-                if (covered) covered.style.display = "none";
-            }
-        });
-    }
-
-    function formatHour(h) {
-        const period = h >= 12 ? "PM" : "AM";
-        const display = h > 12 ? h - 12 : h;
-        return `${display}:00 ${period}`;
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement("div");
-        div.textContent = str ?? "";
-        return div.innerHTML;
-    }
-
-    // ------------------------------------------------------------------
-    // Lesson modal (create / edit)
-    // ------------------------------------------------------------------
-
-    function bindModal() {
-        document.getElementById("cancelLessonBtn").addEventListener("click", closeModal);
-        document.getElementById("lessonForm").addEventListener("submit", onSubmitLesson);
-        document.getElementById("deleteLessonBtn").addEventListener("click", onDeleteLesson);
-    }
-
-    async function openModalForCreate(
-        day,
-        teacherId,
-        teacherName,
-        hour
-    ) {
-        hideModalError();
-
-        document.getElementById(
-            "lessonModalTitle"
-        ).textContent = "Assign Lesson";
-
-
-        document.getElementById(
-            "fTimetableId"
-        ).value = "";
-
-
-        document.getElementById(
-            "fTeacherId"
-        ).value = teacherId;
-
-
-        document.getElementById(
-            "fTeacherName"
-        ).value = teacherName;
-
-
-        document.getElementById(
-            "fDayOfWeek"
-        ).value = day;
-
-
-        document.getElementById(
-            "fClassType"
-        ).value = state.classType;
-
-
-        document.getElementById(
-            "fClassId"
-        ).value = state.classId || "";
-
-
-        document.getElementById(
-            "fClassroomId"
-        ).value = "";
-
-
-        document.getElementById(
-            "fStartTime"
-        ).value =
-            `${String(hour).padStart(2, "0")}:00`;
-
-
-        document.getElementById(
-            "fEndTime"
-        ).value =
-            `${String(hour + 1).padStart(2, "0")}:00`;
-
-
-        document.getElementById(
-            "deleteLessonBtn"
-        ).style.display = "none";
-
-
-        // IMPORTANT:
-        // Only load courses registered by this teacher
-        await loadTeacherCourses(teacherId);
-
-
-        showModal();
-    }
-
-    async function openModalForEdit(entry) {
-
-        hideModalError();
-
-        document.getElementById(
-            "lessonModalTitle"
-        ).textContent = "Edit Lesson";
-
-        document.getElementById(
-            "fTimetableId"
-        ).value =
-            entry.timetableId;
-
-        document.getElementById(
-            "fTeacherId"
-        ).value =
-            entry.teacherId;
-
-        document.getElementById(
-            "fTeacherName"
-        ).value =
-            entry.teacherName;
-
-        document.getElementById(
-            "fDayOfWeek"
-        ).value =
-            entry.dayOfWeek;
-
-        document.getElementById(
-            "fClassType"
-        ).value =
-            entry.classType === 0
-                ? "School"
-                : "Tuition";
-
-        document.getElementById(
-            "fClassId"
-        ).value =
-            entry.classId;
-
-        document.getElementById(
-            "fClassroomId"
-        ).value =
-            entry.classroomId || "";
-
-        document.getElementById(
-            "fStartTime"
-        ).value =
-            entry.startTime;
-
-
-        document.getElementById(
-            "fEndTime"
-        ).value =
-            entry.endTime;
-
-
-        document.getElementById(
-            "deleteLessonBtn"
-        ).style.display =
-            "inline-block";
-
-
-        document.getElementById(
-            "deleteLessonBtn"
-        ).dataset.timetableId =
-            entry.timetableId;
-
-
-        // Load this teacher's registered courses
-        // then select existing course
-        await loadTeacherCourses(
-            entry.teacherId,
-            entry.courseId
-        );
-
-
-        showModal();
-    }
-
-    function showModal() { document.getElementById("lessonModal").style.display = "flex"; }
-    function closeModal() { document.getElementById("lessonModal").style.display = "none"; }
-    function showModalError(msg) {
-        const el = document.getElementById("lessonModalError");
-        el.textContent = msg;
-        el.style.display = "block";
-    }
-    function hideModalError() {
-        document.getElementById("lessonModalError").style.display = "none";
-    }
-
-    async function onSubmitLesson(e) {
-        e.preventDefault();
-        hideModalError();
-
-        const timetableId = document.getElementById("fTimetableId").value;
-        const payload = {
-            timetableId: timetableId || null,
-            teacherId: document.getElementById("fTeacherId").value,
-            courseId: document.getElementById("fCourseId").value,
-            classId: document.getElementById("fClassId").value,
-            classroomId: document.getElementById("fClassroomId").value || null,
-            dayOfWeek: parseInt(document.getElementById("fDayOfWeek").value, 10),
-            startTime: document.getElementById("fStartTime").value,
-            endTime: document.getElementById("fEndTime").value,
-            classType: document.getElementById("fClassType").value === "School" ? 0 : 1
-        };
-
-        if (!payload.courseId || !payload.classId) {
-            showModalError("Please select both a course and a class.");
-            return;
-        }
-
-        const url = timetableId ? "/Admin/UpdateTimetableEntry" : "/Admin/CreateTimetableEntry";
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            showModalError(text || "Could not save this lesson.");
-            return;
-        }
-
-        closeModal();
-        await loadGrid();
-    }
-
-    async function onDeleteLesson(e) {
-        const id = e.target.dataset.timetableId;
-        if (!id) return;
-        if (!confirm("Delete this lesson?")) return;
-
-        const res = await fetch(`/Admin/DeleteTimetableEntry?id=${id}`, { method: "POST" });
-        if (!res.ok) {
-            showModalError("Could not delete this lesson.");
-            return;
-        }
-        closeModal();
-        await loadGrid();
-    }
-
-    // ------------------------------------------------------------------
-    // Lookup management modal (Course / Class / Classroom)
-    // ------------------------------------------------------------------
-
-    function bindLookupModal() {
-        document.getElementById("closeLookupModalBtn").addEventListener("click", () => {
-            document.getElementById("lookupModal").style.display = "none";
-        });
-
-        document.querySelectorAll("[data-add]").forEach(btn => {
-            btn.addEventListener("click", () => onAddLookup(btn.dataset.add));
-        });
-    }
-
-    function openLookupModal() {
-        renderLookupList("courseLookupList", state.courses, "DeleteCourse");
-        renderLookupList("classLookupList", state.classes, "DeleteClass");
-        renderLookupList("classroomLookupList", state.classrooms, "DeleteClassroom");
-        document.getElementById("lookupModal").style.display = "flex";
-    }
-
-    function renderLookupList(listId, items, deleteAction) {
-        const list = document.getElementById(listId);
-        list.innerHTML = "";
-        items.forEach(i => {
-            const li = document.createElement("li");
-            const span = document.createElement("span");
-            span.textContent = i.name;
-            const btn = document.createElement("button");
-            btn.textContent = "✕";
-            btn.addEventListener("click", async () => {
-                const res = await fetch(`/Admin/${deleteAction}?id=${i.id}`, { method: "POST" });
-                if (!res.ok) {
-                    alert(await res.text());
-                    return;
-                }
-                await Promise.all([loadCourses(), loadClasses(), loadClassrooms()]);
-                openLookupModal();
-                await loadGrid();
-            });
-            li.appendChild(span);
-            li.appendChild(btn);
-            list.appendChild(li);
-        });
-    }
-
-    async function onAddLookup(kind) {
-        const inputMap = { course: "newCourseName", class: "newClassName", classroom: "newClassroomName" };
-        const actionMap = { course: "CreateCourse", class: "CreateClass", classroom: "CreateClassroom" };
-
-        const input = document.getElementById(inputMap[kind]);
-        const name = input.value.trim();
-        if (!name) return;
-
-        const res = await fetch(`/Admin/${actionMap[kind]}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: "", name })
-        });
-
-        if (!res.ok) {
-            alert(await res.text());
-            return;
-        }
-
-        input.value = "";
-        await Promise.all([loadCourses(), loadClasses(), loadClassrooms()]);
-        openLookupModal();
-    }
+(()=>{"use strict";
+const HOURS=[9,10,11,12,13,14,15,16];
+const DAYS={School:[1,2,3,4,5],Tuition:[6,0]};
+const DAY_NAME={0:"Sunday",1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday",6:"Saturday"};
+const S={bucket:"current",dashboard:null,term:null,program:null,cls:null,type:"School",mode:"view",entries:[],assignments:[],rooms:[],holidays:[]};
+const $=id=>document.getElementById(id);
+const esc=value=>{const d=document.createElement("div");d.textContent=value??"";return d.innerHTML};
+
+document.addEventListener("DOMContentLoaded",init);
+
+async function init(){bind();await dashboard();}
+
+function bind(){
+ document.querySelectorAll("[data-status]").forEach(b=>b.onclick=async()=>{
+  document.querySelectorAll("[data-status]").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");S.bucket=b.dataset.status;showDashboard();await dashboard();
+ });
+ $("backDashboard").onclick=showDashboard;
+ $("backProgram").onclick=()=>showProgram(S.term,S.program);
+ $("schoolBtn").onclick=()=>switchType("School");
+ $("tuitionBtn").onclick=()=>switchType("Tuition");
+ $("viewBtn").onclick=()=>setMode("view");
+ $("editBtn").onclick=()=>setMode("edit");
+ $("cancelLessonBtn").onclick=closeLessonModal;
+ $("lessonForm").onsubmit=saveLesson;
+ $("deleteLessonBtn").onclick=deleteLesson;
+ $("assignmentSearch").oninput=renderAssignments;
+ $("newSemesterBtn").onclick=()=>{prepareSemesterForm();$("semesterModal").hidden=false;$("semesterError").hidden=true;};
+ $("closeSemesterBtn").onclick=$("cancelSemesterBtn").onclick=()=>$("semesterModal").hidden=true;
+ $("semesterForm").onsubmit=createSemester;
+ $("holidayForm").onsubmit=addHoliday;
+ $("holidayTerm").onchange=loadHolidayList;
+ $("loadMalaysiaHolidaysBtn").onclick=loadMalaysiaHolidays;
+ $("chooseHolidayFile").onclick=()=>$("holidayFile").click();
+ $("holidayFile").onchange=()=>{const f=$("holidayFile").files?.[0];if(f)importHolidayFile(f)};
+ const dz=$("holidayDropZone");
+ dz.onclick=e=>{if(e.target.tagName!=="BUTTON")$("holidayFile").click()};
+ dz.ondragover=e=>{e.preventDefault();dz.classList.add("drag-over")};
+ dz.ondragleave=()=>dz.classList.remove("drag-over");
+ dz.ondrop=e=>{e.preventDefault();dz.classList.remove("drag-over");const f=e.dataTransfer.files?.[0];if(f)importHolidayFile(f)};
+ ["Pdf","Excel","Csv"].forEach(format=>$("export"+format).onclick=()=>{
+  const date=$("weekDate").value;
+  location.href=`/Timetable/Export?termId=${encodeURIComponent(S.term.termId)}&classId=${encodeURIComponent(S.cls.classId)}&classType=${S.type}&format=${format.toLowerCase()}${date?`&weekDate=${date}`:""}`;
+ });
+}
+
+async function dashboard(){
+ const r=await fetch("/Timetable/Dashboard");
+ if(!r.ok){$("termCards").innerHTML="<div class='tt-error'>Unable to load timetable dashboard.</div>";return;}
+ S.dashboard=await r.json();
+ const host=$("termCards");host.innerHTML="";
+ const holidayMode=S.bucket==="holiday";
+ $("holidayHistoryPanel").hidden=!holidayMode;
+ host.hidden=holidayMode;
+ if(holidayMode){await prepareHolidayHistory();return;}
+ const terms=S.bucket==="current"?S.dashboard.current:S.dashboard.completed;
+ if(!terms.length){host.innerHTML="<div class='tt-empty'>No academic terms in this section.</div>";return;}
+ terms.forEach(t=>{
+  const card=document.createElement("article");card.className="tt-term-card";
+  card.innerHTML=`<header><div><h3>${esc(t.name)}</h3><small>${dateText(t.startDate)} – ${dateText(t.endDate)}</small></div><span class="tt-pill ${esc(t.status.toLowerCase())}">${esc(t.status)}</span></header><div class="tt-program-grid"></div>`;
+  const grid=card.querySelector(".tt-program-grid");
+  t.programs.forEach(p=>{
+   const pc=document.createElement("div");pc.className="tt-program-card";
+   pc.innerHTML=`<strong>${esc(p.programCode)}</strong><small>${esc(p.programName)}</small><span>${p.classes.length} class${p.classes.length===1?"":"es"}</span><button type="button">Open Program →</button>`;
+   pc.querySelector("button").onclick=()=>showProgram(t,p);
+   grid.appendChild(pc);
+  });
+  host.appendChild(card);
+ });
+}
+
+function showProgram(term,program){
+ S.term=term;S.program=program;
+ $("dashboardView").hidden=true;$("workspaceView").hidden=true;$("programView").hidden=false;
+ $("backDashboard").hidden=false;$("backProgram").hidden=true;
+ $("programBreadcrumb").innerHTML=`<strong>${esc(term.name)}</strong> · ${esc(program.programCode)} <span>${esc(program.programName)}</span>`;
+ const host=$("programClassCards");host.innerHTML="";
+ if(!program.classes.length){host.innerHTML="<div class='tt-empty'>No classes registered for this program.</div>";return;}
+ program.classes.forEach(c=>{
+  const x=document.createElement("div");x.className="tt-class-card";
+  x.innerHTML=`<strong>${esc(c.className)}</strong><div><button data-open="School:view">School View</button>${term.status!=="Completed"?'<button data-open="School:edit">School Edit</button>':''}</div><div><button data-open="Tuition:view">Tuition View</button>${term.status!=="Completed"?'<button data-open="Tuition:edit">Tuition Edit</button>':''}</div>`;
+  x.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const [type,mode]=b.dataset.open.split(":");openWorkspace(term,program,c,type,mode)});
+  host.appendChild(x);
+ });
+}
+
+function showDashboard(){
+ $("workspaceView").hidden=true;$("programView").hidden=true;$("dashboardView").hidden=false;
+ $("backDashboard").hidden=true;$("backProgram").hidden=true;
+}
+
+async function openWorkspace(t,p,c,type,mode){
+ S.term=t;S.program=p;S.cls=c;S.type=type;S.mode=t.status==="Completed"?"view":mode;
+ $("dashboardView").hidden=true;$("programView").hidden=true;$("workspaceView").hidden=false;
+ $("backDashboard").hidden=false;$("backProgram").hidden=false;
+ $("ctxTerm").textContent=t.name;$("ctxStatus").textContent=t.status;$("ctxProgram").textContent=p.programCode;$("ctxClass").textContent=c.className;
+ $("editBtn").hidden=t.status==="Completed";
+ await Promise.all([loadRooms(),loadAssignments(),loadWeeks()]);
+ setMode(S.mode);await loadGrid();
+}
+
+async function switchType(type){S.type=type;$("schoolBtn").classList.toggle("active",type==="School");$("tuitionBtn").classList.toggle("active",type==="Tuition");await loadGrid();}
+function setMode(mode){if(S.term?.status==="Completed")mode="view";S.mode=mode;$("viewBtn").classList.toggle("active",mode==="view");$("editBtn").classList.toggle("active",mode==="edit");$("assignmentPanel").hidden=mode!=="edit";renderSkeleton();renderEntries();}
+
+async function loadWeeks(){
+ const r=await fetch(`/Timetable/Weeks?termId=${encodeURIComponent(S.term.termId)}`);const weeks=r.ok?await r.json():[];
+ const sel=$("weekDate");sel.innerHTML='<option value="">Weekly template</option>'+weeks.map(w=>`<option value="${w.startDate.slice(0,10)}">Week ${w.weekNumber} · ${dateShort(w.startDate)} – ${dateShort(w.endDate)} · ${esc(w.weekType)}</option>`).join("");
+ sel.onchange=loadGrid;
+}
+async function loadRooms(){const r=await fetch("/Timetable/Rooms");S.rooms=r.ok?await r.json():[];}
+async function loadAssignments(){const r=await fetch(`/Timetable/Assignments?classId=${encodeURIComponent(S.cls.classId)}`);S.assignments=r.ok?await r.json():[];renderAssignments();}
+function renderAssignments(){
+ const q=$("assignmentSearch").value.toLowerCase(),host=$("assignmentList");host.innerHTML="";
+ const rows=S.assignments.filter(a=>(a.teacherName+" "+a.courseName).toLowerCase().includes(q));
+ if(!rows.length){host.innerHTML="<li style='background:#64748b;cursor:default'>No registered teacher/subject mapping.</li>";return;}
+ rows.forEach(a=>{const li=document.createElement("li");li.textContent=`${a.courseName} · ${a.teacherName}`;li.draggable=true;li.ondragstart=e=>e.dataTransfer.setData("assignment",JSON.stringify(a));host.appendChild(li)});
+}
+
+async function loadGrid(){
+ renderSkeleton();const date=$("weekDate").value;
+ const url=`/Timetable/Grid?termId=${encodeURIComponent(S.term.termId)}&classId=${encodeURIComponent(S.cls.classId)}&classType=${S.type}${date?`&weekDate=${date}`:""}`;
+ const r=await fetch(url);S.entries=r.ok?await r.json():[];
+ await updateWeekNotice();renderEntries();
+}
+
+async function updateWeekNotice(){
+ const date=$("weekDate").value,box=$("weekNotice");
+ if(!date){box.hidden=true;box.textContent="";return;}
+ const r=await fetch(`/Timetable/Calendar?termId=${encodeURIComponent(S.term.termId)}`);S.holidays=r.ok?await r.json():[];
+ const start=new Date(date+"T00:00:00"),end=new Date(start);end.setDate(end.getDate()+6);
+ const inWeek=S.holidays.filter(h=>{const d=new Date(h.eventDate);return d>=start&&d<=end});
+ if(!inWeek.length){box.hidden=true;box.textContent="";return;}
+ box.hidden=false;box.innerHTML=`<strong>Holiday:</strong> ${inWeek.map(h=>`${dateShort(h.eventDate)} · ${esc(h.name)}`).join(" &nbsp; | &nbsp; ")}`;
+}
+
+function renderSkeleton(){
+ const hr=$("gridHeaderRow");hr.innerHTML="<th>Day / Time</th>";HOURS.forEach(h=>hr.insertAdjacentHTML("beforeend",`<th>${fmt(h)} - ${fmt(h+1)}</th>`));
+ const body=$("gridBody");body.innerHTML="";
+ DAYS[S.type].forEach(day=>{
+  const tr=document.createElement("tr");tr.dataset.day=day;tr.innerHTML=`<td class="tt-day-label">${DAY_NAME[day]}</td>`;
+  HOURS.forEach(h=>{const td=document.createElement("td");td.className="tt-cell";td.dataset.hour=h;td.dataset.day=day;
+   if(S.mode==="edit"){td.ondragover=e=>{e.preventDefault();td.classList.add("drag-over")};td.ondragleave=()=>td.classList.remove("drag-over");td.ondrop=e=>{e.preventDefault();td.classList.remove("drag-over");const raw=e.dataTransfer.getData("assignment");if(raw)openCreate(day,h,JSON.parse(raw))};}
+   tr.appendChild(td);
+  });body.appendChild(tr);
+ });
+}
+
+function merge(entries){
+ const out=[];
+ for(const e of [...entries].sort((a,b)=>a.dayOfWeek-b.dayOfWeek||a.startTime.localeCompare(b.startTime))){
+  const p=out.at(-1);
+  if(p&&p.dayOfWeek===e.dayOfWeek&&p.endTime===e.startTime&&p.courseId===e.courseId&&p.teacherId===e.teacherId&&p.classId===e.classId&&(p.classroomId||"")===(e.classroomId||"")&&p.classType===e.classType&&p.status===e.status&&p.statusReason===e.statusReason){p.endTime=e.endTime;p.ids.push(e.timetableId)}
+  else out.push({...e,ids:[e.timetableId]});
+ }
+ return out;
+}
+
+function renderEntries(){
+ document.querySelectorAll(".tt-cell").forEach(x=>{x.innerHTML="";x.style.display="";x.removeAttribute("colspan")});
+ const rows=S.mode==="view"?merge(S.entries):S.entries;
+ rows.forEach(e=>{
+  const sh=+e.startTime.split(":")[0],eh=+e.endTime.split(":")[0],tr=document.querySelector(`tr[data-day='${e.dayOfWeek}']`),cell=tr?.querySelector(`[data-hour='${sh}']`);if(!cell)return;
+  const span=Math.max(1,eh-sh);if(S.mode==="view")cell.colSpan=span;
+  const block=document.createElement("div");block.className=`tt-lesson-block ${(e.status||"Normal").toLowerCase()}`;
+  block.innerHTML=`<strong>${esc(e.courseName)}</strong><span>${esc(e.teacherName)}${e.roomName?" · "+esc(e.roomName):""}</span>${e.statusReason?`<small>⚠ ${esc(e.statusReason)}</small>`:""}`;
+  if(S.mode==="edit")block.onclick=()=>openEdit(e);cell.appendChild(block);
+  if(S.mode==="view")for(let h=sh+1;h<eh;h++){const x=tr.querySelector(`[data-hour='${h}']`);if(x)x.style.display="none";}
+ });
+}
+
+function openCreate(day,h,a){
+ $("lessonModalTitle").textContent="Assign hourly lesson";$("fTimetableId").value="";$("fTeacherId").value=a.teacherId;$("fCourseId").value=a.courseId;$("fDayOfWeek").value=day;
+ $("fAssignment").value=`${a.courseName} · ${a.teacherName}`;$("fStartTime").value=`${String(h).padStart(2,"0")}:00`;$("fEndTime").value=`${String(h+1).padStart(2,"0")}:00`;fillRooms();
+ $("deleteLessonBtn").hidden=true;configureStatus(day,"Normal",null);showLessonModal();
+}
+function openEdit(e){
+ $("lessonModalTitle").textContent="Edit hourly lesson";$("fTimetableId").value=e.timetableId;$("fTeacherId").value=e.teacherId;$("fCourseId").value=e.courseId;$("fDayOfWeek").value=e.dayOfWeek;
+ $("fAssignment").value=`${e.courseName} · ${e.teacherName}`;$("fStartTime").value=e.startTime;$("fEndTime").value=e.endTime;fillRooms(e.classroomId);$("deleteLessonBtn").hidden=false;
+ configureStatus(e.dayOfWeek,e.status,e.statusReason);showLessonModal();
+}
+function configureStatus(day,status,reason){
+ const selected=$("weekDate").value,sel=$("fStatus"),label=$("statusDateLabel"),hint=$("statusHint");
+ if(!selected){sel.value="Normal";sel.disabled=true;label.textContent="";hint.textContent="Select an actual week to set Normal/Cancelled for a specific lesson date. Holiday and conflict are system status.";return;}
+ const d=occurrenceDate(selected,+day);label.textContent=`· ${dateShort(d)}`;sel.disabled=false;sel.value=status==="Cancelled"?"Cancelled":"Normal";
+ hint.textContent=reason?`System status: ${reason}. Selecting Normal keeps the lesson; selecting Cancelled cancels this occurrence.`:"Normal/Cancelled applies only to this selected week's lesson. Holiday and conflict are detected automatically.";
+}
+function fillRooms(v=""){$("fClassroomId").innerHTML='<option value="">-- none --</option>'+S.rooms.map(r=>`<option value="${r.id}" ${r.id===v?"selected":""}>${esc(r.name)}</option>`).join("");}
+function showLessonModal(){$("lessonModal").hidden=false;$("lessonModalError").hidden=true;}
+function closeLessonModal(){$("lessonModal").hidden=true;}
+
+async function saveLesson(e){
+ e.preventDefault();
+ const p={timetableId:$("fTimetableId").value||null,termId:S.term.termId,teacherId:$("fTeacherId").value,courseId:$("fCourseId").value,classId:S.cls.classId,classroomId:$("fClassroomId").value||null,dayOfWeek:+$("fDayOfWeek").value,startTime:$("fStartTime").value,endTime:$("fEndTime").value,classType:S.type==="School"?0:1};
+ let r=await fetch("/Timetable/Save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
+ if(!r.ok){showLessonError(await r.text());return;}
+ const saved=await r.json();
+ const selected=$("weekDate").value;
+ if(selected&&!$("fStatus").disabled){
+  const statusPayload={timetableId:saved.timetableId,date:occurrenceDate(selected,p.dayOfWeek),status:$("fStatus").value,note:null};
+  r=await fetch("/Timetable/SetOccurrenceStatus",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(statusPayload)});
+  if(!r.ok){showLessonError(await r.text());return;}
+ }
+ closeLessonModal();await loadGrid();
+}
+function showLessonError(message){$("lessonModalError").textContent=message;$("lessonModalError").hidden=false;}
+async function deleteLesson(){const id=$("fTimetableId").value;if(!id||!confirm("Delete this hourly lesson from the weekly template?"))return;const r=await fetch(`/Timetable/Delete?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showLessonError(await r.text());return;}closeLessonModal();await loadGrid();}
+
+
+function prepareSemesterForm(){
+ const today=localIso(new Date());
+ const start=$("semesterStart"),end=$("semesterEnd");
+ start.min=today;end.min=today;
+ start.onchange=()=>{
+  if(!start.value)return;
+  end.min=start.value;
+  const max=new Date(start.value+"T00:00:00");max.setFullYear(max.getFullYear()+1);
+  end.max=localIso(max);
+  if(end.value&&(end.value<end.min||end.value>end.max))end.value="";
+ };
+}
+function semesterClientError(){
+ const name=$("semesterName").value.trim(),start=$("semesterStart").value,end=$("semesterEnd").value,today=localIso(new Date());
+ if(name.length<3)return "Semester name must contain at least 3 characters.";
+ if(!start||!end)return "Semester name, start date and end date are required.";
+ if(start<today)return "Start date cannot be in the past.";
+ if(end<start)return "End date cannot be earlier than the start date.";
+ const max=new Date(start+"T00:00:00");max.setFullYear(max.getFullYear()+1);
+ if(end>localIso(max))return "Semester duration cannot exceed one year.";
+ return "";
+}
+async function createSemester(e){
+ e.preventDefault();
+ const error=semesterClientError();
+ if(error){$("semesterError").textContent=error;$("semesterError").hidden=false;return;}
+ const payload={name:$("semesterName").value.trim(),startDate:$("semesterStart").value,endDate:$("semesterEnd").value,status:"Upcoming"};
+ const r=await fetch("/Timetable/CreateTerm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+ if(!r.ok){$("semesterError").textContent=await r.text();$("semesterError").hidden=false;return;}
+ $("semesterModal").hidden=true;$("semesterForm").reset();await dashboard();
+}
+
+async function prepareHolidayHistory(){
+ if(!S.dashboard)return;
+ const terms=[...(S.dashboard.current||[]),...(S.dashboard.completed||[])];
+ const sel=$("holidayTerm");
+ const previous=sel.value;
+ sel.innerHTML=terms.map(t=>`<option value="${t.termId}" data-status="${esc(t.status)}">${esc(t.name)} · ${esc(t.status)}</option>`).join("");
+ if(previous&&terms.some(t=>t.termId===previous))sel.value=previous;
+ else if(terms.length)sel.value=terms[0].termId;
+ updateHolidayEditingState();
+ await loadHolidayList();
+}
+function selectedHolidayTerm(){
+ const terms=[...(S.dashboard?.current||[]),...(S.dashboard?.completed||[])];
+ return terms.find(t=>t.termId===$("holidayTerm").value);
+}
+function updateHolidayEditingState(){
+ const term=selectedHolidayTerm(),readOnly=!term||term.status==="Completed";
+ $("holidayForm").querySelectorAll("input,select,button").forEach(x=>x.disabled=readOnly);
+ $("loadMalaysiaHolidaysBtn").disabled=readOnly;
+ $("chooseHolidayFile").disabled=readOnly;
+ $("holidayDropZone").classList.toggle("disabled",readOnly);
+}
+async function loadHolidayList(){
+ updateHolidayEditingState();
+ const term=selectedHolidayTerm(),termId=$("holidayTerm").value,host=$("holidayList");
+ if(!termId){host.innerHTML="<div class='tt-empty'>No semester available.</div>";return;}
+ const r=await fetch(`/Timetable/Calendar?termId=${encodeURIComponent(termId)}`);
+ const rows=r.ok?await r.json():[];
+ host.innerHTML=rows.length?"":"<div class='tt-empty'>No holidays saved for this semester.</div>";
+ rows.forEach(h=>{
+  const row=document.createElement("div");row.className="tt-holiday-row";
+  const canDelete=term&&term.status!=="Completed";
+  row.innerHTML=`<strong>${dateShort(h.eventDate)}</strong><span>${esc(h.name)}</span><span><small>${esc(h.eventType)}</small></span><span>${esc(term?.name||"")}</span>${canDelete?'<button type="button">Delete</button>':'<span class="tt-readonly">History</span>'}`;
+  if(canDelete)row.querySelector("button").onclick=()=>deleteHoliday(h.calendarEventId);
+  host.appendChild(row);
+ });
+}
+async function addHoliday(e){
+ e.preventDefault();
+ const payload={termId:$("holidayTerm").value,eventDate:$("holidayDate").value,name:$("holidayName").value.trim(),eventType:$("holidayType").value,affectsClasses:true};
+ const r=await fetch("/Timetable/AddCalendarEvent",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+ if(!r.ok){showHolidayError(await r.text());return;}
+ $("holidayError").hidden=true;$("holidayName").value="";$("holidayDate").value="";await loadHolidayList();if(S.term?.termId===payload.termId)await loadGrid();
+}
+async function loadMalaysiaHolidays(){
+ const termId=$("holidayTerm").value;if(!termId)return;
+ const r=await fetch(`/Timetable/LoadMalaysia2026Holidays?termId=${encodeURIComponent(termId)}`,{method:"POST"});
+ if(!r.ok){showHolidayError(await r.text());return;}
+ const result=await r.json();$("holidayImportResult").textContent=`${result.added} Malaysia holiday(s) added.`;$("holidayImportResult").hidden=false;await loadHolidayList();
+}
+async function importHolidayFile(file){
+ const term=selectedHolidayTerm();if(!term||term.status==="Completed")return;
+ if(!/\.(txt|csv)$/i.test(file.name)){showHolidayError("Only .txt or .csv files are accepted.");return;}
+ const fd=new FormData();fd.append("termId",term.termId);fd.append("file",file);
+ const r=await fetch("/Timetable/ImportCalendarEvents",{method:"POST",body:fd});
+ if(!r.ok){showHolidayError(await r.text());return;}
+ const result=await r.json();
+ const extra=result.errors?.length?` Errors: ${result.errors.join(" | ")}`:"";
+ $("holidayImportResult").textContent=`Imported ${result.added}; skipped ${result.skipped}.${extra}`;$("holidayImportResult").hidden=false;$("holidayError").hidden=true;$("holidayFile").value="";await loadHolidayList();
+}
+function showHolidayError(message){$("holidayError").textContent=message;$("holidayError").hidden=false;}
+async function deleteHoliday(id){if(!confirm("Delete this holiday?"))return;const r=await fetch(`/Timetable/DeleteCalendarEvent?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showHolidayError(await r.text());return;}await loadHolidayList();if(S.term?.termId===$("holidayTerm").value)await loadGrid();}
+
+function occurrenceDate(weekStart,day){const d=new Date(weekStart+"T00:00:00"),delta=(day-d.getDay()+7)%7;d.setDate(d.getDate()+delta);return localIso(d);}
+function localIso(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}
+function dateText(v){return new Date(v).toLocaleDateString();}
+function dateShort(v){return new Date(v).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});}
+function fmt(h){const p=h>=12?"PM":"AM",d=h>12?h-12:h;return `${d}:00 ${p}`;}
 })();

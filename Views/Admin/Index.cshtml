@@ -1,4 +1,4 @@
-﻿@model WebAndMobile.Models.User
+@model WebAndMobile.Models.User
 
 @{
     ViewData["Title"] = "Admin Home";
@@ -142,6 +142,24 @@
                 <p>
                     Create, update and manage
                     timetable entries.
+                </p>
+            </div>
+        </a>
+
+        <a asp-controller="ProgramSubject"
+           asp-action="Index"
+           class="dashboard-card">
+
+            <div class="card-icon">
+                📚
+            </div>
+
+            <div>
+                <h2>Program &amp; Subject CRUD</h2>
+
+                <p>
+                    Create programs and subjects,
+                    then assign subjects to programs.
                 </p>
             </div>
         </a>

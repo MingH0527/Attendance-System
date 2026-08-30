@@ -6,6 +6,7 @@ namespace WebAndMobile.ViewModels;
 // Sent from the client when creating or editing a timetable entry.
 public class TimetableRequest
 {
+    public string? TermId { get; set; }
     // Only present when editing an existing entry.
     public string? TimetableId { get; set; }
 
@@ -37,6 +38,9 @@ public class TimetableRequest
 // Returned to the client to render each populated cell in the grid.
 public class TimetableSlotDto
 {
+    public string? TermId { get; set; }
+    public string Status { get; set; } = "Normal";
+    public string? StatusReason { get; set; }
     public string TimetableId { get; set; } = string.Empty;
     public string TeacherId { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
@@ -79,3 +83,12 @@ public class UserRoleDto
     public string Username { get; set; } = string.Empty;
     public string Position { get; set; } = string.Empty;
 }
+public class TimetableDashboardDto { public List<TermDashboardDto> Current {get;set;}=new(); public List<TermDashboardDto> Completed {get;set;}=new(); }
+public class TermDashboardDto { public string TermId {get;set;}=string.Empty; public string Name {get;set;}=string.Empty; public DateTime StartDate {get;set;} public DateTime EndDate {get;set;} public string Status {get;set;}=string.Empty; public List<ProgramDashboardDto> Programs {get;set;}=new(); }
+public class ProgramDashboardDto { public string ProgramId {get;set;}=string.Empty; public string ProgramCode {get;set;}=string.Empty; public string ProgramName {get;set;}=string.Empty; public List<ClassDashboardDto> Classes {get;set;}=new(); }
+public class ClassDashboardDto { public string ClassId {get;set;}=string.Empty; public string ClassName {get;set;}=string.Empty; }
+public class TeacherCourseLookupDto { public string TeacherId {get;set;}=string.Empty; public string TeacherName {get;set;}=string.Empty; public string CourseId {get;set;}=string.Empty; public string CourseName {get;set;}=string.Empty; }
+public class HolidayDecisionRequest { public string TimetableId {get;set;}=string.Empty; public DateTime Date {get;set;} public string Decision {get;set;}=string.Empty; public string? Note {get;set;} }
+public class ReplacementRequest { public string SourceTimetableId {get;set;}=string.Empty; public DateTime Date {get;set;} public string StartTime {get;set;}=string.Empty; public string EndTime {get;set;}=string.Empty; public string TeacherId {get;set;}=string.Empty; public string? ClassroomId {get;set;} public ClassType TargetClassType {get;set;} }
+
+public class OccurrenceStatusRequest { public string TimetableId {get;set;}=string.Empty; public DateTime Date {get;set;} public string Status {get;set;}="Normal"; public string? Note {get;set;} }

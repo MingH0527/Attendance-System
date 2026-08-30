@@ -6,6 +6,13 @@ namespace WebAndMobile.Models;
 
 public class Timetable
 {
+    [MaxLength(20)]
+    public string? TermId { get; set; }
+
+    [ForeignKey(nameof(TermId))]
+    [DeleteBehavior(DeleteBehavior.Restrict)]
+    public AcademicTerm? Term { get; set; }
+
     [Key]
     [MaxLength(20)]
     public string TimetableId { get; set; } = string.Empty;

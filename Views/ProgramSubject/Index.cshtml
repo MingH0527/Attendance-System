@@ -1,0 +1,137 @@
+@model WebAndMobile.ViewModels.ProgramSubjectManagementViewModel
+@{
+    ViewData["Title"] = "Program & Subject Management";
+    var selected = Model.SelectedProgram;
+    var selectedSubjects = selected == null
+        ? new List<WebAndMobile.ViewModels.ProgramSubjectMappingItem>()
+        : Model.Mappings.Where(m => m.ProgramId == selected.ProgramId).ToList();
+}
+<link rel="stylesheet" href="~/css/programsubject.css" asp-append-version="true" />
+
+<div class="ps-page">
+    <div class="ps-header">
+        <div>
+            <p class="ps-eyebrow">ADMIN MANAGEMENT</p>
+            <h1>Programs &amp; Subjects</h1>
+            <p>Choose a program first. Only that program's subjects are shown and edited.</p>
+        </div>
+        <a asp-controller="Admin" asp-action="Index" class="ps-back">← Admin Home</a>
+    </div>
+
+    @if (TempData["Success"] is string success) { <div class="ps-alert ps-success">@success</div> }
+    @if (TempData["Error"] is string error) { <div class="ps-alert ps-error">@error</div> }
+
+    <section class="ps-card ps-programs-card">
+        <div class="ps-section-title">
+            <div><h2>Current Programs</h2><p>Click a program to manage only its subjects.</p></div>
+            <button type="button" class="ps-primary ps-compact" id="toggleProgramForm">+ Create Program</button>
+        </div>
+
+        <form asp-action="CreateProgram" method="post" id="programCreateForm" class="ps-create-program" hidden>
+            @Html.AntiForgeryToken()
+            <div><label>Program Code</label><input name="programCode" maxlength="20" pattern="[A-Za-z0-9-]{2,20}" placeholder="e.g. DCS" required /></div>
+            <div><label>Program Name</label><input name="programName" minlength="3" maxlength="150" placeholder="e.g. Diploma in Computer Science" required /></div>
+            <button type="submit" class="ps-primary">Create</button>
+        </form>
+
+        @if (!Model.Programs.Any())
+        {
+            <div class="ps-empty">No program yet. Create the first program above.</div>
+        }
+        else
+        {
+            <div class="ps-program-grid">
+                @foreach (var p in Model.Programs)
+                {
+                    var count = Model.Mappings.Count(m => m.ProgramId == p.ProgramId);
+                    <a asp-action="Index" asp-route-programId="@p.ProgramId" class="ps-program-card @(p.ProgramId == Model.SelectedProgramId ? "active" : "")">
+                        <div><strong>@p.ProgramCode</strong><span>@count subject@(count == 1 ? "" : "s")</span></div>
+                        <p>@p.ProgramName</p>
+                        <small>Open Program →</small>
+                    </a>
+                }
+            </div>
+        }
+    </section>
+
+    @if (selected != null)
+    {
+        <section class="ps-card ps-detail-card">
+            <div class="ps-detail-head">
+                <div>
+                    <p class="ps-eyebrow">SELECTED PROGRAM</p>
+                    <h2>@selected.ProgramCode</h2>
+                    <p>@selected.ProgramName</p>
+                </div>
+                <form asp-action="DeleteProgram" method="post" onsubmit="return confirm('Delete @selected.ProgramCode? This is only allowed when no class/student is using it.');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="programId" value="@selected.ProgramId" />
+                    <button class="ps-delete" type="submit">Delete Program</button>
+                </form>
+            </div>
+
+            <form asp-action="UpdateProgram" method="post" class="ps-edit-program">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="programId" value="@selected.ProgramId" />
+                <div><label>Program Code</label><input name="programCode" value="@selected.ProgramCode" maxlength="20" pattern="[A-Za-z0-9-]{2,20}" required /></div>
+                <div><label>Program Name</label><input name="programName" value="@selected.ProgramName" minlength="3" maxlength="150" required /></div>
+                <button class="ps-save" type="submit">Save Program</button>
+            </form>
+
+            <div class="ps-divider"></div>
+
+            <div class="ps-section-title">
+                <div><h2>Subjects in @selected.ProgramCode</h2><p>Create, rename or remove subjects for this program only.</p></div>
+            </div>
+
+            <form asp-action="CreateSubject" method="post" class="ps-add-subject">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="programId" value="@selected.ProgramId" />
+                <div><label>Subject Code <span>optional</span></label><input name="courseCode" maxlength="30" pattern="[A-Za-z0-9-]{2,30}" placeholder="e.g. AMIT2033" /></div>
+                <div><label>Subject Name</label><input name="courseName" minlength="2" maxlength="150" placeholder="e.g. Networking Essentials" required /></div>
+                <button type="submit" class="ps-primary">+ Add Subject</button>
+            </form>
+
+            @if (!selectedSubjects.Any())
+            {
+                <div class="ps-empty">No subject is registered under @selected.ProgramCode yet.</div>
+            }
+            else
+            {
+                <div class="ps-subject-list">
+                    @foreach (var m in selectedSubjects)
+                    {
+                        <div class="ps-subject-row">
+                            <form asp-action="UpdateProgramSubject" method="post" class="ps-subject-edit-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="programId" value="@selected.ProgramId" />
+                                <input type="hidden" name="programCourseId" value="@m.ProgramCourseId" />
+                                <input type="hidden" name="courseId" value="@m.CourseId" />
+                                <input name="courseCode" value="@m.CourseCode" maxlength="30" pattern="[A-Za-z0-9-]{2,30}" placeholder="Subject code" />
+                                <input name="courseName" value="@m.CourseName" minlength="2" maxlength="150" required />
+                                <button class="ps-save" type="submit">Save</button>
+                            </form>
+                            <form asp-action="RemoveProgramSubject" method="post" onsubmit="return confirm('Remove @m.CourseName from @selected.ProgramCode?');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="programId" value="@selected.ProgramId" />
+                                <input type="hidden" name="programCourseId" value="@m.ProgramCourseId" />
+                                <button class="ps-delete ps-outline-delete" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
+    else if (Model.Programs.Any())
+    {
+        <div class="ps-empty ps-select-hint">Select one of the program cards above to manage its subjects.</div>
+    }
+</div>
+<script>
+    document.getElementById('toggleProgramForm')?.addEventListener('click', function () {
+        const form = document.getElementById('programCreateForm');
+        form.hidden = !form.hidden;
+        if (!form.hidden) form.querySelector('input')?.focus();
+    });
+</script>

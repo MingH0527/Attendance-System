@@ -174,7 +174,7 @@ public class ProgramController : Controller
             var oldRecords = db.TeacherCourses.Where(tc => tc.UserId == userId);
             db.TeacherCourses.RemoveRange(oldRecords);
 
-            foreach (string courseId in model.SelectedCourseIds)
+            foreach (string courseId in model.SelectedCourseIds ?? new List<string>())
             {
                 db.TeacherCourses.Add(new TeacherCourse
                 {

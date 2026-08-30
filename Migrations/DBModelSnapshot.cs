@@ -22,6 +22,40 @@ namespace WebAndMobile.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WebAndMobile.Models.AcademicCalendarEvent", b =>
+                {
+                    b.Property<string>("CalendarEventId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("AffectsClasses")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("EventDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TermId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("CalendarEventId");
+
+                    b.HasIndex("TermId");
+
+                    b.ToTable("AcademicCalendarEvents");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.AcademicProgram", b =>
                 {
                     b.Property<string>("ProgramId")
@@ -41,6 +75,65 @@ namespace WebAndMobile.Migrations
                     b.HasKey("ProgramId");
 
                     b.ToTable("AcademicPrograms");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AcademicTerm", b =>
+                {
+                    b.Property<string>("TermId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("TermId");
+
+                    b.ToTable("AcademicTerms");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AcademicWeek", b =>
+                {
+                    b.Property<string>("AcademicWeekId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TermId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WeekType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.HasKey("AcademicWeekId");
+
+                    b.HasIndex("TermId");
+
+                    b.ToTable("AcademicWeeks");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.AdminSecurity", b =>
@@ -176,6 +269,51 @@ namespace WebAndMobile.Migrations
                     b.HasIndex("ProgramId");
 
                     b.ToTable("Classes");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.ClassSession", b =>
+                {
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReplacementId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("SessionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TermId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TimetableId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("SessionId");
+
+                    b.HasIndex("TimetableId");
+
+                    b.ToTable("ClassSessions");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Classroom", b =>
@@ -391,6 +529,84 @@ namespace WebAndMobile.Migrations
                     b.ToTable("PaymentTransactions");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.ProgramCourse", b =>
+                {
+                    b.Property<string>("ProgramCourseId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ProgramId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal?>("RequiredTeachingHours")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ProgramCourseId");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("ProgramId", "CourseId")
+                        .IsUnique();
+
+                    b.ToTable("ProgramCourses");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.ReplacementSession", b =>
+                {
+                    b.Property<string>("ReplacementId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ClassroomId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("ReplacementDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SourceTimetableId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TargetClassType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TeacherId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("ReplacementId");
+
+                    b.HasIndex("SourceTimetableId");
+
+                    b.ToTable("ReplacementSessions");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
                 {
                     b.Property<string>("StudentClassId")
@@ -529,6 +745,10 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("TermId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.HasKey("TimetableId");
 
                     b.HasIndex("ClassId");
@@ -539,7 +759,82 @@ namespace WebAndMobile.Migrations
 
                     b.HasIndex("TeacherId");
 
+                    b.HasIndex("TermId");
+
                     b.ToTable("Timetables");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TimetableException", b =>
+                {
+                    b.Property<string>("ExceptionId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime>("OccurrenceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TimetableId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("ExceptionId");
+
+                    b.HasIndex("TimetableId");
+
+                    b.ToTable("TimetableExceptions");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TimetableNotification", b =>
+                {
+                    b.Property<string>("NotificationId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("TermId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TimetableId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("NotificationId");
+
+                    b.ToTable("TimetableNotifications");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.User", b =>
@@ -729,6 +1024,28 @@ namespace WebAndMobile.Migrations
                     b.ToTable("UserPasskeys");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.AcademicCalendarEvent", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.AcademicTerm", "Term")
+                        .WithMany()
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Term");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AcademicWeek", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.AcademicTerm", "Term")
+                        .WithMany("Weeks")
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Term");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.AdminSecurity", b =>
                 {
                     b.HasOne("WebAndMobile.Models.User", "User")
@@ -776,6 +1093,17 @@ namespace WebAndMobile.Migrations
                         .IsRequired();
 
                     b.Navigation("Program");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.ClassSession", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Timetable", "Timetable")
+                        .WithMany()
+                        .HasForeignKey("TimetableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Timetable");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.Conversation", b =>
@@ -828,6 +1156,36 @@ namespace WebAndMobile.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.ProgramCourse", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.AcademicProgram", "Program")
+                        .WithMany()
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Program");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.ReplacementSession", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Timetable", "SourceTimetable")
+                        .WithMany()
+                        .HasForeignKey("SourceTimetableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SourceTimetable");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.StudentClass", b =>
@@ -912,6 +1270,11 @@ namespace WebAndMobile.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("WebAndMobile.Models.AcademicTerm", "Term")
+                        .WithMany("Timetables")
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("ClassGroup");
 
                     b.Navigation("Classroom");
@@ -919,6 +1282,19 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Course");
 
                     b.Navigation("Teacher");
+
+                    b.Navigation("Term");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TimetableException", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Timetable", "Timetable")
+                        .WithMany()
+                        .HasForeignKey("TimetableId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Timetable");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.UserFaceProfile", b =>
@@ -946,6 +1322,13 @@ namespace WebAndMobile.Migrations
             modelBuilder.Entity("WebAndMobile.Models.AcademicProgram", b =>
                 {
                     b.Navigation("Classes");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AcademicTerm", b =>
+                {
+                    b.Navigation("Timetables");
+
+                    b.Navigation("Weeks");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>

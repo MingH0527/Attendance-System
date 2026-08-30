@@ -26,4 +26,13 @@ public class DB : DbContext
     public DbSet<UserFaceProfile> UserFaceProfiles => Set<UserFaceProfile>();
     public DbSet<PaymentSecurity> PaymentSecurities => Set<PaymentSecurity>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<AcademicTerm> AcademicTerms => Set<AcademicTerm>();
+    public DbSet<AcademicWeek> AcademicWeeks => Set<AcademicWeek>();
+    public DbSet<AcademicCalendarEvent> AcademicCalendarEvents => Set<AcademicCalendarEvent>();
+    public DbSet<ProgramCourse> ProgramCourses => Set<ProgramCourse>();
+    public DbSet<TimetableException> TimetableExceptions => Set<TimetableException>();
+    public DbSet<ReplacementSession> ReplacementSessions => Set<ReplacementSession>();
+    public DbSet<ClassSession> ClassSessions => Set<ClassSession>();
+    public DbSet<TimetableNotification> TimetableNotifications => Set<TimetableNotification>();
+
 }
