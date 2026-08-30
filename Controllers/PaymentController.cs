@@ -8,6 +8,7 @@ using QRCoder;
 using Stripe.Checkout;
 using WebAndMobile.Models;
 using WebAndMobile.Configuration;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -46,7 +47,7 @@ public class PaymentController : Controller
     [HttpGet]
     public async Task<IActionResult> History()
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         List<PaymentTransaction> transactions =
             await db.PaymentTransactions
@@ -64,7 +65,7 @@ public class PaymentController : Controller
         FeeItem? fee = GetFeeItems().FirstOrDefault(f => f.Id == feeId);
         if (fee == null) return NotFound();
 
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         ViewBag.HasFaceId = await db.UserFaceProfiles
             .AnyAsync(p => p.UserId == userId && p.IsActive);
@@ -190,7 +191,7 @@ public class PaymentController : Controller
     [HttpGet]
     public async Task<IActionResult> SetPin(int returnFeeId)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
         bool exists = await db.PaymentSecurities.AnyAsync(p => p.UserId == userId && p.PinEnabled);
 
         if (exists)
@@ -206,7 +207,7 @@ public class PaymentController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPin(SetPaymentPinViewModel model)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
         bool exists = await db.PaymentSecurities.AnyAsync(p => p.UserId == userId && p.PinEnabled);
 
         if (exists)
@@ -222,6 +223,11 @@ public class PaymentController : Controller
 
         PaymentSecurity security = new()
         {
+            PaymentSecurityId = await FormattedIdGenerator.NextAsync(
+                db.PaymentSecurities,
+                p => p.PaymentSecurityId,
+                "PMS"
+            ),
             UserId = userId,
             PinEnabled = true,
             CreatedAt = DateTime.UtcNow
@@ -242,7 +248,7 @@ public class PaymentController : Controller
         string paymentMethod,
         decimal? customAmount)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
         FeeItem? fee = GetFeeItems().FirstOrDefault(f => f.Id == feeId);
         if (fee == null) return NotFound();
 
@@ -317,6 +323,11 @@ public class PaymentController : Controller
 
         PaymentTransaction transaction = new()
         {
+            PaymentTransactionId = await FormattedIdGenerator.NextAsync(
+                db.PaymentTransactions,
+                p => p.PaymentTransactionId,
+                "PAY"
+            ),
             UserId = GetCurrentUserId(),
             FeeId = fee.Id,
             FeeName = fee.Name,
@@ -338,9 +349,9 @@ public class PaymentController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Qr(int id)
+    public async Task<IActionResult> Qr(string id)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         PaymentTransaction? transaction = await db.PaymentTransactions
             .AsNoTracking()
@@ -469,9 +480,9 @@ public class PaymentController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Status(int id)
+    public async Task<IActionResult> Status(string id)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         PaymentTransaction? transaction = await db.PaymentTransactions
             .FirstOrDefaultAsync(p => p.PaymentTransactionId == id && p.UserId == userId);
@@ -492,9 +503,9 @@ public class PaymentController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Success(int id)
+    public async Task<IActionResult> Success(string id)
     {
-        int userId = GetCurrentUserId();
+        string userId = GetCurrentUserId();
 
         PaymentTransaction? transaction = await db.PaymentTransactions
             .AsNoTracking()
@@ -513,12 +524,16 @@ public class PaymentController : Controller
         HttpContext.Session.Remove(PendingAmountKey);
     }
 
-    private int GetCurrentUserId()
+    private string GetCurrentUserId()
     {
-        string? value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        if (!int.TryParse(value, out int userId))
-            throw new UnauthorizedAccessException("The login session is invalid.");
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new UnauthorizedAccessException(
+                "The login session is invalid."
+            );
+        }
 
         return userId;
     }

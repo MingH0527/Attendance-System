@@ -50,7 +50,7 @@ public class MyProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -59,7 +59,7 @@ public class MyProfileController : Controller
 
         User? user = await db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.UserId == userId.Value);
+            .FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
         {
@@ -73,7 +73,7 @@ public class MyProfileController : Controller
                 .Include(sc => sc.Program)
                 .Include(sc => sc.ClassGroup)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(sc => sc.UserId == userId.Value);
+                .FirstOrDefaultAsync(sc => sc.UserId == userId);
 
             if (studentClass != null)
             {
@@ -92,7 +92,7 @@ public class MyProfileController : Controller
         else if (user.Position == "Teacher")
         {
             bool registered = await db.TeacherCourses
-                .AnyAsync(tc => tc.UserId == userId.Value);
+                .AnyAsync(tc => tc.UserId == userId);
 
             ViewBag.ShowRegisterCourseCard = !registered;
         }
@@ -110,7 +110,7 @@ public class MyProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Passkey()
     {
-        int? userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -127,7 +127,7 @@ public class MyProfileController : Controller
                 .Where(
                     p =>
                         p.UserId ==
-                        userId.Value
+                        userId
                 )
                 .OrderByDescending(
                     p => p.CreatedAt
@@ -152,7 +152,7 @@ public class MyProfileController : Controller
                 .FirstOrDefaultAsync(
                     u =>
                         u.UserId ==
-                        userId.Value
+                        userId
                 );
 
         if (user != null &&
@@ -199,7 +199,7 @@ public class MyProfileController : Controller
     public async Task<IActionResult>
         CreatePasskeyOptions()
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -213,7 +213,7 @@ public class MyProfileController : Controller
         User? user = await db.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(
-                u => u.UserId == userId.Value);
+                u => u.UserId == userId);
 
         if (user == null)
         {
@@ -227,7 +227,7 @@ public class MyProfileController : Controller
         List<UserPasskey> existingPasskeys =
             await db.UserPasskeys
                 .AsNoTracking()
-                .Where(p => p.UserId == userId.Value)
+                .Where(p => p.UserId == userId)
                 .ToListAsync();
 
         if (existingPasskeys.Count >= MaximumPasskeys)
@@ -420,7 +420,7 @@ public class MyProfileController : Controller
 
             CancellationToken cancellationToken)
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -505,7 +505,7 @@ public class MyProfileController : Controller
         {
             int currentCount =
                 await db.UserPasskeys.CountAsync(
-                    p => p.UserId == userId.Value,
+                    p => p.UserId == userId,
                     cancellationToken);
 
             if (currentCount >= MaximumPasskeys)
@@ -521,7 +521,7 @@ public class MyProfileController : Controller
             bool sameDeviceAlreadyRegistered =
                 await db.UserPasskeys.AnyAsync(
                     p =>
-                        p.UserId == userId.Value &&
+                        p.UserId == userId &&
                         p.DeviceIdentifier ==
                             deviceIdentifier,
                     cancellationToken);
@@ -654,7 +654,13 @@ public class MyProfileController : Controller
 
             UserPasskey passkey = new()
             {
-                UserId = userId.Value,
+                UserPasskeyId = await FormattedIdGenerator.NextAsync(
+                    db.UserPasskeys,
+                    p => p.UserPasskeyId,
+                    "UPK",
+                    cancellationToken: cancellationToken
+                ),
+                UserId = userId,
                 CredentialId = result.Id,
                 PublicKey = result.PublicKey,
                 SignCount = result.SignCount,
@@ -692,15 +698,10 @@ public class MyProfileController : Controller
             await db.SaveChangesAsync(
                 cancellationToken);
 
-            passkey.PasskeyCode =
-                $"USRPK{passkey.UserPasskeyId:D4}";
-
-            await db.SaveChangesAsync(
-                cancellationToken);
 
             int newCount =
                 await db.UserPasskeys.CountAsync(
-                    p => p.UserId == userId.Value,
+                    p => p.UserId == userId,
                     cancellationToken);
 
             int newDeviceAccountCount =
@@ -714,7 +715,7 @@ public class MyProfileController : Controller
                     .FirstOrDefaultAsync(
                         u =>
                             u.UserId ==
-                            userId.Value,
+                            userId,
                         cancellationToken);
 
             bool requiresAdminPinSetup = false;
@@ -752,8 +753,6 @@ public class MyProfileController : Controller
             {
                 success = true,
                 message = successMessage,
-                passkeyCode =
-                    passkey.PasskeyCode,
                 count = newCount,
                 maximum = MaximumPasskeys,
                 deviceAccountCount =
@@ -798,7 +797,7 @@ public class MyProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> SetAdminPin()
     {
-        int? userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -815,7 +814,7 @@ public class MyProfileController : Controller
                 .FirstOrDefaultAsync(
                     u =>
                         u.UserId ==
-                        userId.Value
+                        userId
                 );
 
         if (user == null)
@@ -884,7 +883,7 @@ public class MyProfileController : Controller
         string pin,
         string confirmPin)
     {
-        int? userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -900,7 +899,7 @@ public class MyProfileController : Controller
                 .FirstOrDefaultAsync(
                     u =>
                         u.UserId ==
-                        userId.Value
+                        userId
                 );
 
         if (user == null)
@@ -991,6 +990,11 @@ public class MyProfileController : Controller
         {
             security = new AdminSecurity
             {
+                AdminSecurityId = await FormattedIdGenerator.NextAsync(
+                    db.AdminSecurities,
+                    a => a.AdminSecurityId,
+                    "ADS"
+                ),
                 UserId =
                     user.UserId,
 
@@ -1033,9 +1037,9 @@ public class MyProfileController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeletePasskey(
-        int passkeyId)
+        string passkeyId)
     {
-        int? userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -1056,7 +1060,7 @@ public class MyProfileController : Controller
                         passkeyId &&
 
                         p.UserId ==
-                        userId.Value
+                        userId
                 );
 
         if (passkey == null)
@@ -1074,7 +1078,7 @@ public class MyProfileController : Controller
                 .FirstOrDefaultAsync(
                     u =>
                         u.UserId ==
-                        userId.Value
+                        userId
                 );
 
         if (currentUser == null)
@@ -1092,7 +1096,7 @@ public class MyProfileController : Controller
                 .CountAsync(
                     p =>
                         p.UserId ==
-                        userId.Value
+                        userId
                 );
 
         bool isAdmin =
@@ -1135,7 +1139,7 @@ public class MyProfileController : Controller
                 .CountAsync(
                     p =>
                         p.UserId ==
-                        userId.Value
+                        userId
                 );
 
         string message =
@@ -1161,19 +1165,11 @@ public class MyProfileController : Controller
     // HELPERS
     // ==================================================
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
-        string? userIdValue =
-            User.FindFirstValue(
-                ClaimTypes.NameIdentifier
-            );
-
-        return int.TryParse(
-            userIdValue,
-            out int userId
-        )
-            ? userId
-            : null;
+        return User.FindFirstValue(
+            ClaimTypes.NameIdentifier
+        );
     }
 
     private string GetRequestDeviceIdentifier()

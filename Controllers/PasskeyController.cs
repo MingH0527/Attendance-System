@@ -270,7 +270,7 @@ public class PasskeyController : Controller
                     });
                 }
 
-                HttpContext.Session.SetInt32(
+                HttpContext.Session.SetString(
                     PendingAdminUserIdKey,
                     user.UserId
                 );
@@ -344,8 +344,8 @@ public class PasskeyController : Controller
     [HttpGet]
     public IActionResult VerifyAdminPin()
     {
-        int? userId =
-            HttpContext.Session.GetInt32(
+        string? userId =
+            HttpContext.Session.GetString(
                 PendingAdminUserIdKey
             );
 
@@ -385,8 +385,8 @@ public class PasskeyController : Controller
     public async Task<IActionResult> VerifyAdminPin(
         string pin)
     {
-        int? userId =
-            HttpContext.Session.GetInt32(
+        string? userId =
+            HttpContext.Session.GetString(
                 PendingAdminUserIdKey
             );
 
@@ -432,7 +432,7 @@ public class PasskeyController : Controller
         User? user =
             await db.Users.FirstOrDefaultAsync(
                 u =>
-                    u.UserId == userId.Value &&
+                    u.UserId == userId &&
                     u.Position == "Admin"
             );
 
@@ -440,7 +440,7 @@ public class PasskeyController : Controller
             await db.AdminSecurities
                 .FirstOrDefaultAsync(
                     a =>
-                        a.UserId == userId.Value &&
+                        a.UserId == userId &&
                         a.PinEnabled
                 );
 

@@ -42,7 +42,7 @@
 
     function bindToolbar() {
         document.getElementById("classFilter").addEventListener("change", async (e) => {
-            state.classId = e.target.value ? parseInt(e.target.value, 10) : null;
+            state.classId = e.target.value || null;
             await loadGrid();
         });
 
@@ -299,13 +299,11 @@
 
         const timetableId = document.getElementById("fTimetableId").value;
         const payload = {
-            timetableId: timetableId ? parseInt(timetableId, 10) : null,
-            teacherId: parseInt(document.getElementById("fTeacherId").value, 10),
-            courseId: parseInt(document.getElementById("fCourseId").value, 10),
-            classId: parseInt(document.getElementById("fClassId").value, 10),
-            classroomId: document.getElementById("fClassroomId").value
-                ? parseInt(document.getElementById("fClassroomId").value, 10)
-                : null,
+            timetableId: timetableId || null,
+            teacherId: document.getElementById("fTeacherId").value,
+            courseId: document.getElementById("fCourseId").value,
+            classId: document.getElementById("fClassId").value,
+            classroomId: document.getElementById("fClassroomId").value || null,
             dayOfWeek: parseInt(document.getElementById("fDayOfWeek").value, 10),
             startTime: document.getElementById("fStartTime").value,
             endTime: document.getElementById("fEndTime").value,
@@ -405,7 +403,7 @@
         const res = await fetch(`/Admin/${actionMap[kind]}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: 0, name })
+            body: JSON.stringify({ id: "", name })
         });
 
         if (!res.ok) {

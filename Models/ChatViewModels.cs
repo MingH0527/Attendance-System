@@ -2,16 +2,16 @@ namespace WebAndMobile.Models;
 
 public class ChatIndexViewModel
 {
-    public int CurrentUserId { get; set; }
+    public string CurrentUserId { get; set; } = string.Empty;
     public string CurrentRole { get; set; } = string.Empty;
-    public int? SelectedUserId { get; set; }
+    public string? SelectedUserId { get; set; }
     public List<ConversationListItemViewModel> Conversations { get; set; } = [];
 }
 
 public class ConversationListItemViewModel
 {
-    public int ConversationId { get; set; }
-    public int OtherUserId { get; set; }
+    public string ConversationId { get; set; } = string.Empty;
+    public string OtherUserId { get; set; } = string.Empty;
     public string OtherUsername { get; set; } = string.Empty;
     public string OtherAvatar { get; set; } = "default.png";
     public string LastMessage { get; set; } = string.Empty;
@@ -21,10 +21,10 @@ public class ConversationListItemViewModel
 
 public class ChatMessageDto
 {
-    public long MessageId { get; set; }
-    public int ConversationId { get; set; }
-    public int SenderId { get; set; }
-    public int ReceiverId { get; set; }
+    public string MessageId { get; set; } = string.Empty;
+    public string ConversationId { get; set; } = string.Empty;
+    public string SenderId { get; set; } = string.Empty;
+    public string ReceiverId { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime SentAtUtc { get; set; }
     public bool IsRead { get; set; }

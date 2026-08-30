@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -26,7 +26,7 @@ public class AdminController : Controller
 
     public async Task<IActionResult> Index()
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -39,7 +39,7 @@ public class AdminController : Controller
         User? user = await _context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(
-                u => u.UserId == userId.Value
+                u => u.UserId == userId
             );
 
         if (user == null)
@@ -133,6 +133,11 @@ public class AdminController : Controller
 
         Course course = new()
         {
+            CourseId = await FormattedIdGenerator.NextAsync(
+                _context.Courses,
+                c => c.CourseId,
+                "CRS"
+            ),
             CourseName = courseName
         };
 
@@ -149,7 +154,7 @@ public class AdminController : Controller
 
     [HttpPost]
     public async Task<IActionResult> DeleteCourse(
-        int id)
+        string id)
     {
         Course? course =
             await _context.Courses.FindAsync(id);
@@ -228,6 +233,11 @@ public class AdminController : Controller
 
         ClassGroup classGroup = new()
         {
+            ClassId = await FormattedIdGenerator.NextAsync(
+                _context.ClassGroups,
+                c => c.ClassId,
+                "CLS"
+            ),
             ClassName = className
         };
 
@@ -244,7 +254,7 @@ public class AdminController : Controller
 
     [HttpPost]
     public async Task<IActionResult> DeleteClass(
-        int id)
+        string id)
     {
         ClassGroup? classGroup =
             await _context.ClassGroups.FindAsync(id);
@@ -323,6 +333,11 @@ public class AdminController : Controller
 
         Classroom room = new()
         {
+            ClassroomId = await FormattedIdGenerator.NextAsync(
+                _context.Classrooms,
+                c => c.ClassroomId,
+                "ROM"
+            ),
             RoomName = roomName
         };
 
@@ -339,7 +354,7 @@ public class AdminController : Controller
 
     [HttpPost]
     public async Task<IActionResult> DeleteClassroom(
-        int id)
+        string id)
     {
         Classroom? room =
             await _context.Classrooms.FindAsync(id);
@@ -402,13 +417,13 @@ public class AdminController : Controller
                 .ThenBy(t => t.StartTime)
                 .ToListAsync();
 
-        List<int> teacherIds =
+        List<string> teacherIds =
             entries
                 .Select(t => t.TeacherId)
                 .Distinct()
                 .ToList();
 
-        Dictionary<int, string> teacherNames =
+        Dictionary<string, string> teacherNames =
             await _context.Users
                 .Where(
                     u => teacherIds.Contains(
@@ -502,6 +517,11 @@ public class AdminController : Controller
 
         Timetable entry = new()
         {
+            TimetableId = await FormattedIdGenerator.NextAsync(
+                _context.Timetables,
+                t => t.TimetableId,
+                "TTB"
+            ),
             TeacherId = request.TeacherId,
             CourseId = request.CourseId,
             ClassId = request.ClassId,
@@ -540,7 +560,7 @@ public class AdminController : Controller
         UpdateTimetableEntry(
             [FromBody] TimetableRequest request)
     {
-        if (!request.TimetableId.HasValue)
+        if (string.IsNullOrWhiteSpace(request.TimetableId))
         {
             return BadRequest(
                 "TimetableId is required for updates."
@@ -556,7 +576,7 @@ public class AdminController : Controller
 
         Timetable? entry =
             await _context.Timetables.FindAsync(
-                request.TimetableId.Value
+                request.TimetableId
             );
 
         if (entry == null)
@@ -617,7 +637,7 @@ public class AdminController : Controller
     [HttpPost]
     public async Task<IActionResult>
         DeleteTimetableEntry(
-            int id)
+            string id)
     {
         Timetable? entry =
             await _context.Timetables.FindAsync(id);
@@ -658,20 +678,11 @@ public class AdminController : Controller
                         .ErrorMessage
             );
     }
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
-        string? userIdValue =
-            User.FindFirstValue(
-                System.Security.Claims
-                    .ClaimTypes.NameIdentifier
-            );
-
-        return int.TryParse(
-            userIdValue,
-            out int userId
-        )
-            ? userId
-            : null;
+        return User.FindFirstValue(
+            System.Security.Claims.ClaimTypes.NameIdentifier
+        );
     }
 
 
@@ -699,7 +710,7 @@ public class AdminController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> PromoteToTeacher(int id)
+    public async Task<IActionResult> PromoteToTeacher(string id)
     {
         var user = await _context.Users.FindAsync(id);
 
@@ -739,7 +750,7 @@ public class AdminController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> CancelTeacherRole(int id)
+    public async Task<IActionResult> CancelTeacherRole(string id)
     {
         var user = await _context.Users.FindAsync(id);
 

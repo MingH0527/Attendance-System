@@ -1,8 +1,9 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -19,7 +20,7 @@ public class TeacherController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        int? userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -34,7 +35,7 @@ public class TeacherController : Controller
             await db.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
-                    u => u.UserId == userId.Value
+                    u => u.UserId == userId
                 );
 
         if (user == null)
@@ -64,24 +65,16 @@ public class TeacherController : Controller
         return View(user);
     }
 
-    private int? GetCurrentUserId()
+    private string? GetCurrentUserId()
     {
-        string? userIdValue =
-            User.FindFirstValue(
-                ClaimTypes.NameIdentifier
-            );
-
-        return int.TryParse(
-            userIdValue,
-            out int userId
-        )
-            ? userId
-            : null;
+        return User.FindFirstValue(
+            ClaimTypes.NameIdentifier
+        );
     }
     [HttpGet]
     public async Task<IActionResult> Timetable()
     {
-        int? userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -96,7 +89,7 @@ public class TeacherController : Controller
             await db.Timetables
                 .AsNoTracking()
                 .Where(
-                    t => t.TeacherId == userId.Value
+                    t => t.TeacherId == userId
                 )
                 .Include(t => t.Course)
                 .Include(t => t.ClassGroup)
@@ -116,7 +109,7 @@ public class TeacherController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Teacher model)
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         if (userId == null)
         {
@@ -130,7 +123,12 @@ public class TeacherController : Controller
             return View(model);
         }
 
-        model.UserId = userId.Value;
+        model.UserId = userId;
+        model.TeacherId = await FormattedIdGenerator.NextAsync(
+            db.Teacher,
+            t => t.TeacherId,
+            "TCH"
+        );
 
         db.Teacher.Add(model);
 
@@ -144,7 +142,7 @@ public class TeacherController : Controller
     [HttpGet]
     public async Task<IActionResult> Profile()
     {
-        int? userId = GetCurrentUserId();
+        string? userId = GetCurrentUserId();
 
         Teacher? teacher = await db.Teacher
             .FirstOrDefaultAsync(

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
@@ -43,7 +43,7 @@ public class UserController : Controller
 
     // GET: /User/Edit/5
     [HttpGet]
-    public async Task<IActionResult> Edit(int id)
+    public async Task<IActionResult> Edit(string id)
     {
         User? user =
             await db.Users
@@ -77,7 +77,7 @@ public class UserController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(
-        int id,
+        string id,
         UserEditViewModel model)
     {
         if (id != model.UserId)
@@ -140,7 +140,7 @@ public class UserController : Controller
     // POST: /User/Delete/5  (soft delete -> Status = Inactive)
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(string id)
     {
         User? user =
             await db.Users.FindAsync(id);
@@ -178,7 +178,7 @@ public class UserController : Controller
     // POST: /User/Activate/5  (reverse of soft delete)
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Activate(int id)
+    public async Task<IActionResult> Activate(string id)
     {
         User? user =
             await db.Users.FindAsync(id);

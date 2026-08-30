@@ -18,9 +18,9 @@ public class ChatController : Controller
 
     [HttpGet]
     public async Task<IActionResult> Index(
-        int? userId)
+        string? userId)
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         string currentRole =
@@ -51,7 +51,7 @@ public class ChatController : Controller
     public async Task<IActionResult> SearchUsers(
         string query)
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         string currentRole =
@@ -120,10 +120,10 @@ public class ChatController : Controller
 
     [HttpGet]
     public async Task<IActionResult> GetConversation(
-        int otherUserId,
-        long beforeMessageId = 0)
+        string otherUserId,
+        string? beforeMessageId = null)
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         string currentRole =
@@ -161,12 +161,12 @@ public class ChatController : Controller
             return Forbid();
         }
 
-        int studentId =
+        string studentId =
             currentRole == "Student"
                 ? currentUserId
                 : otherUserId;
 
-        int teacherId =
+        string teacherId =
             currentRole == "Teacher"
                 ? currentUserId
                 : otherUserId;
@@ -186,7 +186,7 @@ public class ChatController : Controller
                 new
                 {
                     conversationId =
-                        0,
+                        string.Empty,
 
                     otherUser =
                         new
@@ -226,13 +226,15 @@ public class ChatController : Controller
                         conversation.ConversationId
                 );
 
-        if (beforeMessageId > 0)
+        if (!string.IsNullOrWhiteSpace(beforeMessageId))
         {
             messageQuery =
                 messageQuery.Where(
                     m =>
-                        m.ChatMessageId <
-                        beforeMessageId
+                        string.Compare(
+                            m.ChatMessageId,
+                            beforeMessageId
+                        ) < 0
                 );
         }
 
@@ -333,7 +335,7 @@ public class ChatController : Controller
     public async Task<IActionResult>
         ConversationList()
     {
-        int currentUserId =
+        string currentUserId =
             GetCurrentUserId();
 
         return Json(
@@ -346,7 +348,7 @@ public class ChatController : Controller
     private async Task<
         List<ConversationListItemViewModel>>
         BuildConversationList(
-            int currentUserId)
+            string currentUserId)
     {
         List<Conversation> conversations =
             await db.Conversations
@@ -375,14 +377,14 @@ public class ChatController : Controller
             return [];
         }
 
-        List<int> conversationIds =
+        List<string> conversationIds =
             conversations
                 .Select(
                     c => c.ConversationId
                 )
                 .ToList();
 
-        Dictionary<int, ChatMessage>
+        Dictionary<string, ChatMessage>
             latestMessages =
                 await db.ChatMessages
                     .AsNoTracking()
@@ -406,7 +408,7 @@ public class ChatController : Controller
                         m => m.ConversationId
                     );
 
-        Dictionary<int, int>
+        Dictionary<string, int>
             unreadCounts =
                 await db.ChatMessages
                     .AsNoTracking()
@@ -497,21 +499,17 @@ public class ChatController : Controller
             .ToList();
     }
 
-    private int GetCurrentUserId()
+    private string GetCurrentUserId()
     {
-        string? value =
-            User.FindFirstValue(
-                ClaimTypes.NameIdentifier
-            );
+        string? userId = User.FindFirstValue(
+            ClaimTypes.NameIdentifier
+        );
 
-        if (!int.TryParse(
-                value,
-                out int userId))
+        if (string.IsNullOrWhiteSpace(userId))
         {
-            throw new
-                UnauthorizedAccessException(
-                    "Login session expired."
-                );
+            throw new UnauthorizedAccessException(
+                "Login session expired."
+            );
         }
 
         return userId;

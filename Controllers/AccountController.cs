@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -251,6 +252,12 @@ public class AccountController : Controller
 
         try
         {
+            newUser.UserId = await FormattedIdGenerator.NextAsync(
+                db.Users,
+                u => u.UserId,
+                "USR"
+            );
+
             db.Users.Add(newUser);
             await db.SaveChangesAsync();
         }
@@ -543,7 +550,7 @@ public class AccountController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ForgotPasswordOtp(int userId, string otp)
+    public async Task<IActionResult> ForgotPasswordOtp(string userId, string otp)
     {
         PasswordResetData? pending = GetPasswordResetData();
 
@@ -582,7 +589,7 @@ public class AccountController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ResendForgotPasswordOtp(int userId)
+    public async Task<IActionResult> ResendForgotPasswordOtp(string userId)
     {
         PasswordResetData? pending = GetPasswordResetData();
 
@@ -1119,7 +1126,7 @@ public class AccountController : Controller
 
     private sealed class PasswordResetData
     {
-        public int UserId { get; set; }
+        public string UserId { get; set; } = string.Empty;
         public string MaskedEmail { get; set; } = "";
         public string NewPasswordHash { get; set; } = "";
     }
