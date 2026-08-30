@@ -96,16 +96,37 @@ public class ProgramController : Controller
 
         if (user.Position == "Student")
         {
+            ModelState.Remove(nameof(model.SelectedCourseIds));
+
             if (string.IsNullOrWhiteSpace(model.SelectedProgramId))
-                ModelState.AddModelError(nameof(model.SelectedProgramId), "请选择科系/学位");
+            {
+                ModelState.AddModelError(
+                    nameof(model.SelectedProgramId),
+                    "Please selecet at least one course"
+                );
+            }
 
             if (string.IsNullOrWhiteSpace(model.SelectedClassId))
-                ModelState.AddModelError(nameof(model.SelectedClassId), "请选择班级");
+            {
+                ModelState.AddModelError(
+                    nameof(model.SelectedClassId),
+                    "Please select class"
+                );
+            }
         }
-
-        if (user.Position == "Teacher" && !model.SelectedCourseIds.Any())
+        else if (user.Position == "Teacher")
         {
-            ModelState.AddModelError(nameof(model.SelectedCourseIds), "请至少选择一门课程");
+            ModelState.Remove(nameof(model.SelectedProgramId));
+            ModelState.Remove(nameof(model.SelectedClassId));
+
+            if (model.SelectedCourseIds == null ||
+                !model.SelectedCourseIds.Any())
+            {
+                ModelState.AddModelError(
+                    nameof(model.SelectedCourseIds),
+                    "Please select at least one course."
+                );
+            }
         }
 
         if (!ModelState.IsValid)

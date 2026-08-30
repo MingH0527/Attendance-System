@@ -104,6 +104,28 @@ public class AdminController : Controller
 
         return Json(courses);
     }
+    [HttpGet]
+    public async Task<IActionResult> GetTeacherCourses(string teacherId)
+    {
+        if (string.IsNullOrWhiteSpace(teacherId))
+        {
+            return BadRequest("Teacher ID is required.");
+        }
+
+        var courses = await _context.TeacherCourses
+            .AsNoTracking()
+            .Where(tc => tc.UserId == teacherId)
+            .Include(tc => tc.Course)
+            .OrderBy(tc => tc.Course!.CourseName)
+            .Select(tc => new SimpleLookupDto
+            {
+                Id = tc.CourseId,
+                Name = tc.Course!.CourseName
+            })
+            .ToListAsync();
+
+        return Json(courses);
+    }
 
     [HttpPost]
     public async Task<IActionResult> CreateCourse(
@@ -496,13 +518,32 @@ public class AdminController : Controller
     public async Task<IActionResult>
         CreateTimetableEntry(
             [FromBody] TimetableRequest request)
-    {
+        {
+
         if (!ModelState.IsValid)
         {
             return BadRequest(
                 GetModelErrors()
             );
         }
+
+
+        // Check whether this teacher registered this course
+        bool teacherCanTeachCourse =
+            await _context.TeacherCourses
+                .AnyAsync(tc =>
+                    tc.UserId == request.TeacherId &&
+                    tc.CourseId == request.CourseId
+                );
+
+
+        if (!teacherCanTeachCourse)
+        {
+            return BadRequest(
+                "This teacher is not registered to teach this course."
+            );
+        }
+
 
         var validation =
             await _validationService
@@ -571,6 +612,19 @@ public class AdminController : Controller
         {
             return BadRequest(
                 GetModelErrors()
+            );
+        }
+        bool teacherCanTeachCourse =
+            await _context.TeacherCourses
+                .AnyAsync(tc =>
+                    tc.UserId == request.TeacherId &&
+                    tc.CourseId == request.CourseId
+                );
+
+        if (!teacherCanTeachCourse)
+        {
+            return BadRequest(
+                "This teacher is not registered to teach this course."
             );
         }
 

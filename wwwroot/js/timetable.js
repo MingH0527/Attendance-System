@@ -73,11 +73,115 @@
             list.appendChild(li);
         });
     }
+    async function loadTeacherCourses(
+        teacherId,
+        selectedCourseId = null
+    ) {
+        const select =
+            document.getElementById("fCourseId");
+
+        select.disabled = true;
+
+        select.innerHTML =
+            '<option value="">Loading...</option>';
+
+
+        const res = await fetch(
+            `/Admin/GetTeacherCourses?teacherId=${encodeURIComponent(teacherId)}`
+        );
+
+
+        if (!res.ok) {
+            select.innerHTML =
+                '<option value="">Unable to load courses</option>';
+
+            return;
+        }
+
+
+        const courses = await res.json();
+
+
+        // Teacher did not register any course
+        if (courses.length === 0) {
+
+            select.innerHTML =
+                '<option value="">No registered courses</option>';
+
+            select.disabled = true;
+
+            return;
+        }
+
+
+        // Teacher teaches only ONE course
+        if (courses.length === 1) {
+
+            select.innerHTML = "";
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                courses[0].id;
+
+            option.textContent =
+                courses[0].name;
+
+            select.appendChild(option);
+
+
+            // Automatically fixed to this course
+            select.value =
+                courses[0].id;
+
+            select.disabled = true;
+
+            return;
+        }
+
+
+        // Teacher teaches MORE THAN ONE course
+        select.disabled = false;
+
+        select.innerHTML =
+            '<option value="">-- select course --</option>';
+
+
+        courses.forEach(course => {
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                course.id;
+
+            option.textContent =
+                course.name;
+
+            select.appendChild(option);
+        });
+
+
+        // Editing existing timetable
+        if (selectedCourseId) {
+
+            select.value =
+                selectedCourseId;
+        }
+    }
 
     async function loadCourses() {
         const res = await fetch("/Admin/GetCourses");
+
         state.courses = await res.json();
-        fillSelect(document.getElementById("fCourseId"), state.courses, "-- select course --");
+
+        // Do not put all courses into Assign Lesson.
+        // Course will be loaded according to teacher.
+        const select = document.getElementById("fCourseId");
+
+        select.innerHTML =
+            '<option value="">-- select teacher first --</option>';
     }
 
     async function loadClasses() {
@@ -247,38 +351,156 @@
         document.getElementById("deleteLessonBtn").addEventListener("click", onDeleteLesson);
     }
 
-    function openModalForCreate(day, teacherId, teacherName, hour) {
+    async function openModalForCreate(
+        day,
+        teacherId,
+        teacherName,
+        hour
+    ) {
         hideModalError();
-        document.getElementById("lessonModalTitle").textContent = "Assign Lesson";
-        document.getElementById("fTimetableId").value = "";
-        document.getElementById("fTeacherId").value = teacherId;
-        document.getElementById("fTeacherName").value = teacherName;
-        document.getElementById("fDayOfWeek").value = day;
-        document.getElementById("fClassType").value = state.classType;
-        document.getElementById("fCourseId").value = "";
-        document.getElementById("fClassId").value = state.classId || "";
-        document.getElementById("fClassroomId").value = "";
-        document.getElementById("fStartTime").value = `${String(hour).padStart(2, "0")}:00`;
-        document.getElementById("fEndTime").value = `${String(hour + 1).padStart(2, "0")}:00`;
-        document.getElementById("deleteLessonBtn").style.display = "none";
+
+        document.getElementById(
+            "lessonModalTitle"
+        ).textContent = "Assign Lesson";
+
+
+        document.getElementById(
+            "fTimetableId"
+        ).value = "";
+
+
+        document.getElementById(
+            "fTeacherId"
+        ).value = teacherId;
+
+
+        document.getElementById(
+            "fTeacherName"
+        ).value = teacherName;
+
+
+        document.getElementById(
+            "fDayOfWeek"
+        ).value = day;
+
+
+        document.getElementById(
+            "fClassType"
+        ).value = state.classType;
+
+
+        document.getElementById(
+            "fClassId"
+        ).value = state.classId || "";
+
+
+        document.getElementById(
+            "fClassroomId"
+        ).value = "";
+
+
+        document.getElementById(
+            "fStartTime"
+        ).value =
+            `${String(hour).padStart(2, "0")}:00`;
+
+
+        document.getElementById(
+            "fEndTime"
+        ).value =
+            `${String(hour + 1).padStart(2, "0")}:00`;
+
+
+        document.getElementById(
+            "deleteLessonBtn"
+        ).style.display = "none";
+
+
+        // IMPORTANT:
+        // Only load courses registered by this teacher
+        await loadTeacherCourses(teacherId);
+
+
         showModal();
     }
 
-    function openModalForEdit(entry) {
+    async function openModalForEdit(entry) {
+
         hideModalError();
-        document.getElementById("lessonModalTitle").textContent = "Edit Lesson";
-        document.getElementById("fTimetableId").value = entry.timetableId;
-        document.getElementById("fTeacherId").value = entry.teacherId;
-        document.getElementById("fTeacherName").value = entry.teacherName;
-        document.getElementById("fDayOfWeek").value = entry.dayOfWeek;
-        document.getElementById("fClassType").value = entry.classType === 0 ? "School" : "Tuition";
-        document.getElementById("fCourseId").value = entry.courseId;
-        document.getElementById("fClassId").value = entry.classId;
-        document.getElementById("fClassroomId").value = entry.classroomId || "";
-        document.getElementById("fStartTime").value = entry.startTime;
-        document.getElementById("fEndTime").value = entry.endTime;
-        document.getElementById("deleteLessonBtn").style.display = "inline-block";
-        document.getElementById("deleteLessonBtn").dataset.timetableId = entry.timetableId;
+
+        document.getElementById(
+            "lessonModalTitle"
+        ).textContent = "Edit Lesson";
+
+        document.getElementById(
+            "fTimetableId"
+        ).value =
+            entry.timetableId;
+
+        document.getElementById(
+            "fTeacherId"
+        ).value =
+            entry.teacherId;
+
+        document.getElementById(
+            "fTeacherName"
+        ).value =
+            entry.teacherName;
+
+        document.getElementById(
+            "fDayOfWeek"
+        ).value =
+            entry.dayOfWeek;
+
+        document.getElementById(
+            "fClassType"
+        ).value =
+            entry.classType === 0
+                ? "School"
+                : "Tuition";
+
+        document.getElementById(
+            "fClassId"
+        ).value =
+            entry.classId;
+
+        document.getElementById(
+            "fClassroomId"
+        ).value =
+            entry.classroomId || "";
+
+        document.getElementById(
+            "fStartTime"
+        ).value =
+            entry.startTime;
+
+
+        document.getElementById(
+            "fEndTime"
+        ).value =
+            entry.endTime;
+
+
+        document.getElementById(
+            "deleteLessonBtn"
+        ).style.display =
+            "inline-block";
+
+
+        document.getElementById(
+            "deleteLessonBtn"
+        ).dataset.timetableId =
+            entry.timetableId;
+
+
+        // Load this teacher's registered courses
+        // then select existing course
+        await loadTeacherCourses(
+            entry.teacherId,
+            entry.courseId
+        );
+
+
         showModal();
     }
 
