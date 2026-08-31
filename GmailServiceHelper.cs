@@ -483,4 +483,70 @@ SMK HLIH
     {
         return SendOtpAsync(receiverEmail, username, otp);
     }
+
+    public async Task SendReceiptAsync(
+        string receiverEmail,
+        string studentName,
+        string transactionId,
+        byte[] pdfBytes)
+    {
+        if (string.IsNullOrWhiteSpace(receiverEmail))
+            throw new ArgumentException("The receiver email is missing.");
+        if (pdfBytes == null || pdfBytes.Length == 0)
+            throw new ArgumentException("The receipt PDF is empty.");
+
+        string smtpServer = configuration["EmailSettings:SmtpServer"]
+            ?? throw new InvalidOperationException("SMTP server is missing.");
+        string senderEmail = configuration["EmailSettings:SenderEmail"]
+            ?? throw new InvalidOperationException("Sender email is missing.");
+        string appPassword = configuration["EmailSettings:AppPassword"]
+            ?? throw new InvalidOperationException("Gmail App Password is missing.");
+        string senderName = configuration["EmailSettings:SenderName"]
+            ?? "HLIH Attendance System";
+        string portText = configuration["EmailSettings:Port"] ?? "587";
+        if (!int.TryParse(portText, out int port)) port = 587;
+        appPassword = appPassword.Replace(" ", "");
+
+        string safeStudentName = HtmlEncoder.Default.Encode(studentName ?? "");
+        string safeTransactionId = HtmlEncoder.Default.Encode(transactionId ?? "");
+
+        using MailMessage mail = new();
+        mail.From = new MailAddress(senderEmail, senderName);
+        mail.To.Add(receiverEmail);
+        mail.Subject = $"Payment Receipt #{transactionId}";
+        mail.IsBodyHtml = true;
+        mail.Body = $"""
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:30px;background:#f3f6fb;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:600px;margin:auto;padding:32px;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.08);">
+    <h1 style="margin:0 0 10px;color:#1e3a5c;font-size:24px;">Payment Receipt</h1>
+    <p style="color:#475569;line-height:1.7;">Hello <strong>{safeStudentName}</strong>,</p>
+    <p style="color:#475569;line-height:1.7;">Your payment was completed successfully. Your official electronic receipt is attached to this email as a PDF.</p>
+    <div style="margin:24px 0;padding:16px;background:#f4f7fb;border-radius:10px;">
+      <strong style="color:#1e3a5c;">Transaction ID:</strong>
+      <span style="color:#334155;">{safeTransactionId}</span>
+    </div>
+    <p style="color:#64748b;font-size:13px;line-height:1.6;">Please keep this receipt for your records. This is an automated email. Please do not reply.</p>
+    <p style="margin-top:30px;color:#1e3a5c;font-weight:bold;">SMK HLIH Attendance System</p>
+  </div>
+</body>
+</html>
+""";
+
+        MemoryStream pdfStream = new(pdfBytes);
+        Attachment attachment = new(
+            pdfStream,
+            $"Receipt-{transactionId}.pdf",
+            MediaTypeNames.Application.Pdf);
+        mail.Attachments.Add(attachment);
+
+        using SmtpClient smtp = new(smtpServer, port);
+        smtp.Credentials = new NetworkCredential(senderEmail, appPassword);
+        smtp.EnableSsl = true;
+        smtp.UseDefaultCredentials = false;
+        smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+        smtp.Timeout = 30000;
+        await smtp.SendMailAsync(mail);
+    }
 }

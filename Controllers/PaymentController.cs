@@ -22,15 +22,21 @@ public class PaymentController : Controller
     private readonly DB db;
     private readonly IConfiguration configuration;
     private readonly IPasswordHasher<PaymentSecurity> pinHasher;
+    private readonly GmailServiceHelper gmailService;
+    private readonly ReceiptPdfService receiptPdfService;
 
     public PaymentController(
         DB db,
         IConfiguration configuration,
-        IPasswordHasher<PaymentSecurity> pinHasher)
+        IPasswordHasher<PaymentSecurity> pinHasher,
+        GmailServiceHelper gmailService,
+        ReceiptPdfService receiptPdfService)
     {
         this.db = db;
         this.configuration = configuration;
         this.pinHasher = pinHasher;
+        this.gmailService = gmailService;
+        this.receiptPdfService = receiptPdfService;
     }
 
     private static List<FeeItem> GetFeeItems() =>
@@ -43,7 +49,7 @@ public class PaymentController : Controller
 
     [HttpGet]
     public IActionResult SelectFee() => View(GetFeeItems());
-   
+
     [HttpGet]
     public async Task<IActionResult> History()
     {
@@ -266,6 +272,7 @@ public class PaymentController : Controller
             return RedirectToAction(nameof(Pay), new { feeId });
         }
 
+
         HttpContext.Session.SetInt32(PendingFeeIdKey, feeId);
         HttpContext.Session.SetString(PendingWalletKey, paymentMethod);
         HttpContext.Session.SetString(PendingAmountKey, amount.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -292,6 +299,46 @@ public class PaymentController : Controller
             feeId,
             returnUrl = Url.Action(nameof(CompleteQrPayment), "Payment")
         });
+    }
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PayWithCash(int feeId, decimal? customAmount)
+    {
+        FeeItem? fee = GetFeeItems().FirstOrDefault(f => f.Id == feeId);
+        if (fee == null) return NotFound();
+
+        decimal amount = fee.AmountIsFixed ? fee.Amount : customAmount.GetValueOrDefault();
+        if (amount <= 0)
+        {
+            TempData["Error"] = "Please enter a valid payment amount.";
+            return RedirectToAction(nameof(Pay), new { feeId });
+        }
+
+        DateTime paidAt = DateTime.UtcNow;
+
+        PaymentTransaction transaction = new()
+        {
+            PaymentTransactionId = await FormattedIdGenerator.NextAsync(
+                db.PaymentTransactions,
+                p => p.PaymentTransactionId,
+                "PAY"
+            ),
+            UserId = GetCurrentUserId(),
+            FeeId = fee.Id,
+            FeeName = fee.Name,
+            Amount = amount,
+            PaymentMethod = "Cash",
+            Status = "Paid",
+            QrToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)),
+            QrExpiresAt = paidAt,
+            CreatedAt = paidAt,
+            PaidAt = paidAt
+        };
+
+        db.PaymentTransactions.Add(transaction);
+        await db.SaveChangesAsync();
+
+        return RedirectToAction(nameof(Success), new { id = transaction.PaymentTransactionId });
     }
 
     [HttpGet]
@@ -515,6 +562,70 @@ public class PaymentController : Controller
                 p.Status == "Paid");
 
         return transaction == null ? NotFound() : View(transaction);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Receipt(string id)
+    {
+        PaymentTransaction? transaction = await GetPaidTransactionAsync(id);
+        if (transaction == null) return NotFound();
+
+        ViewBag.Message = TempData["ReceiptMessage"];
+        ViewBag.Error = TempData["ReceiptError"];
+        return View(transaction);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadReceipt(string id)
+    {
+        PaymentTransaction? transaction = await GetPaidTransactionAsync(id);
+        if (transaction == null) return NotFound();
+
+        byte[] pdfBytes = receiptPdfService.Generate(transaction);
+        return File(pdfBytes, "application/pdf",
+            $"Receipt-{transaction.PaymentTransactionId}.pdf");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendReceiptEmail(string id)
+    {
+        PaymentTransaction? transaction = await GetPaidTransactionAsync(id);
+        if (transaction == null) return NotFound();
+
+        try
+        {
+            byte[] pdfBytes = receiptPdfService.Generate(transaction);
+            await gmailService.SendReceiptAsync(
+                transaction.User.Email,
+                transaction.User.Username,
+                transaction.PaymentTransactionId,
+                pdfBytes);
+
+            TempData["ReceiptMessage"] =
+                $"Receipt successfully sent to {transaction.User.Email}.";
+        }
+        catch (Exception)
+        {
+            TempData["ReceiptError"] =
+                "The receipt could not be sent. Please check the email settings and try again.";
+        }
+
+        return RedirectToAction(nameof(Receipt), new { id });
+    }
+
+    private async Task<PaymentTransaction?> GetPaidTransactionAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+
+        string userId = GetCurrentUserId();
+        return await db.PaymentTransactions
+            .AsNoTracking()
+            .Include(payment => payment.User)
+            .FirstOrDefaultAsync(payment =>
+                payment.PaymentTransactionId == id &&
+                payment.UserId == userId &&
+                payment.Status == "Paid");
     }
 
     private void ClearPendingQrRequest()

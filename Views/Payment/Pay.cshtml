@@ -126,6 +126,34 @@
                     </button>
                 </form>
             </section>
+
+            <section class="payment-method-card">
+                <div class="payment-method-icon">💵</div>
+                <h2>Cash Payment</h2>
+                <p class="small-note">Pay in person at the finance counter.</p>
+
+                <form asp-action="PayWithCash" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="feeId" value="@Model.Id" />
+
+                    @if (!Model.AmountIsFixed)
+                    {
+                        <div class="field-group">
+                            <label for="cashCustomAmount">Amount (RM)</label>
+                            <input id="cashCustomAmount"
+                                   name="customAmount"
+                                   type="number"
+                                   min="0.01"
+                                   step="0.01"
+                                   required />
+                        </div>
+                    }
+
+                    <button class="primary-action button-action" type="submit">
+                        Pay with Cash
+                    </button>
+                </form>
+            </section>
         </div>
 
         <a class="secondary-action" asp-action="SelectFee">Back to Fees</a>

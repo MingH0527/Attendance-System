@@ -1,0 +1,68 @@
+﻿@model WebAndMobile.Models.PaymentTransaction
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "E-Receipt";
+    DateTime paymentDate = (Model.PaidAt ?? Model.CreatedAt).ToLocalTime();
+}
+
+<link rel="stylesheet" href="~/css/Payment.css" />
+<link rel="stylesheet" href="~/css/Receipt.css" />
+
+<div class="payment-page">
+    <div class="receipt-page-container">
+        <div class="receipt-card">
+            <div class="receipt-header">
+                <span class="eyebrow">Attendance System</span>
+                <h1>E-Receipt</h1>
+                <p>Official payment confirmation</p>
+            </div>
+
+            @if (ViewBag.Message != null)
+            {
+                <div class="receipt-alert receipt-alert--success">@ViewBag.Message</div>
+            }
+            @if (ViewBag.Error != null)
+            {
+                <div class="receipt-alert receipt-alert--error">@ViewBag.Error</div>
+            }
+
+            <div class="receipt-status-row">
+                <span>Receipt Number</span>
+                <strong>#@Model.PaymentTransactionId</strong>
+            </div>
+
+            <div class="receipt-section">
+                <h2>Student Information</h2>
+                <div class="receipt-detail"><span>Student ID</span><strong>@Model.User.UserId</strong></div>
+                <div class="receipt-detail"><span>Student Name</span><strong>@Model.User.Username</strong></div>
+                <div class="receipt-detail"><span>Email</span><strong>@Model.User.Email</strong></div>
+            </div>
+
+            <div class="receipt-section">
+                <h2>Payment Information</h2>
+                <div class="receipt-detail"><span>Fee</span><strong>@Model.FeeName</strong></div>
+                <div class="receipt-detail"><span>Payment Method</span><strong>@Model.PaymentMethod</strong></div>
+                <div class="receipt-detail"><span>Payment Date</span><strong>@paymentDate.ToString("dd MMM yyyy, hh:mm tt")</strong></div>
+                <div class="receipt-detail"><span>Status</span><strong class="receipt-paid">@Model.Status</strong></div>
+            </div>
+
+            <div class="receipt-total"><span>Total Paid</span><strong>RM @Model.Amount.ToString("N2")</strong></div>
+            <p class="receipt-note">This receipt was generated electronically. No signature is required.</p>
+        </div>
+
+        <div class="receipt-actions">
+            <a asp-controller="Payment" asp-action="DownloadReceipt"
+               asp-route-id="@Model.PaymentTransactionId"
+               class="receipt-action-button receipt-action-button--download">Download PDF</a>
+
+            <form asp-controller="Payment" asp-action="SendReceiptEmail" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.PaymentTransactionId" />
+                <button type="submit" class="receipt-action-button receipt-action-button--email">Send to Email</button>
+            </form>
+
+            <a asp-controller="Payment" asp-action="History" class="receipt-back-link">Back to Payment History</a>
+        </div>
+    </div>
+</div>
