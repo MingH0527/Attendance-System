@@ -1,4 +1,13 @@
 @model WebAndMobile.Models.PaymentTransaction
 @{ ViewData["Title"] = "Payment Successful"; }
 <link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
-<div class="security-shell"><section class="security-card compact-card success-screen"><div class="success-check">✓</div><p class="eyebrow">Payment Completed</p><h1>Payment successful</h1><div class="mobile-amount">RM @Model.Amount.ToString("0.00")</div><p class="muted">@Model.FeeName via @Model.PaymentMethod</p><a class="primary-action" asp-action="SelectFee">Return to Fees</a></section></div>
+<div class="security-shell">
+    <section class="security-card compact-card success-screen">
+        <div class="success-check">✓</div>
+        <p class="eyebrow">Payment Completed</p>
+        <h1>Payment successful</h1>
+        <div class="mobile-amount">RM @Model.Amount.ToString("0.00")</div>
+        <p class="muted">@Model.FeeName via @Model.PaymentMethod</p>
+        <a class="primary-action" asp-action="SelectFee">Return to Fees</a>
+    </section>
+</div>
