@@ -27,33 +27,82 @@
     border-collapse: collapse;
 }
 
-    .tt-table th,
-    .tt-table td {
-        text-align: left;
-        padding: 16px 12px;
-        border-bottom: 1px solid #eef1f5;
-        white-space: nowrap;
-    }
+.tt-table th,
+.tt-table td {
+    text-align: left;
+    padding: 16px 12px;
+    border-bottom: 1px solid #eef1f5;       
+    white-space: nowrap;
+}
 
-    .tt-table th {
-        color: #7a8493;
-        font-size: 13px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
+.tt-table th {       
+    color: #7a8493;
+    font-size: 13px;  
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
 
-    .tt-table td {
-        color: #182134;
-        font-size: 15px;
-    }
+.tt-table td {
+    color: #182134;
+    font-size: 15px;
 
-    .tt-table tbody tr:last-child td {
-        border-bottom: none;
-    }
+}
+
+ .tt-table tbody tr:last-child td {
+    border-bottom: none;
+ }
 
 .tt-empty {
     padding: 60px 20px;
     text-align: center;
     color: #7a8493;
 }
+
+/* Attendance Code */
+.tt-attendance-cell {
+    min-width: 170px;
+}
+
+.tt-generate-btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #167ca5;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.tt-generate-btn:hover {
+    background: #126989;
+    transform: translateY(-1px);
+}
+
+ .tt-generate-btn.tt-disabled {
+    background: #d5dbe3;
+    color: #8a93a1;
+    cursor: not-allowed;
+    transform: none;
+ }
+
+
+/* Generated 6 digit code */
+ .tt-generated-code {
+    display: flex;
+    align-items: center;
+    }
+
+ .tt-generated-code strong {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 8px;
+        background: #eef7fb;
+        border: 1px solid #c9e4ef;
+        color: #167ca5;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 3px;
+    }

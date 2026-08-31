@@ -178,6 +178,88 @@ namespace WebAndMobile.Migrations
                     b.ToTable("AdminSecurities");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.AttendanceRecord", b =>
+                {
+                    b.Property<string>("AttendanceRecordId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("AttendanceSessionId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsRemoved")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RemovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StudentClassId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AttendanceRecordId");
+
+                    b.HasIndex("StudentClassId");
+
+                    b.HasIndex("AttendanceSessionId", "StudentClassId")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceRecords");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AttendanceSession", b =>
+                {
+                    b.Property<string>("AttendanceSessionId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("SessionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TimetableId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("AttendanceSessionId");
+
+                    b.HasIndex("Code");
+
+                    b.HasIndex("TimetableId", "SessionDate")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceSessions");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>
                 {
                     b.Property<string>("ChatMessageId")
@@ -544,9 +626,6 @@ namespace WebAndMobile.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal?>("RequiredTeachingHours")
-                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("ProgramCourseId");
 
@@ -1057,6 +1136,36 @@ namespace WebAndMobile.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.AttendanceRecord", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.AttendanceSession", "AttendanceSession")
+                        .WithMany("AttendanceRecords")
+                        .HasForeignKey("AttendanceSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.StudentClass", "StudentClass")
+                        .WithMany()
+                        .HasForeignKey("StudentClassId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AttendanceSession");
+
+                    b.Navigation("StudentClass");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AttendanceSession", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Timetable", "Timetable")
+                        .WithMany()
+                        .HasForeignKey("TimetableId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Timetable");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>
                 {
                     b.HasOne("WebAndMobile.Models.Conversation", "Conversation")
@@ -1329,6 +1438,11 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Timetables");
 
                     b.Navigation("Weeks");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.AttendanceSession", b =>
+                {
+                    b.Navigation("AttendanceRecords");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.ClassGroup", b =>

@@ -36,13 +36,48 @@ public class TeacherController : Controller
     public async Task<IActionResult> Timetable()
     {
         var userId = GetCurrentUserId();
-        if (userId == null) return RedirectToAction("Login", "Account");
-        await TryLinkLegacyProfileAsync(userId);
-        if (!await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId)) return RedirectToAction(nameof(Create));
 
-        var entries = await db.Timetables.AsNoTracking().Where(t => t.TeacherId == userId)
-            .Include(t => t.Course).Include(t => t.ClassGroup).Include(t => t.Classroom)
-            .OrderBy(t => t.DayOfWeek).ThenBy(t => t.StartTime).ToListAsync();
+        if (userId == null)
+            return RedirectToAction("Login", "Account");
+
+        await TryLinkLegacyProfileAsync(userId);
+
+        if (!await db.TeacherCourses.AnyAsync(
+                tc => tc.UserId == userId))
+        {
+            return RedirectToAction(nameof(Create));
+        }
+
+        var entries = await db.Timetables
+            .AsNoTracking()
+            .Where(t => t.TeacherId == userId)
+            .Include(t => t.Course)
+            .Include(t => t.ClassGroup)
+            .Include(t => t.Classroom)
+            .OrderBy(t => t.DayOfWeek)
+            .ThenBy(t => t.StartTime)
+            .ToListAsync();
+
+        // Get all timetable IDs shown on this page
+        var timetableIds = entries
+            .Select(t => t.TimetableId)
+            .ToList();
+
+        // Get today's attendance session/code
+        var attendanceSessions = await db.AttendanceSessions
+            .AsNoTracking()
+            .Where(a =>
+                timetableIds.Contains(a.TimetableId) &&
+                a.SessionDate == DateTime.Today &&
+                a.IsActive)
+            .ToDictionaryAsync(
+                a => a.TimetableId,
+                a => a
+            );
+
+        // Pass attendance codes to the View
+        ViewBag.AttendanceSessions = attendanceSessions;
+
         return View(entries);
     }
 
