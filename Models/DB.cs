@@ -34,5 +34,8 @@ public class DB : DbContext
     public DbSet<ReplacementSession> ReplacementSessions => Set<ReplacementSession>();
     public DbSet<ClassSession> ClassSessions => Set<ClassSession>();
     public DbSet<TimetableNotification> TimetableNotifications => Set<TimetableNotification>();
+    public DbSet<AttendanceSession> AttendanceSessions=> Set<AttendanceSession>();
+
+    public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
 
 }

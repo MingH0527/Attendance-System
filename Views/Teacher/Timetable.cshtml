@@ -2,10 +2,15 @@
 
 @{
     ViewData["Title"] = "My Timetable";
+
+    var attendanceSessions =
+       ViewBag.AttendanceSessions
+       as Dictionary<string, WebAndMobile.Models.AttendanceSession>
+       ?? new Dictionary<string, WebAndMobile.Models.AttendanceSession>();
 }
 
 <link rel="stylesheet" href="~/css/teacherhome.css" />
-<link rel="stylesheet" href="~/css/teacher-timetable.css" />
+<link rel="stylesheet" href="~/css/teacher-timetable.css" asp-append-version="true" />
 
 <div class="teacher-dashboard">
 
@@ -36,6 +41,13 @@
 
     </header>
 
+    @if (TempData["AttendanceError"] != null)
+    {
+        <div class="attendance-error">
+            @TempData["AttendanceError"]
+        </div>
+    }
+
     <section class="tt-table-card">
 
         @if (Model == null || Model.Count == 0)
@@ -58,22 +70,101 @@
                         <th>Class</th>
                         <th>Classroom</th>
                         <th>Type</th>
+                        <th>Attendance Code</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var entry in Model)
                     {
+                        var now = DateTime.Now;
+
+                        // TESTING MODE
+                        var canGenerate =
+                            now.DayOfWeek == entry.DayOfWeek &&
+                            now.TimeOfDay >= entry.StartTime &&
+                            now.TimeOfDay <= entry.EndTime;
+
+                        // Find generated attendance code for this timetable
+                        attendanceSessions.TryGetValue(
+                            entry.TimetableId,
+                            out var attendanceSession
+                        );
+
+                        // Check whether there is an active code
+                        var hasCode =
+                            attendanceSession != null &&
+                            attendanceSession.IsActive &&
+                            attendanceSession.ExpiresAt > now;
+
                         <tr>
-                            <td>@entry.DayOfWeek</td>
+                            <td>
+                                @entry.DayOfWeek
+                            </td>
+
                             <td>
                                 @entry.StartTime.ToString(@"hh\:mm")
                                 &ndash;
                                 @entry.EndTime.ToString(@"hh\:mm")
                             </td>
-                            <td>@(entry.Course?.CourseName ?? "-")</td>
-                            <td>@(entry.ClassGroup?.ClassName ?? "-")</td>
-                            <td>@(entry.Classroom?.RoomName ?? "-")</td>
-                            <td>@entry.ClassType</td>
+
+                            <td>
+                                @(entry.Course?.CourseName ?? "-")
+                            </td>
+
+                            <td>
+                                @(entry.ClassGroup?.ClassName ?? "-")
+                            </td>
+
+                            <td>
+                                @(entry.Classroom?.RoomName ?? "-")
+                            </td>
+
+                            <td>
+                                @entry.ClassType
+                            </td>
+
+                            <td class="tt-attendance-cell">
+
+                                @if (hasCode)
+                                {
+                                    <div class="tt-generated-code">
+                                        <strong>
+                                            @attendanceSession!.Code
+                                        </strong>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <form asp-controller="Attendance"
+                                          asp-action="GenerateCode"
+                                          method="post">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="timetableId"
+                                               value="@entry.TimetableId" />
+
+                                        @if (canGenerate)
+                                        {
+                                            <button type="submit"
+                                                    class="tt-generate-btn">
+                                                        Generate Code
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="tt-generate-btn tt-disabled"
+                                                    disabled>
+                                                        Generate Code
+                                            </button>
+                                        }
+
+                                    </form>
+                                }
+
+                            </td>
                         </tr>
                     }
                 </tbody>
