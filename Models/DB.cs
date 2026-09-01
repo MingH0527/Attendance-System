@@ -30,6 +30,7 @@ public class DB : DbContext
     public DbSet<AcademicWeek> AcademicWeeks => Set<AcademicWeek>();
     public DbSet<AcademicCalendarEvent> AcademicCalendarEvents => Set<AcademicCalendarEvent>();
     public DbSet<ProgramCourse> ProgramCourses => Set<ProgramCourse>();
+    public DbSet<ProgramSubjectHistory> ProgramSubjectHistories => Set<ProgramSubjectHistory>();
     public DbSet<TimetableException> TimetableExceptions => Set<TimetableException>();
     public DbSet<ReplacementSession> ReplacementSessions => Set<ReplacementSession>();
     public DbSet<ClassSession> ClassSessions => Set<ClassSession>();

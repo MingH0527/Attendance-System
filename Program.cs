@@ -96,6 +96,7 @@ builder.Services.AddSingleton<PasskeyFido2Factory>();
 // OTHER SERVICES
 builder.Services.AddScoped<GmailServiceHelper>();
 builder.Services.AddScoped<ReceiptPdfService>();
+builder.Services.AddScoped<TimetablePdfService>();
 builder.Services.AddScoped<ITimetableValidationService, TimetableValidationService>();
 
 var app = builder.Build();

@@ -15,11 +15,16 @@ public class TimetableController : Controller
 {
     private readonly DB _db;
     private readonly ITimetableValidationService _validation;
+    private readonly TimetablePdfService _timetablePdfService;
 
-    public TimetableController(DB db, ITimetableValidationService validation)
+    public TimetableController(
+        DB db,
+        ITimetableValidationService validation,
+        TimetablePdfService timetablePdfService)
     {
         _db = db;
         _validation = validation;
+        _timetablePdfService = timetablePdfService;
     }
 
     [HttpGet]
@@ -672,7 +677,13 @@ public class TimetableController : Controller
             return File(Encoding.UTF8.GetBytes(xml), "application/vnd.ms-excel", $"timetable-{className}.xls");
         }
 
-        var pdf = TimetablePdf(term?.Name ?? termId, className, classType, weekDate, slots);
+        byte[] pdf = _timetablePdfService.Generate(
+            term?.Name ?? termId,
+            className,
+            classType,
+            weekDate,
+            slots);
+
         return File(pdf, "application/pdf", $"timetable-{className}.pdf");
     }
 
@@ -685,246 +696,4 @@ public class TimetableController : Controller
     private static string Csv(string text) => text.Replace("\"", "\"\"");
     private static string Row(params string[] cells) => "<Row>" + string.Concat(cells.Select(c => $"<Cell><Data ss:Type=\"String\">{SecurityElement.Escape(c)}</Data></Cell>")) + "</Row>";
 
-    private static byte[] TimetablePdf(string termName, string className, string classType, DateTime? weekDate, List<TimetableSlotDto> slots)
-    {
-        // A4 landscape. The PDF is drawn directly so the export does not depend on browser print/CSS.
-        const double pageW = 842, pageH = 595;
-        const double margin = 26, dayW = 76, headerH = 42;
-        double tableW = pageW - margin * 2;
-        double hourW = (tableW - dayW) / 8.0;
-
-        var days = classType.Equals("Tuition", StringComparison.OrdinalIgnoreCase)
-            ? new[] { DayOfWeek.Saturday, DayOfWeek.Sunday }
-            : new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday };
-
-        double rowH = classType.Equals("Tuition", StringComparison.OrdinalIgnoreCase) ? 156 : 78;
-        double tableTop = pageH - 116;
-        var c = new StringBuilder();
-
-        void SetFill(double r, double g, double b) => c.AppendFormat(CultureInfo.InvariantCulture, "{0:0.###} {1:0.###} {2:0.###} rg\n", r, g, b);
-        void SetStroke(double r, double g, double b) => c.AppendFormat(CultureInfo.InvariantCulture, "{0:0.###} {1:0.###} {2:0.###} RG\n", r, g, b);
-        void FillRect(double x, double y, double w, double h, double r, double g, double b)
-        {
-            SetFill(r, g, b);
-            c.AppendFormat(CultureInfo.InvariantCulture, "{0:0.##} {1:0.##} {2:0.##} {3:0.##} re f\n", x, y, w, h);
-        }
-        void StrokeRect(double x, double y, double w, double h, double r = 0.82, double g = 0.87, double b = 0.92, double width = 0.7)
-        {
-            SetStroke(r, g, b);
-            c.AppendFormat(CultureInfo.InvariantCulture, "{0:0.##} w {1:0.##} {2:0.##} {3:0.##} {4:0.##} re S\n", width, x, y, w, h);
-        }
-        void Text(double x, double y, double size, string value, bool bold = false, double r = 0.08, double g = 0.13, double b = 0.20)
-        {
-            SetFill(r, g, b);
-            c.Append("BT ").Append(bold ? "/F2 " : "/F1 ")
-                .Append(size.ToString("0.##", CultureInfo.InvariantCulture)).Append(" Tf ")
-                .Append(x.ToString("0.##", CultureInfo.InvariantCulture)).Append(' ')
-                .Append(y.ToString("0.##", CultureInfo.InvariantCulture)).Append(" Td (")
-                .Append(PdfEscape(value)).Append(") Tj ET\n");
-        }
-        void Dot(double x, double y, double r, double g, double b)
-        {
-            FillRect(x, y, 5, 5, r, g, b);
-        }
-
-        // Page background and brand header.
-        FillRect(0, 0, pageW, pageH, 0.972, 0.981, 0.992);
-        FillRect(0, pageH - 8, pageW, 8, 0.02, 0.55, 0.70);
-
-        Text(margin, pageH - 43, 22, "TIMETABLE", true, 0.03, 0.12, 0.22);
-        Text(margin, pageH - 64, 10, $"{termName}  |  {className}  |  {classType}", false, 0.31, 0.39, 0.50);
-        Text(margin, pageH - 80, 8.5,
-            weekDate.HasValue ? $"Week of {weekDate.Value:dd MMM yyyy}" : "Weekly Template",
-            false, 0.42, 0.49, 0.58);
-
-        // Small legend on the right.
-        double legendY = pageH - 68;
-        double legendX = pageW - margin - 250;
-        Dot(legendX, legendY, 0.10, 0.63, 0.72); Text(legendX + 10, legendY - 1, 7.5, "Normal", false, 0.31, 0.39, 0.50);
-        Dot(legendX + 74, legendY, 0.96, 0.66, 0.12); Text(legendX + 84, legendY - 1, 7.5, "Attention", false, 0.31, 0.39, 0.50);
-        Dot(legendX + 164, legendY, 0.90, 0.20, 0.24); Text(legendX + 174, legendY - 1, 7.5, "Cancelled", false, 0.31, 0.39, 0.50);
-
-        double yHeader = tableTop - headerH;
-
-        // Header row.
-        FillRect(margin, yHeader, dayW, headerH, 0.055, 0.31, 0.50);
-        StrokeRect(margin, yHeader, dayW, headerH, 0.055, 0.31, 0.50, 0.8);
-        Text(margin + 11, yHeader + 17, 8.5, "Day / Time", true, 1, 1, 1);
-
-        for (int i = 0; i < 8; i++)
-        {
-            double x = margin + dayW + i * hourW;
-            FillRect(x, yHeader, hourW, headerH, 0.93, 0.96, 0.985);
-            StrokeRect(x, yHeader, hourW, headerH, 0.78, 0.84, 0.90, 0.7);
-            Text(x + 6, yHeader + 23, 7.6, HourLabel(9 + i), true, 0.08, 0.18, 0.30);
-            Text(x + 6, yHeader + 10, 6.4, "to " + HourLabel(10 + i), false, 0.40, 0.47, 0.56);
-        }
-
-        for (int di = 0; di < days.Length; di++)
-        {
-            var day = days[di];
-            double y = yHeader - (di + 1) * rowH;
-            bool alternate = di % 2 == 1;
-
-            FillRect(margin, y, dayW, rowH, alternate ? 0.945 : 0.965, alternate ? 0.966 : 0.979, alternate ? 0.985 : 0.992);
-            StrokeRect(margin, y, dayW, rowH, 0.78, 0.84, 0.90, 0.7);
-            Text(margin + 11, y + rowH / 2 - 3, 8.4, day.ToString(), true, 0.08, 0.18, 0.30);
-
-            for (int i = 0; i < 8; i++)
-            {
-                double x = margin + dayW + i * hourW;
-                FillRect(x, y, hourW, rowH,
-                    alternate ? 0.982 : 1.0,
-                    alternate ? 0.988 : 1.0,
-                    alternate ? 0.995 : 1.0);
-                StrokeRect(x, y, hourW, rowH, 0.84, 0.88, 0.92, 0.55);
-            }
-
-            var daySlots = MergeForPdf(slots.Where(s => s.DayOfWeek == day).ToList());
-            foreach (var s in daySlots)
-            {
-                if (!TimeSpan.TryParse(s.StartTime, out var start) || !TimeSpan.TryParse(s.EndTime, out var end)) continue;
-                int startIndex = start.Hours - 9;
-                int span = Math.Max(1, (int)Math.Ceiling((end - start).TotalHours));
-                if (startIndex < 0 || startIndex > 7) continue;
-                span = Math.Min(span, 8 - startIndex);
-
-                double x = margin + dayW + startIndex * hourW;
-                double w = span * hourW;
-                double bx = x + 3, by = y + 5, bw = w - 6, bh = rowH - 10;
-
-                bool cancelled = s.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase);
-                bool attention = s.Status.Equals("Attention", StringComparison.OrdinalIgnoreCase);
-                if (cancelled)
-                {
-                    FillRect(bx, by, bw, bh, 1.00, 0.90, 0.91);
-                    FillRect(bx, by, 4, bh, 0.90, 0.20, 0.24);
-                    StrokeRect(bx, by, bw, bh, 0.96, 0.70, 0.72, 0.75);
-                }
-                else if (attention)
-                {
-                    FillRect(bx, by, bw, bh, 1.00, 0.96, 0.82);
-                    FillRect(bx, by, 4, bh, 0.96, 0.66, 0.12);
-                    StrokeRect(bx, by, bw, bh, 0.94, 0.80, 0.45, 0.75);
-                }
-                else
-                {
-                    FillRect(bx, by, bw, bh, 0.82, 0.96, 0.97);
-                    FillRect(bx, by, 4, bh, 0.03, 0.58, 0.70);
-                    StrokeRect(bx, by, bw, bh, 0.55, 0.84, 0.87, 0.75);
-                }
-
-                int maxChars = Math.Max(11, (int)(bw / 5.1));
-                var courseLines = WrapPdf(s.CourseName, maxChars).ToList();
-                var detailLines = new List<string>();
-                detailLines.AddRange(WrapPdf(s.TeacherName, maxChars));
-                if (!string.IsNullOrWhiteSpace(s.RoomName)) detailLines.AddRange(WrapPdf(s.RoomName!, maxChars));
-                if (s.Status != "Normal") detailLines.AddRange(WrapPdf(s.Status, maxChars));
-
-                double ty = by + bh - 15;
-                foreach (var line in courseLines)
-                {
-                    if (ty < by + 9) break;
-                    Text(bx + 10, ty, 7.7, line, true, 0.04, 0.22, 0.30);
-                    ty -= 10;
-                }
-                foreach (var line in detailLines)
-                {
-                    if (ty < by + 9) break;
-                    Text(bx + 10, ty, 6.8, line, false, 0.17, 0.29, 0.36);
-                    ty -= 9;
-                }
-            }
-        }
-
-        Text(margin, 14, 6.8, $"Generated timetable · {DateTime.Now:dd MMM yyyy HH:mm}", false, 0.48, 0.54, 0.62);
-
-        string stream = c.ToString();
-        var objects = new List<string>
-        {
-            "1 0 obj<< /Type /Catalog /Pages 2 0 R>>endobj",
-            "2 0 obj<< /Type /Pages /Kids[3 0 R] /Count 1>>endobj",
-            $"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox[0 0 {pageW} {pageH}] /Resources<< /Font<< /F1 4 0 R /F2 5 0 R>>>> /Contents 6 0 R>>endobj",
-            "4 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica>>endobj",
-            "5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold>>endobj",
-            $"6 0 obj<< /Length {Encoding.ASCII.GetByteCount(stream)}>>stream\n{stream}\nendstream endobj"
-        };
-
-        var sb = new StringBuilder("%PDF-1.4\n");
-        var offsets = new List<int> { 0 };
-        foreach (var o in objects)
-        {
-            offsets.Add(Encoding.ASCII.GetByteCount(sb.ToString()));
-            sb.Append(o).Append('\n');
-        }
-        int xref = Encoding.ASCII.GetByteCount(sb.ToString());
-        sb.Append($"xref\n0 {objects.Count + 1}\n0000000000 65535 f \n");
-        foreach (var o in offsets.Skip(1)) sb.Append(o.ToString("D10")).Append(" 00000 n \n");
-        sb.Append($"trailer<< /Size {objects.Count + 1} /Root 1 0 R>>\nstartxref\n{xref}\n%%EOF");
-        return Encoding.ASCII.GetBytes(sb.ToString());
-    }
-
-    private static List<TimetableSlotDto> MergeForPdf(List<TimetableSlotDto> entries)
-    {
-        var result = new List<TimetableSlotDto>();
-        foreach (var e in entries.OrderBy(x => x.StartTime))
-        {
-            var p = result.LastOrDefault();
-            if (p != null && p.EndTime == e.StartTime && p.CourseId == e.CourseId && p.TeacherId == e.TeacherId &&
-                (p.ClassroomId ?? "") == (e.ClassroomId ?? "") && p.Status == e.Status)
-            {
-                p.EndTime = e.EndTime;
-            }
-            else
-            {
-                result.Add(new TimetableSlotDto
-                {
-                    TermId = e.TermId,
-                    TimetableId = e.TimetableId,
-                    TeacherId = e.TeacherId,
-                    TeacherName = e.TeacherName,
-                    CourseId = e.CourseId,
-                    CourseName = e.CourseName,
-                    ClassId = e.ClassId,
-                    ClassName = e.ClassName,
-                    ClassroomId = e.ClassroomId,
-                    RoomName = e.RoomName,
-                    DayOfWeek = e.DayOfWeek,
-                    StartTime = e.StartTime,
-                    EndTime = e.EndTime,
-                    ClassType = e.ClassType,
-                    Status = e.Status,
-                    StatusReason = e.StatusReason
-                });
-            }
-        }
-        return result;
-    }
-
-    private static IEnumerable<string> WrapPdf(string text, int maxChars)
-    {
-        if (string.IsNullOrWhiteSpace(text)) yield break;
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var line = new StringBuilder();
-        foreach (var word in words)
-        {
-            if (line.Length > 0 && line.Length + 1 + word.Length > maxChars)
-            {
-                yield return line.ToString();
-                line.Clear();
-            }
-            if (line.Length > 0) line.Append(' ');
-            line.Append(word);
-        }
-        if (line.Length > 0) yield return line.ToString();
-    }
-
-    private static string HourLabel(int hour)
-    {
-        string suffix = hour >= 12 ? "PM" : "AM";
-        int display = hour > 12 ? hour - 12 : hour;
-        return $"{display}:00 {suffix}";
-    }
-
-    private static string PdfEscape(string text) => text.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
 }
