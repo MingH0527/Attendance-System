@@ -33,12 +33,11 @@
 
     <div class="profile-container">
 
+        <!-- Profile Header -->
         <div class="profile-header">
 
             <div class="profile-avatar">
-                @username
-                .Substring(0, 1)
-                .ToUpper()
+                @username.Substring(0, 1).ToUpper()
             </div>
 
             <div>
@@ -55,6 +54,8 @@
 
         </div>
 
+
+        <!-- Profile Information -->
         <div class="profile-information">
 
             <div class="information-row">
@@ -72,22 +73,31 @@
                 <strong>@role</strong>
             </div>
 
-     
-             <div class="information-row">
-                 <span>Student ID</span>
-                 <strong>@(ViewBag.StudentId ?? "Not registered")</strong>
-             </div>
+            <div class="information-row">
+                <span>Student ID</span>
+                <strong>
+                    @(ViewBag.StudentId ?? "Not registered")
+                </strong>
+            </div>
 
-             <div class="information-row">
-                 <span>Program</span>
-                 <strong>@(ViewBag.ProgramName ?? "Not registered")</strong>
-             </div>
+            <div class="information-row">
+                <span>Program</span>
+                <strong>
+                    @(ViewBag.ProgramName ?? "Not registered")
+                </strong>
+            </div>
 
-              <div class="information-row">
-                  <span>Class</span>
-                  <strong>@(ViewBag.ClassName ?? "Not registered")</strong>
-              </div>
-            
+            <div class="information-row">
+                <span>Class</span>
+                <strong>
+                    @(ViewBag.ClassName ?? "Not registered")
+                </strong>
+            </div>
+
+        </div>
+
+
+        <!-- Profile Actions -->
         <div class="profile-actions">
 
             @if (ViewBag.ShowRegisterCourseCard == true)
@@ -99,15 +109,20 @@
                     <span>📋</span>
 
                     <div>
-                        <strong>Complete My Profile</strong>
+                        <strong>
+                            Complete My Profile
+                        </strong>
+
                         <small>
                             @(role == "Teacher"
                                 ? "Register the course(s) you teach."
                                 : "Register your program and class to finish setup.")
                         </small>
                     </div>
+
                 </a>
             }
+
 
             @if (role == "Student")
             {
@@ -118,11 +133,18 @@
                     <span>🙂</span>
 
                     <div>
-                        <strong>Payment Face ID</strong>
-                        <small>Register the face used before QR payment.</small>
+                        <strong>
+                            Payment Face ID
+                        </strong>
+
+                        <small>
+                            Register the face used before QR payment.
+                        </small>
                     </div>
+
                 </a>
             }
+
 
             <a asp-controller="MyProfile"
                asp-action="Passkey"
@@ -140,7 +162,9 @@
                         secure login devices.
                     </small>
                 </div>
+
             </a>
+
 
             @if (role == "Admin")
             {
@@ -160,8 +184,10 @@
                             six-digit Admin PIN.
                         </small>
                     </div>
+
                 </a>
             }
+
 
             <a asp-controller="@homeController"
                asp-action="Index"
@@ -178,6 +204,7 @@
                         Return to your dashboard.
                     </small>
                 </div>
+
             </a>
 
         </div>

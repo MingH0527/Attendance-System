@@ -1,0 +1,301 @@
+﻿.leave-management-page {
+    min-height: 100vh;
+    padding: 40px;
+    background: linear-gradient( 135deg, #f5f7fb 0%, #edf2f8 100% );
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.leave-management-header {
+    max-width: 1200px;
+    margin: 0 auto 28px;
+    padding: 30px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+    background: #ffffff;
+    border: 1px solid #e5eaf0;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(28, 47, 74, 0.07);
+}
+
+.admin-label {
+    margin: 0 0 7px;
+    color: #008c95;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.leave-management-header h1 {
+    margin: 0;
+    color: #172033;
+    font-size: 32px;
+}
+
+.leave-management-header p {
+    margin: 9px 0 0;
+    color: #687386;
+    font-size: 15px;
+}
+
+.back-button {
+    padding: 11px 18px;
+    border: 1px solid #ccd5df;
+    border-radius: 10px;
+    color: #364152;
+    background: #ffffff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+    .back-button:hover {
+        background: #f5f7fa;
+    }
+
+
+/* Summary */
+
+.leave-summary {
+    max-width: 1200px;
+    margin: 0 auto 28px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.summary-box {
+    padding: 20px;
+    border: 1px solid #e3e9ef;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 7px 20px rgba(28, 47, 74, 0.05);
+}
+
+    .summary-box span {
+        display: block;
+        margin-bottom: 8px;
+        color: #778195;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .summary-box strong {
+        color: #172033;
+        font-size: 25px;
+    }
+
+
+/* Alert */
+
+.alert {
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    padding: 13px 17px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.alert-success {
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.alert-error {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+
+/* Table */
+
+.leave-table-card {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 28px;
+    border: 1px solid #e3e9ef;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(28, 47, 74, 0.07);
+}
+
+.table-title h2 {
+    margin: 0 0 22px;
+    color: #182134;
+    font-size: 21px;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.leave-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+    .leave-table th {
+        padding: 13px 12px;
+        background: #f7f9fb;
+        border-bottom: 1px solid #e3e8ef;
+        color: #687386;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .leave-table td {
+        padding: 15px 12px;
+        border-bottom: 1px solid #edf0f4;
+        color: #364152;
+        vertical-align: middle;
+    }
+
+    .leave-table tbody tr:hover {
+        background: #fafcfd;
+    }
+
+.student-id {
+    display: block;
+    margin-top: 3px;
+    color: #9aa3b1;
+    font-size: 11px;
+}
+
+.reason-cell {
+    min-width: 160px;
+    max-width: 250px;
+}
+
+.document-link {
+    color: #087f8c;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+    .document-link:hover {
+        text-decoration: underline;
+    }
+
+
+/* Status */
+
+.status-badge {
+    display: inline-block;
+    min-width: 78px;
+    padding: 6px 10px;
+    border-radius: 20px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+    .status-badge.pending {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    .status-badge.approved {
+        background: #ecfdf5;
+        color: #15803d;
+    }
+
+    .status-badge.rejected {
+        background: #fef2f2;
+        color: #b91c1c;
+    }
+
+
+/* Actions */
+
+.action-buttons {
+    display: flex;
+    gap: 7px;
+}
+
+    .action-buttons form {
+        margin: 0;
+    }
+
+.approve-button,
+.reject-button {
+    padding: 7px 11px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.approve-button {
+    border: 1px solid #86efac;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+    .approve-button:hover {
+        background: #dcfce7;
+    }
+
+.reject-button {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+    .reject-button:hover {
+        background: #fee2e2;
+    }
+
+.muted {
+    color: #9aa3b1;
+    font-size: 12px;
+}
+
+
+/* Empty */
+
+.empty-state {
+    padding: 50px 20px;
+    text-align: center;
+}
+
+    .empty-state h3 {
+        margin: 0 0 8px;
+        color: #364152;
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: #8c96a5;
+    }
+
+
+/* Responsive */
+
+@media (max-width: 900px) {
+    .leave-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .leave-management-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 600px) {
+    .leave-management-page {
+        padding: 20px;
+    }
+
+    .leave-summary {
+        grid-template-columns: 1fr;
+    }
+}

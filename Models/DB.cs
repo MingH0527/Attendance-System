@@ -39,5 +39,6 @@ public class DB : DbContext
     public DbSet<AttendanceSession> AttendanceSessions=> Set<AttendanceSession>();
 
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
+    public DbSet<LeaveApplication> LeaveApplications => Set<LeaveApplication>();
 
 }

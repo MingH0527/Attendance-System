@@ -69,6 +69,96 @@ public class AdminController : Controller
 
         return View(user);
     }
+
+    //leave management
+
+    [HttpGet]
+    public async Task<IActionResult> LeaveManagement()
+    {
+        var leaves = await _context.LeaveApplications
+            .AsNoTracking()
+            .Include(l => l.Student)
+            .OrderByDescending(l => l.AppliedAt)
+            .ToListAsync();
+
+        return View(leaves);
+    }
+
+
+    //approve leave
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveLeave(int id)
+    {
+        LeaveApplication? leave =
+            await _context.LeaveApplications
+                .FirstOrDefaultAsync(l => l.LeaveId == id);
+
+        if (leave == null)
+        {
+            return NotFound();
+        }
+
+        if (!string.Equals(
+                leave.Status,
+                "Pending",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["LeaveError"] =
+                "Only pending leave applications can be approved.";
+
+            return RedirectToAction(nameof(LeaveManagement));
+        }
+
+        leave.Status = "Approved";
+
+        await _context.SaveChangesAsync();
+
+        TempData["LeaveSuccess"] =
+            "Leave application approved successfully.";
+
+        return RedirectToAction(nameof(LeaveManagement));
+    }
+
+
+    //reject leave
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectLeave(int id)
+    {
+        LeaveApplication? leave =
+            await _context.LeaveApplications
+                .FirstOrDefaultAsync(l => l.LeaveId == id);
+
+        if (leave == null)
+        {
+            return NotFound();
+        }
+
+        if (!string.Equals(
+                leave.Status,
+                "Pending",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["LeaveError"] =
+                "Only pending leave applications can be rejected.";
+
+            return RedirectToAction(nameof(LeaveManagement));
+        }
+
+        leave.Status = "Rejected";
+
+        await _context.SaveChangesAsync();
+
+        TempData["LeaveSuccess"] =
+            "Leave application rejected successfully.";
+
+        return RedirectToAction(nameof(LeaveManagement));
+    }
+
+
     public IActionResult Timetable()
     {
         return View();

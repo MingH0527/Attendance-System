@@ -1,0 +1,264 @@
+﻿@model List<WebAndMobile.Models.LeaveApplication>
+
+@{
+    ViewData["Title"] = "Leave Management";
+}
+
+<link rel="stylesheet"
+      href="~/css/admin-leave.css"
+      asp-append-version="true" />
+
+<div class="leave-management-page">
+
+    <div class="leave-management-header">
+
+        <div>
+            <p class="admin-label">
+                Administrator Portal
+            </p>
+
+            <h1>Leave Management</h1>
+
+            <p>
+                Review student leave applications
+                and approve or reject pending requests.
+            </p>
+        </div>
+
+        <a asp-controller="Admin"
+           asp-action="Index"
+           class="back-button">
+            Back to Dashboard
+        </a>
+
+    </div>
+
+
+    @if (TempData["LeaveSuccess"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["LeaveSuccess"]
+        </div>
+    }
+
+    @if (TempData["LeaveError"] != null)
+    {
+        <div class="alert alert-error">
+            @TempData["LeaveError"]
+        </div>
+    }
+
+
+    <div class="leave-summary">
+
+        <div class="summary-box">
+            <span>Total Applications</span>
+            <strong>@Model.Count</strong>
+        </div>
+
+        <div class="summary-box">
+            <span>Pending</span>
+            <strong>
+                @Model.Count(l => l.Status == "Pending")
+            </strong>
+        </div>
+
+        <div class="summary-box">
+            <span>Approved</span>
+            <strong>
+                @Model.Count(l => l.Status == "Approved")
+            </strong>
+        </div>
+
+        <div class="summary-box">
+            <span>Rejected</span>
+            <strong>
+                @Model.Count(l => l.Status == "Rejected")
+            </strong>
+        </div>
+
+    </div>
+
+
+    <div class="leave-table-card">
+
+        <div class="table-title">
+            <h2>Student Leave Applications</h2>
+        </div>
+
+
+        @if (Model.Count == 0)
+        {
+            <div class="empty-state">
+
+                <h3>No leave applications</h3>
+
+                <p>
+                    Student leave applications
+                    will appear here.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="table-wrapper">
+
+                <table class="leave-table">
+
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Leave Type</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Reason</th>
+                            <th>Document</th>
+                            <th>Applied Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var leave in Model)
+                        {
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        @(leave.Student?.Username
+                                            ?? leave.StudentId)
+                                    </strong>
+
+                                    <small class="student-id">
+                                        @leave.StudentId
+                                    </small>
+                                </td>
+
+                                <td>
+                                    @leave.LeaveType
+                                </td>
+
+                                <td>
+                                    @(leave.StartDate.ToString("dd/MM/yyyy"))
+                                </td>
+
+                                <td>
+                                    @(leave.EndDate.ToString("dd/MM/yyyy"))
+                                </td>
+
+                                <td class="reason-cell">
+                                    @leave.Reason
+                                </td>
+
+                                <td>
+
+                                    @if (!string.IsNullOrWhiteSpace(
+                                            leave.SupportingDocument))
+                                    {
+                                        <a href="~/uploads/leave/@leave.SupportingDocument"
+                                           target="_blank"
+                                           class="document-link">
+                                            View
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="muted">
+                                            No document
+                                        </span>
+                                    }
+
+                                </td>
+
+                                <td>
+                                    @(leave.AppliedAt.ToString("dd/MM/yyyy HH:mm"))
+                                </td>
+
+                                <td>
+
+                                    @{
+                                        string statusClass =
+                                            leave.Status switch
+                                            {
+                                                "Approved" => "approved",
+                                                "Rejected" => "rejected",
+                                                _ => "pending"
+                                            };
+                                    }
+
+                                    <span class="status-badge @statusClass">
+                                        @leave.Status
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    @if (leave.Status == "Pending")
+                                    {
+                                        <div class="action-buttons">
+
+                                            <form asp-controller="Admin"
+                                                  asp-action="ApproveLeave"
+                                                  method="post">
+
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden"
+                                                       name="id"
+                                                       value="@leave.LeaveId" />
+
+                                                <button type="submit"
+                                                        class="approve-button"
+                                                        onclick="return confirm('Approve this leave application?');">
+                                                    Approve
+                                                </button>
+
+                                            </form>
+
+
+                                            <form asp-controller="Admin"
+                                                  asp-action="RejectLeave"
+                                                  method="post">
+
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden"
+                                                       name="id"
+                                                       value="@leave.LeaveId" />
+
+                                                <button type="submit"
+                                                        class="reject-button"
+                                                        onclick="return confirm('Reject this leave application?');">
+                                                    Reject
+                                                </button>
+
+                                            </form>
+
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="muted">
+                                            Completed
+                                        </span>
+                                    }
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </div>
+
+</div>

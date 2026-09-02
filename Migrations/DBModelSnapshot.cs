@@ -472,6 +472,54 @@ namespace WebAndMobile.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.LeaveApplication", b =>
+                {
+                    b.Property<int>("LeaveId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LeaveId"));
+
+                    b.Property<DateTime>("AppliedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LeaveType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SupportingDocument")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.HasKey("LeaveId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("LeaveApplications");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.PasskeyDeviceBinding", b =>
                 {
                     b.Property<string>("PasskeyDeviceBindingId")
@@ -1291,6 +1339,17 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.LeaveApplication", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.PasskeyDeviceBinding", b =>

@@ -18,7 +18,7 @@ public class TeacherProgram
     public string ProgramId { get; set; } = string.Empty;
 
     [ForeignKey(nameof(ProgramId))]
-    [DeleteBehavior(DeleteBehavior.SetNull)]
+    [DeleteBehavior(DeleteBehavior.Cascade)]
     public AcademicProgram? Program { get; set; }
 
     public DateTime RegisteredDate { get; set; } = DateTime.Now;

@@ -29,6 +29,8 @@
           href="~/css/layout.css"
           asp-append-version="true" />
 
+    @await RenderSectionAsync("Styles", required: false)
+
 </head>
 
 <body>
@@ -110,6 +112,14 @@
                     My Profile
 
                 </a>
+
+                <a asp-controller="Student"
+                    asp-action="ApplyLeave">
+                    
+                    Apply Leave      
+                    
+                </a>
+                    
 
                 <a asp-controller="Chat"
                    asp-action="Index">
