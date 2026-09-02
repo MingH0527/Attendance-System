@@ -637,6 +637,45 @@ namespace WebAndMobile.Migrations
                     b.ToTable("ProgramCourses");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.ProgramSubjectHistory", b =>
+                {
+                    b.Property<string>("HistoryId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("CourseId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ProgramId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("HistoryId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("ProgramSubjectHistories");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.ReplacementSession", b =>
                 {
                     b.Property<string>("ReplacementId")

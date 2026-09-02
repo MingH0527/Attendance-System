@@ -6,8 +6,9 @@ public class ProgramSubjectManagementViewModel
 {
     public List<AcademicProgram> Programs { get; set; } = new();
     public List<ProgramSubjectMappingItem> Mappings { get; set; } = new();
-    public string? SelectedProgramId { get; set; }
-    public AcademicProgram? SelectedProgram => Programs.FirstOrDefault(p => p.ProgramId == SelectedProgramId);
+    public List<ProgramSubjectHistory> History { get; set; } = new();
+    public string Mode { get; set; } = "management";
+    public string HistorySort { get; set; } = "newest";
 }
 
 public class ProgramSubjectMappingItem
