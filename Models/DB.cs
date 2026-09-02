@@ -23,6 +23,7 @@ public class DB : DbContext
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Teacher> Teacher => Set<Teacher>();
+    public DbSet<TeacherProgram> TeacherPrograms => Set<TeacherProgram>();
     public DbSet<UserFaceProfile> UserFaceProfiles => Set<UserFaceProfile>();
     public DbSet<PaymentSecurity> PaymentSecurities => Set<PaymentSecurity>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();

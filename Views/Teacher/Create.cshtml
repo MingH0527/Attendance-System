@@ -1,41 +1,287 @@
 @model WebAndMobile.ViewModels.TeacherProfileSetupViewModel
+
 @{
     ViewData["Title"] = "Complete Teacher Information";
 }
 
-<div style="max-width:620px;margin:40px auto;padding:28px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;">
+<div style="
+    max-width:720px;
+    margin:40px auto;
+    padding:28px;
+    background:#fff;
+    border:1px solid #e2e8f0;
+    border-radius:16px;">
+
     <h1>Complete Teacher Information</h1>
-    <p style="color:#64748b">Choose your program first. The Subject list only shows subjects registered by Admin under that program.</p>
-    <form asp-controller="Teacher" asp-action="Create" method="post" id="teacherSetupForm">
+
+    <p style="color:#64748b;">
+        Select one or more programs.
+        Subjects registered by Admin under the selected programs
+        will appear below.
+    </p>
+
+    <form asp-controller="Teacher"
+          asp-action="Create"
+          method="post"
+          id="teacherSetupForm">
+
         @Html.AntiForgeryToken()
-        <div asp-validation-summary="ModelOnly" style="color:#b91c1c"></div>
-        <label style="display:block;font-weight:700;margin-top:16px">Program</label>
-        <select asp-for="ProgramId" id="teacherProgram" style="width:100%;padding:10px;margin-top:6px" required>
-            <option value="">Select program</option>
-            @foreach (var p in Model.Programs) { <option value="@p.ProgramId">@p.ProgramCode · @p.ProgramName</option> }
-        </select>
-        <label style="display:block;font-weight:700;margin-top:16px">Subject</label>
-        <select asp-for="CourseId" id="teacherSubject" style="width:100%;padding:10px;margin-top:6px" required disabled>
-            <option value="">Select program first</option>
-        </select>
-        <button type="submit" style="margin-top:22px;padding:10px 20px;border:0;border-radius:8px;background:#0f6cbd;color:#fff">Save Profile</button>
+
+        <div asp-validation-summary="ModelOnly"
+             style="color:#b91c1c;margin-bottom:15px;">
+        </div>
+
+
+       <!--Program-->
+
+        <label style="
+            display:block;
+            font-weight:700;
+            font-size:18px;
+            margin-top:16px;
+            margin-bottom:10px;">
+
+            Program
+        </label>
+
+        <div style="
+            border:1px solid #cbd5e1;
+            border-radius:10px;
+            padding:12px;">
+
+            @foreach (var p in Model.Programs)
+            {
+                <label style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    padding:9px;
+                    cursor:pointer;">
+
+                    <input type="checkbox"
+                           class="program-checkbox"
+                           name="SelectedProgramIds"
+                           value="@p.ProgramId"
+                           checked="@Model.SelectedProgramIds.Contains(p.ProgramId)" />
+
+                    <span>
+                        <strong>@p.ProgramCode</strong>
+                        ·
+                        @p.ProgramName
+                    </span>
+
+                </label>
+            }
+
+        </div>
+
+        <!--subject-->
+
+        <label style="
+            display:block;
+            font-weight:700;
+            font-size:18px;
+            margin-top:24px;
+            margin-bottom:10px;">
+
+            Subject
+        </label>
+
+        <div id="noProgramMessage"
+             style="
+            color:#64748b;
+            padding:15px;
+            border:1px dashed #cbd5e1;
+            border-radius:10px;">
+
+            Select at least one program first.
+
+        </div>
+
+
+        <div id="subjectContainer">
+
+            @foreach (var p in Model.Programs)
+            {
+                var subjects = Model.Subjects
+                    .Where(s => s.ProgramId == p.ProgramId)
+                    .ToList();
+
+                <div class="subject-group"
+                     data-program-id="@p.ProgramId"
+                     style="
+                    display:none;
+                    margin-top:15px;
+                    border:1px solid #cbd5e1;
+                    border-radius:10px;
+                    overflow:hidden;">
+
+                    <div style="
+                        padding:12px;
+                        background:#f1f5f9;
+                        font-weight:700;">
+
+                        @p.ProgramCode · @p.ProgramName
+
+                    </div>
+
+                    <div style="padding:10px;">
+
+                        @if (subjects.Count == 0)
+                        {
+                            <p style="
+                                color:#64748b;
+                                margin:5px;">
+
+                                No subjects registered under this program.
+
+                            </p>
+                        }
+                        else
+                        {
+                            @foreach (var s in subjects)
+                            {
+                                <label style="
+                                    display:flex;
+                                    align-items:center;
+                                    gap:10px;
+                                    padding:9px;
+                                    cursor:pointer;">
+
+                                    <input type="checkbox"
+                                           class="subject-checkbox"
+                                           data-program-id="@p.ProgramId"
+                                           name="SelectedCourseIds"
+                                           value="@s.CourseId"
+                                           checked="@Model.SelectedCourseIds.Contains(s.CourseId)" />
+
+                                    <span>
+
+                                        @if (!string.IsNullOrWhiteSpace(s.CourseCode))
+                                        {
+                                            <strong>
+                                                @s.CourseCode
+                                            </strong>
+
+                                            <span> · </span>
+                                        }
+
+                                        @s.CourseName
+
+                                    </span>
+
+                                </label>
+                            }
+                        }
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+
+
+        <button type="submit"
+                style="
+            margin-top:25px;
+            padding:11px 24px;
+            border:0;
+            border-radius:8px;
+            background:#0f6cbd;
+            color:#fff;
+            font-weight:600;
+            cursor:pointer;">
+
+            Save Profile
+
+        </button>
+
     </form>
+
 </div>
 
+
 <script>
-(() => {
-    const program = document.getElementById('teacherProgram');
-    const subject = document.getElementById('teacherSubject');
-    const selectedCourse = '@(Model.CourseId ?? "")';
-    async function loadSubjects() {
-        const id = program.value;
-        if (!id) { subject.innerHTML = '<option value="">Select program first</option>'; subject.disabled = true; return; }
-        const r = await fetch(`/Teacher/Subjects?programId=${encodeURIComponent(id)}`);
-        const rows = r.ok ? await r.json() : [];
-        subject.innerHTML = '<option value="">Select subject</option>' + rows.map(x => `<option value="${x.id}" ${x.id === selectedCourse ? 'selected' : ''}>${x.code ? x.code + ' · ' : ''}${x.name}</option>`).join('');
-        subject.disabled = false;
-    }
-    program.addEventListener('change', loadSubjects);
-    if (program.value) loadSubjects();
-})();
+    (() => {
+
+        const programCheckboxes =
+            document.querySelectorAll('.program-checkbox');
+
+        const subjectGroups =
+            document.querySelectorAll('.subject-group');
+
+        const noProgramMessage =
+            document.getElementById('noProgramMessage');
+
+
+        function updateSubjects() {
+
+            const selectedProgramIds =
+                Array.from(programCheckboxes)
+                    .filter(x => x.checked)
+                    .map(x => x.value);
+
+
+            subjectGroups.forEach(group => {
+
+                const programId =
+                    group.dataset.programId;
+
+                const shouldShow =
+                    selectedProgramIds.includes(programId);
+
+
+                if (shouldShow) {
+
+                    group.style.display = 'block';
+
+                }
+                else {
+
+                    group.style.display = 'none';
+
+                    // Program removed:
+                    // automatically remove its subjects too
+                    group
+                        .querySelectorAll('.subject-checkbox')
+                        .forEach(subject => {
+
+                            subject.checked = false;
+
+                        });
+
+                }
+
+            });
+
+
+            if (selectedProgramIds.length === 0) {
+
+                noProgramMessage.style.display = 'block';
+
+            }
+            else {
+
+                noProgramMessage.style.display = 'none';
+
+            }
+
+        }
+
+
+        programCheckboxes.forEach(checkbox => {
+
+            checkbox.addEventListener(
+                'change',
+                updateSubjects
+            );
+
+        });
+
+
+        // Load existing selection
+        updateSubjects();
+
+    })();
 </script>

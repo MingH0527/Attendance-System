@@ -826,6 +826,26 @@ namespace WebAndMobile.Migrations
                     b.ToTable("TeacherCourses");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.TeacherProgram", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ProgramId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("RegisteredDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId", "ProgramId");
+
+                    b.HasIndex("ProgramId");
+
+                    b.ToTable("TeacherPrograms");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
                 {
                     b.Property<string>("TimetableId")
@@ -1389,6 +1409,25 @@ namespace WebAndMobile.Migrations
                         .IsRequired();
 
                     b.Navigation("Course");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.TeacherProgram", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.AcademicProgram", "Program")
+                        .WithMany()
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Program");
 
                     b.Navigation("User");
                 });
