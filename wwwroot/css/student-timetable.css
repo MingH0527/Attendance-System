@@ -1,0 +1,238 @@
+﻿.student-timetable-page {
+    width: calc(100% - 80px);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 35px 0 60px;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+
+/* ==============================
+   HEADER
+   ============================== */
+
+.timetable-header {
+    margin-bottom: 24px;
+}
+
+.timetable-label {
+    margin: 0 0 6px;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.timetable-header h1 {
+    margin: 0;
+    color: #172033;
+    font-size: 31px;
+}
+
+.timetable-description {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+
+/* ==============================
+   SUMMARY
+   ============================== */
+
+.timetable-summary {
+    margin-bottom: 28px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.summary-item {
+    padding: 20px 22px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 5px 15px rgba(15, 23, 42, 0.04);
+}
+
+    .summary-item span {
+        display: block;
+        margin-bottom: 7px;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .summary-item strong {
+        color: #1e293b;
+        font-size: 16px;
+    }
+
+
+/* ==============================
+   DAY
+   ============================== */
+
+.weekly-timetable {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.day-section {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+.day-heading {
+    padding: 17px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #edf2f7;
+    background: #f8fafc;
+}
+
+    .day-heading h2 {
+        margin: 0;
+        color: #1e3a8a;
+        font-size: 18px;
+    }
+
+    .day-heading span {
+        color: #94a3b8;
+        font-size: 12px;
+    }
+
+
+/* ==============================
+   CLASS
+   ============================== */
+
+.class-list {
+    padding: 7px 22px;
+}
+
+.class-card {
+    padding: 18px 0;
+    display: grid;
+    grid-template-columns: 170px 1fr;
+    gap: 25px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+    .class-card:last-child {
+        border-bottom: none;
+    }
+
+.class-time {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+    .class-time span {
+        color: #94a3b8;
+        font-size: 11px;
+    }
+
+.class-details h3 {
+    margin: 0;
+    color: #172033;
+    font-size: 17px;
+}
+
+.course-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 10px;
+}
+
+.course-code {
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.class-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+    .class-meta strong {
+        color: #475569;
+    }
+
+
+/* ==============================
+   EMPTY
+   ============================== */
+
+.no-class {
+    padding: 24px;
+    color: #94a3b8;
+    font-size: 13px;
+    text-align: center;
+}
+
+.empty-timetable {
+    padding: 65px 25px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #ffffff;
+    text-align: center;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+.empty-icon {
+    margin-bottom: 12px;
+    font-size: 35px;
+}
+
+.empty-timetable h2 {
+    margin: 0 0 8px;
+    color: #334155;
+    font-size: 18px;
+}
+
+.empty-timetable p {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
+
+@media (max-width: 800px) {
+
+    .student-timetable-page {
+        width: calc(100% - 30px);
+    }
+
+    .timetable-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .class-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}

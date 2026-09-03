@@ -33,6 +33,93 @@ public class StudentController : Controller
         return View("Student");
     }
 
+    // ==============================
+    // STUDENT TIMETABLE
+    // ==============================
+
+    [HttpGet]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> Timetable()
+    {
+        string? studentId =
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        // Find which class this student belongs to
+        StudentClass? studentClass =
+            await db.StudentClasses
+                .AsNoTracking()
+                .Include(sc => sc.ClassGroup)
+                .Include(sc => sc.Program)
+                .FirstOrDefaultAsync(
+                    sc => sc.UserId == studentId
+                );
+
+
+        // Student has not been assigned to a class
+        if (studentClass == null)
+        {
+            ViewBag.ClassName =
+                "Not Assigned";
+
+            ViewBag.ProgramName =
+                "Not Assigned";
+
+            ViewBag.TermName =
+                "No Active Semester";
+
+            return View(
+                new List<Timetable>()
+            );
+        }
+
+
+        // Get timetable belonging to this student's class
+        // Only show the Active semester
+        List<Timetable> timetable =
+            await db.Timetables
+                .AsNoTracking()
+                .Where(t =>
+                    t.ClassId == studentClass.ClassId &&
+                    t.Term != null &&
+                    t.Term.Status == "Active"
+                )
+                .Include(t => t.Term)
+                .Include(t => t.Course)
+                .Include(t => t.Classroom)
+                .Include(t => t.Teacher)
+                .OrderBy(t => t.DayOfWeek)
+                .ThenBy(t => t.StartTime)
+                .ToListAsync();
+
+
+        ViewBag.ClassName =
+            studentClass.ClassGroup?.ClassName
+            ?? studentClass.ClassId;
+
+        ViewBag.ProgramName =
+            studentClass.Program?.ProgramName
+            ?? studentClass.ProgramId;
+
+        ViewBag.TermName =
+            timetable
+                .FirstOrDefault()?
+                .Term?
+                .Name
+            ?? "No Active Semester";
+
+
+        return View(timetable);
+    }
+
 
     // ==============================
     // APPLY LEAVE - GET
