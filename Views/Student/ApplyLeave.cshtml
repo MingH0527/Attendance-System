@@ -10,36 +10,66 @@
           href="~/css/apply-leave.css"
           asp-append-version="true" />
 }
+
 @section Scripts {
     <script src="~/js/apply-leave.js"
             asp-append-version="true">
     </script>
 }
 
+
 <div class="leave-page">
 
+    <!-- ==============================
+         PAGE HEADER
+         ============================== -->
+
     <div class="leave-header">
+
         <h1>Apply Leave</h1>
-        <p>Submit your leave application and view your leave history.</p>
+
+        <p>
+            Submit your leave application
+            and view your leave history.
+        </p>
+
     </div>
 
+
+    <!-- ==============================
+         SUCCESS MESSAGE
+         ============================== -->
     @if (TempData["SuccessMessage"] != null)
     {
         <div class="leave-alert success-alert">
+
             @TempData["SuccessMessage"]
+
         </div>
     }
 
+
+    <!-- ==============================
+         ERROR MESSAGE
+         ============================== -->
     @if (TempData["ErrorMessage"] != null)
     {
         <div class="leave-alert error-alert">
+
             @TempData["ErrorMessage"]
+
         </div>
     }
+
+
+    <!-- ==============================
+         NEW LEAVE APPLICATION
+         ============================== -->
 
     <div class="leave-card">
 
         <h2>New Leave Application</h2>
+
 
         <form asp-controller="Student"
               asp-action="ApplyLeave"
@@ -48,9 +78,17 @@
 
             @Html.AntiForgeryToken()
 
+
+            <!-- Validation Summary -->
+
             <div asp-validation-summary="ModelOnly"
                  class="validation-summary">
             </div>
+
+
+            <!-- ==============================
+                 LEAVE TYPE
+                 ============================== -->
 
             <div class="form-group">
 
@@ -94,7 +132,14 @@
             </div>
 
 
+            <!-- ==============================
+                 START DATE + END DATE
+                 ============================== -->
+
             <div class="date-row">
+
+
+                <!-- Start Date -->
 
                 <div class="form-group">
 
@@ -104,8 +149,8 @@
 
                     <input asp-for="StartDate"
                            type="date"
-                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
                            id="startDate"
+                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
                            class="form-control" />
 
                     <span asp-validation-for="StartDate"
@@ -115,6 +160,8 @@
                 </div>
 
 
+                <!-- End Date -->
+
                 <div class="form-group">
 
                     <label asp-for="EndDate">
@@ -123,8 +170,8 @@
 
                     <input asp-for="EndDate"
                            type="date"
-                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
                            id="endDate"
+                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
                            class="form-control" />
 
                     <span asp-validation-for="EndDate"
@@ -133,8 +180,18 @@
 
                 </div>
 
+
             </div>
 
+
+            <small class="leave-date-note">
+                Maximum 7 consecutive leave days per application.
+            </small>
+
+
+            <!-- ==============================
+                 REASON
+                 ============================== -->
 
             <div class="form-group">
 
@@ -145,8 +202,8 @@
                 <textarea asp-for="Reason"
                           class="form-control reason-box"
                           rows="5"
-                          placeholder="Enter your reason...">
-                </textarea>
+                          maxlength="500"
+                          placeholder="Enter your reason..."></textarea>
 
                 <span asp-validation-for="Reason"
                       class="field-error">
@@ -154,6 +211,10 @@
 
             </div>
 
+
+            <!-- ==============================
+                 SUPPORTING DOCUMENT
+                 ============================== -->
 
             <div class="form-group">
 
@@ -167,7 +228,8 @@
                        class="form-control" />
 
                 <small>
-                    Optional. PDF, JPG, JPEG or PNG. Maximum 5MB.
+                    Optional. PDF, JPG, JPEG or PNG.
+                    Maximum 5MB.
                 </small>
 
                 <span asp-validation-for="SupportingDocument"
@@ -177,99 +239,197 @@
             </div>
 
 
+            <!-- ==============================
+                 FORM BUTTONS
+                 ============================== -->
+
             <div class="form-actions">
 
                 <button type="reset"
                         class="btn-secondary">
+
                     Clear
+
                 </button>
+
 
                 <button type="submit"
                         class="btn-primary">
+
                     Submit Leave
+
                 </button>
 
             </div>
+
 
         </form>
 
     </div>
 
 
+
+    <!-- ==============================
+         LEAVE HISTORY
+         ============================== -->
+
     <div class="leave-card">
+
 
         <div class="history-header">
 
             <div>
-                <h2>My Leave Applications</h2>
-                <p>Check your previous leave application status.</p>
+
+                <h2>
+                    My Leave Applications
+                </h2>
+
+                <p>
+                    Check your previous leave
+                    application status.
+                </p>
+
             </div>
 
+
             <span class="application-count">
+
                 @Model.LeaveHistory.Count application(s)
+
             </span>
 
         </div>
 
 
+
+        <!-- ==============================
+             NO LEAVE APPLICATION
+             ============================== -->
         @if (Model.LeaveHistory.Count == 0)
         {
             <div class="empty-history">
 
-                <h3>No leave applications yet</h3>
+                <h3>
+                    No leave applications yet
+                </h3>
 
                 <p>
-                    Your submitted leave applications will appear here.
+                    Your submitted leave applications
+                    will appear here.
                 </p>
 
             </div>
         }
+
         else
         {
+
+            <!-- ==============================
+                 LEAVE TABLE
+                 ============================== -->
+
             <div class="table-wrapper">
 
                 <table class="leave-table">
 
+
                     <thead>
 
                         <tr>
-                            <th>Applied Date</th>
-                            <th>Leave Type</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
-                            <th>Reason</th>
-                            <th>Status</th>
-                            <th>Document</th>
-                            <th>Action</th>
+
+                            <th>
+                                Applied Date
+                            </th>
+
+                            <th>
+                                Leave Type
+                            </th>
+
+                            <th>
+                                Start Date
+                            </th>
+
+                            <th>
+                                End Date
+                            </th>
+
+                            <th>
+                                Reason
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th>
+                                Document
+                            </th>
+
+                            <th>
+                                Action
+                            </th>
+
                         </tr>
 
                     </thead>
 
+
+
                     <tbody>
+
 
                         @foreach (var leave in Model.LeaveHistory)
                         {
+
                             <tr>
 
-                                <td>
-                                    @leave.AppliedAt.ToString("dd/MM/yyyy")
-                                </td>
+
+                                <!-- Applied Date -->
 
                                 <td>
+
+                                    @(leave.AppliedAt.ToString("dd/MM/yyyy"))
+
+                                </td>
+
+
+                                <!-- Leave Type -->
+
+                                <td>
+
                                     @leave.LeaveType
+
                                 </td>
 
-                                <td>
-                                    @leave.StartDate.ToString("dd/MM/yyyy")
-                                </td>
+
+                                <!-- Start Date -->
 
                                 <td>
-                                    @leave.EndDate.ToString("dd/MM/yyyy")
+
+                                    @(leave.StartDate.ToString("dd/MM/yyyy"))
+
                                 </td>
 
+
+                                <!-- End Date -->
+
                                 <td>
+
+                                    @(leave.EndDate.ToString("dd/MM/yyyy"))
+
+                                </td>
+
+
+                                <!-- Reason -->
+
+                                <td>
+
                                     @leave.Reason
+
                                 </td>
+
+
+                                <!-- Status -->
 
                                 <td>
 
@@ -278,22 +438,31 @@
                                             leave.Status.ToLower() switch
                                             {
                                                 "approved" => "status-approved",
+
                                                 "rejected" => "status-rejected",
+
                                                 _ => "status-pending"
                                             };
                                     }
 
+
                                     <span class="status-badge @statusClass">
+
                                         @leave.Status
+
                                     </span>
 
                                 </td>
+
+
+                                <!-- Supporting Document -->
 
                                 <td>
 
                                     @if (!string.IsNullOrEmpty(
                                             leave.SupportingDocument))
                                     {
+
                                         <a href="~/uploads/leave/@leave.SupportingDocument"
                                            target="_blank"
                                            class="document-link">
@@ -301,27 +470,40 @@
                                             View
 
                                         </a>
+
                                     }
+
                                     else
                                     {
-                                        <span>-</span>
+
+                                        <span>
+                                            -
+                                        </span>
+
                                     }
 
                                 </td>
 
+
+                                <!-- Action -->
+
                                 <td>
+
 
                                     @if (leave.Status == "Pending")
                                     {
+
                                         <form asp-controller="Student"
                                               asp-action="CancelLeave"
                                               method="post">
 
                                             @Html.AntiForgeryToken()
 
+
                                             <input type="hidden"
                                                    name="id"
                                                    value="@leave.LeaveId" />
+
 
                                             <button type="submit"
                                                     class="cancel-button"
@@ -332,24 +514,37 @@
                                             </button>
 
                                         </form>
+
                                     }
+
                                     else
                                     {
-                                        <span>-</span>
+
+                                        <span>
+                                            -
+                                        </span>
+
                                     }
+
 
                                 </td>
 
+
                             </tr>
+
                         }
 
+
                     </tbody>
+
 
                 </table>
 
             </div>
+
         }
 
     </div>
+
 
 </div>

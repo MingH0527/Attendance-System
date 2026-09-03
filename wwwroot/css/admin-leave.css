@@ -299,3 +299,71 @@
         grid-template-columns: 1fr;
     }
 }
+/* ==============================
+   Pagination
+   ============================== */
+
+.pagination-footer {
+    margin-top: 18px;
+    padding-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    border-top: 1px solid #edf0f4;
+}
+
+.pagination-info {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.page-button {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dbe3ec;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #334155;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: 0.2s ease;
+}
+
+a.page-button:hover {
+    border-color: #6366f1;
+    color: #4f46e5;
+    background: #f5f3ff;
+}
+
+.page-button.active {
+    border-color: #4f46e5;
+    background: #4f46e5;
+    color: #ffffff;
+}
+
+.page-button.disabled {
+    color: #cbd5e1;
+    background: #f8fafc;
+    cursor: not-allowed;
+}
+
+
+@media (max-width: 600px) {
+
+    .pagination-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

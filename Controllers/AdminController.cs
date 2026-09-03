@@ -73,13 +73,36 @@ public class AdminController : Controller
     //leave management
 
     [HttpGet]
-    public async Task<IActionResult> LeaveManagement()
+    public async Task<IActionResult> LeaveManagement(int page = 1)
     {
-        var leaves = await _context.LeaveApplications
-            .AsNoTracking()
-            .Include(l => l.Student)
-            .OrderByDescending(l => l.AppliedAt)
-            .ToListAsync();
+        const int pageSize = 10;
+
+        int totalCount =
+            await _context.LeaveApplications.CountAsync();
+
+        int totalPages =
+            (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        if (totalPages < 1)
+        {
+            totalPages = 1;
+        }
+        page = Math.Clamp(page, 1, totalPages);
+
+        // one page only can have 10 data
+        var leaves =
+            await _context.LeaveApplications
+                .AsNoTracking()
+                .Include(l => l.Student)
+                .OrderByDescending(l => l.AppliedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.TotalCount = totalCount;
+        ViewBag.PageSize = pageSize;
 
         return View(leaves);
     }

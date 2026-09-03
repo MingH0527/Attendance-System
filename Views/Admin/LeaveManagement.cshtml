@@ -256,6 +256,116 @@
 
                 </table>
 
+                @{
+                    int currentPage =
+                        ViewBag.CurrentPage != null
+                            ? (int)ViewBag.CurrentPage
+                            : 1;
+
+                    int totalPages =
+                        ViewBag.TotalPages != null
+                            ? (int)ViewBag.TotalPages
+                            : 1;
+
+                    int totalCount =
+                        ViewBag.TotalCount != null
+                            ? (int)ViewBag.TotalCount
+                            : 0;
+
+                    int pageSize =
+                        ViewBag.PageSize != null
+                            ? (int)ViewBag.PageSize
+                            : 10;
+
+                    int startItem =
+                        totalCount == 0
+                            ? 0
+                            : ((currentPage - 1) * pageSize) + 1;
+
+                    int endItem =
+                        Math.Min(
+                            currentPage * pageSize,
+                            totalCount
+                        );
+                }
+
+
+                <div class="pagination-footer">
+
+                    <div class="pagination-info">
+                        Showing @startItem–@endItem of @totalCount
+                    </div>
+
+
+                    @if (totalPages > 1)
+                    {
+                        <div class="pagination">
+
+                            <!-- Previous -->
+                            @if (currentPage > 1)
+                            {
+                                <a asp-controller="Admin"
+                                   asp-action="LeaveManagement"
+                                   asp-route-page="@(currentPage - 1)"
+                                   class="page-button">
+
+                                    ‹
+
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="page-button disabled">
+                                    ‹
+                                </span>
+                            }
+
+
+                            <!-- Page Numbers -->
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                if (i == currentPage)
+                                {
+                                    <span class="page-button active">
+                                        @i
+                                    </span>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Admin"
+                                       asp-action="LeaveManagement"
+                                       asp-route-page="@i"
+                                       class="page-button">
+
+                                        @i
+
+                                    </a>
+                                }
+                            }
+                            <!-- Next -->
+                            @if (currentPage < totalPages)
+                            {
+                                <a asp-controller="Admin"
+                                   asp-action="LeaveManagement"
+                                   asp-route-page="@(currentPage + 1)"
+                                   class="page-button">
+
+                                    ›
+
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="page-button disabled">
+                                    ›
+                                </span>
+                            }
+
+                        </div>
+                    }
+
+                </div>
+
             </div>
         }
 

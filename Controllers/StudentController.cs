@@ -22,10 +22,10 @@ public class StudentController : Controller
         this.environment = environment;
     }
 
-    /// <summary>
-    /// student home
-    /// </summary>
-    /// <returns></returns>
+
+    // ==============================
+    // STUDENT HOME
+    // ==============================
 
     [HttpGet]
     public IActionResult Index()
@@ -34,7 +34,9 @@ public class StudentController : Controller
     }
 
 
-    //apply leave-get
+    // ==============================
+    // APPLY LEAVE - GET
+    // ==============================
 
     [HttpGet]
     public async Task<IActionResult> ApplyLeave()
@@ -62,7 +64,9 @@ public class StudentController : Controller
     }
 
 
-    //apply leave-post
+    // ==============================
+    // APPLY LEAVE - POST
+    // ==============================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -77,7 +81,12 @@ public class StudentController : Controller
             return Unauthorized();
         }
 
-        // Start date cannot be in the past
+
+        // ==============================
+        // DATE VALIDATION
+        // ==============================
+
+        // Cannot select a past Start Date
         if (model.StartDate.Date < DateTime.Today)
         {
             ModelState.AddModelError(
@@ -86,7 +95,8 @@ public class StudentController : Controller
             );
         }
 
-        // End date cannot be before start date
+
+        // End Date cannot be earlier than Start Date
         if (model.EndDate.Date < model.StartDate.Date)
         {
             ModelState.AddModelError(
@@ -95,17 +105,24 @@ public class StudentController : Controller
             );
         }
 
-        if(model.EndDate.Date>model.StartDate.Date.AddDays(6))
+
+        // Maximum 7 days
+        // Start Date itself counts as Day 1
+        if (model.EndDate.Date >
+            model.StartDate.Date.AddDays(6))
         {
             ModelState.AddModelError(
                 nameof(model.EndDate),
-                "Leave cannot esceed 7 days"
-             );
+                "Leave application cannot exceed 7 days."
+            );
         }
 
-        string? documentName = null;
 
-       //file validation
+        // ==============================
+        // FILE VALIDATION
+        // ==============================
+
+        string? documentName = null;
 
         if (model.SupportingDocument != null &&
             model.SupportingDocument.Length > 0)
@@ -123,6 +140,7 @@ public class StudentController : Controller
                 ".png"
             };
 
+
             if (!allowedExtensions.Contains(extension))
             {
                 ModelState.AddModelError(
@@ -130,6 +148,7 @@ public class StudentController : Controller
                     "Only PDF, JPG, JPEG and PNG files are allowed."
                 );
             }
+
 
             // Maximum 5MB
             if (model.SupportingDocument.Length >
@@ -142,7 +161,10 @@ public class StudentController : Controller
             }
         }
 
-        //if validation failed
+
+        // ==============================
+        // VALIDATION FAILED
+        // ==============================
 
         if (!ModelState.IsValid)
         {
@@ -156,7 +178,9 @@ public class StudentController : Controller
         }
 
 
-        //save document
+        // ==============================
+        // SAVE DOCUMENT
+        // ==============================
 
         if (model.SupportingDocument != null &&
             model.SupportingDocument.Length > 0)
@@ -175,8 +199,10 @@ public class StudentController : Controller
 
             Directory.CreateDirectory(folder);
 
+
             documentName =
                 Guid.NewGuid().ToString() + extension;
+
 
             string filePath =
                 Path.Combine(
@@ -184,57 +210,59 @@ public class StudentController : Controller
                     documentName
                 );
 
+
             using FileStream stream =
                 new(
                     filePath,
                     FileMode.Create
                 );
 
+
             await model.SupportingDocument
                 .CopyToAsync(stream);
         }
 
 
-        //create leave
+        // ==============================
+        // CREATE LEAVE APPLICATION
+        // ==============================
 
         LeaveApplication leave = new()
         {
             StudentId = studentId,
 
-            LeaveType =
-                model.LeaveType,
+            LeaveType = model.LeaveType,
 
-            StartDate =
-                model.StartDate,
+            StartDate = model.StartDate.Date,
 
-            EndDate =
-                model.EndDate,
+            EndDate = model.EndDate.Date,
 
-            Reason =
-                model.Reason,
+            Reason = model.Reason,
 
-            SupportingDocument =
-                documentName,
+            SupportingDocument = documentName,
 
-            Status =
-                "Pending",
+            Status = "Pending",
 
-            AppliedAt =
-                DateTime.Now
+            AppliedAt = DateTime.Now
         };
+
 
         db.LeaveApplications.Add(leave);
 
         await db.SaveChangesAsync();
 
+
         TempData["SuccessMessage"] =
             "Leave application submitted successfully.";
+
 
         return RedirectToAction(nameof(ApplyLeave));
     }
 
 
-    //cancel leave
+    // ==============================
+    // CANCEL LEAVE
+    // ==============================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -248,6 +276,7 @@ public class StudentController : Controller
             return Unauthorized();
         }
 
+
         LeaveApplication? leave =
             await db.LeaveApplications
                 .FirstOrDefaultAsync(l =>
@@ -255,10 +284,12 @@ public class StudentController : Controller
                     l.StudentId == studentId
                 );
 
+
         if (leave == null)
         {
             return NotFound();
         }
+
 
         // Student can only cancel Pending leave
         if (!string.Equals(
@@ -273,7 +304,10 @@ public class StudentController : Controller
         }
 
 
-        // Delete uploaded document
+        // ==============================
+        // DELETE UPLOADED DOCUMENT
+        // ==============================
+
         if (!string.IsNullOrWhiteSpace(
                 leave.SupportingDocument))
         {
@@ -284,6 +318,7 @@ public class StudentController : Controller
                     "leave",
                     leave.SupportingDocument
                 );
+
 
             if (System.IO.File.Exists(filePath))
             {
@@ -296,14 +331,19 @@ public class StudentController : Controller
 
         await db.SaveChangesAsync();
 
+
         TempData["SuccessMessage"] =
             "Leave application cancelled successfully.";
+
 
         return RedirectToAction(nameof(ApplyLeave));
     }
 
 
-    //logout
+    // ==============================
+    // LOGOUT
+    // ==============================
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
