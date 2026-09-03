@@ -83,8 +83,24 @@ public class UserRoleDto
     public string Username { get; set; } = string.Empty;
     public string Position { get; set; } = string.Empty;
 }
+
+public class CreateAcademicTermRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public bool ForceActivate { get; set; }
+}
+
+public class UpdateAcademicTermDatesRequest
+{
+    public string TermId { get; set; } = string.Empty;
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+}
+
 public class TimetableDashboardDto { public List<TermDashboardDto> Current {get;set;}=new(); public List<TermDashboardDto> Completed {get;set;}=new(); }
-public class TermDashboardDto { public string TermId {get;set;}=string.Empty; public string Name {get;set;}=string.Empty; public DateTime StartDate {get;set;} public DateTime EndDate {get;set;} public string Status {get;set;}=string.Empty; public List<ProgramDashboardDto> Programs {get;set;}=new(); }
+public class TermDashboardDto { public string TermId {get;set;}=string.Empty; public string Name {get;set;}=string.Empty; public DateTime StartDate {get;set;} public DateTime EndDate {get;set;} public string Status {get;set;}=string.Empty; public bool IsRestored {get;set;} public List<ProgramDashboardDto> Programs {get;set;}=new(); }
 public class ProgramDashboardDto { public string ProgramId {get;set;}=string.Empty; public string ProgramCode {get;set;}=string.Empty; public string ProgramName {get;set;}=string.Empty; public List<ClassDashboardDto> Classes {get;set;}=new(); }
 public class ClassDashboardDto { public string ClassId {get;set;}=string.Empty; public string ClassName {get;set;}=string.Empty; }
 public class TeacherCourseLookupDto { public string TeacherId {get;set;}=string.Empty; public string TeacherName {get;set;}=string.Empty; public string CourseId {get;set;}=string.Empty; public string CourseName {get;set;}=string.Empty; }

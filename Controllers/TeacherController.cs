@@ -28,7 +28,8 @@ public class TeacherController : Controller
         if (!await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId)) return RedirectToAction(nameof(Create));
 
         ViewBag.PasskeyCount = await db.UserPasskeys.CountAsync(p => p.UserId == user.UserId);
-        ViewBag.TimetableCount = await db.Timetables.CountAsync(t => t.TeacherId == user.UserId);
+        ViewBag.TimetableCount = await db.Timetables
+            .CountAsync(t => t.TeacherId == user.UserId && t.Term != null && t.Term.Status == "Active");
         return View(user);
     }
 
@@ -50,7 +51,8 @@ public class TeacherController : Controller
 
         var entries = await db.Timetables
             .AsNoTracking()
-            .Where(t => t.TeacherId == userId)
+            .Where(t => t.TeacherId == userId && t.Term != null && t.Term.Status == "Active")
+            .Include(t => t.Term)
             .Include(t => t.Course)
             .Include(t => t.ClassGroup)
             .Include(t => t.Classroom)

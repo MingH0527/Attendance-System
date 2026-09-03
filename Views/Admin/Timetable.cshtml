@@ -1,5 +1,5 @@
 @{ ViewData["Title"]="Timetable Management"; Layout="_Layout"; }
-<link rel="stylesheet" href="~/css/Timetable.css" />
+<link rel="stylesheet" href="~/css/Timetable.css" asp-append-version="true" />
 <div class="tt-page">
     <div class="tt-head">
         <div><h2>Timetable Management</h2><p>Academic scheduling for School and Tuition</p></div>
@@ -95,18 +95,31 @@
 
 <div id="semesterModal" class="tt-modal-overlay" hidden>
     <div class="tt-modal">
-        <div class="tt-modal-head"><h3>Create New Semester</h3><button type="button" id="closeSemesterBtn" class="tt-icon-btn">×</button></div>
+        <div class="tt-modal-head"><h3 id="semesterModalTitle">Create New Semester</h3><button type="button" id="closeSemesterBtn" class="tt-icon-btn">×</button></div>
         <div id="semesterError" class="tt-error" hidden></div>
         <form id="semesterForm">
+            <input type="hidden" id="semesterTermId">
             <div class="tt-semester-row">
                 <label>Semester name<input id="semesterName" maxlength="100" placeholder="e.g. Semester 3 2026" required></label>
                 <label>Start date<input id="semesterStart" type="date" required></label>
                 <label>End date<input id="semesterEnd" type="date" required></label>
             </div>
-            <div class="tt-form-hint">Start date cannot be in the past. End date must be on/after the start date and the semester cannot exceed one year.</div>
-            <div class="tt-modal-actions"><button type="button" id="cancelSemesterBtn" class="tt-btn-secondary">Cancel</button><button type="submit" class="tt-btn-primary">Create</button></div>
+            <div class="tt-form-hint">New semesters are created as Incoming. Only Incoming semester dates can be edited. Active semester dates are locked. Semester dates cannot overlap, including sharing the same boundary date.</div>
+            <div id="forceActiveConfirm" class="tt-force-active" hidden>
+                <div class="tt-force-active-icon">!</div>
+                <div>
+                    <strong>Starts today — Active confirmation required</strong>
+                    <p id="forceActiveMessage">This semester starts today. Creating it will make the semester Active immediately.</p>
+                    <small>Only one Active semester can exist at a time. The semester dates will be locked after activation.</small>
+                </div>
+                <div class="tt-force-active-actions">
+                    <button type="button" id="cancelForceActiveBtn" class="tt-btn-secondary">Go Back</button>
+                    <button type="button" id="confirmForceActiveBtn" class="tt-btn-danger-confirm">Create as Active</button>
+                </div>
+            </div>
+            <div class="tt-modal-actions"><button type="button" id="cancelSemesterBtn" class="tt-btn-secondary">Cancel</button><button type="submit" id="semesterSubmitBtn" class="tt-btn-primary">Create</button></div>
         </form>
     </div>
 </div>
 
-<script src="~/js/timetable.js"></script>
+<script src="~/js/timetable.js" asp-append-version="true"></script>
