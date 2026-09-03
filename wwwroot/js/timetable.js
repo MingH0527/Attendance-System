@@ -25,9 +25,11 @@ function bind(){
  $("lessonForm").onsubmit=saveLesson;
  $("deleteLessonBtn").onclick=deleteLesson;
  $("assignmentSearch").oninput=renderAssignments;
- $("newSemesterBtn").onclick=()=>{prepareSemesterForm();$("semesterModal").hidden=false;$("semesterError").hidden=true;};
- $("closeSemesterBtn").onclick=$("cancelSemesterBtn").onclick=()=>$("semesterModal").hidden=true;
+ $("newSemesterBtn").onclick=()=>openSemesterModal();
+ $("closeSemesterBtn").onclick=$("cancelSemesterBtn").onclick=closeSemesterModal;
  $("semesterForm").onsubmit=createSemester;
+ $("cancelForceActiveBtn").onclick=cancelForceActiveConfirmation;
+ $("confirmForceActiveBtn").onclick=confirmForceActiveCreation;
  $("holidayForm").onsubmit=addHoliday;
  $("holidayTerm").onchange=loadHolidayList;
  $("loadMalaysiaHolidaysBtn").onclick=loadMalaysiaHolidays;
@@ -54,10 +56,22 @@ async function dashboard(){
  host.hidden=holidayMode;
  if(holidayMode){await prepareHolidayHistory();return;}
  const terms=S.bucket==="current"?S.dashboard.current:S.dashboard.completed;
+ $("newSemesterBtn").disabled=(S.dashboard.current||[]).length>=2;
+ $("newSemesterBtn").title=$("newSemesterBtn").disabled?"Maximum two semesters can be kept on the timetable page.":"Create a new semester";
  if(!terms.length){host.innerHTML="<div class='tt-empty'>No academic terms in this section.</div>";return;}
  terms.forEach(t=>{
-  const card=document.createElement("article");card.className="tt-term-card";
-  card.innerHTML=`<header><div><h3>${esc(t.name)}</h3><small>${dateText(t.startDate)} – ${dateText(t.endDate)}</small></div><span class="tt-pill ${esc(t.status.toLowerCase())}">${esc(t.status)}</span></header><div class="tt-program-grid"></div>`;
+  const card=document.createElement("article");card.className=`tt-term-card ${t.status==="Warning"?"tt-term-warning":""}`;
+  const restoredStatusChoice=t.isRestored
+   ? `<div class="tt-status-choice" aria-label="Restored semester status">
+        <button type="button" class="tt-status-choice-btn selected" disabled>Incoming</button>
+        <button type="button" data-term-action="activate-restored" class="tt-status-choice-btn active-choice">Set Active</button>
+      </div>`
+   : "";
+  const actions=S.bucket==="current"
+   ? `<div class="tt-term-actions">${t.status==="Incoming"?'<button type="button" data-term-action="edit" class="tt-btn-secondary">Edit Dates</button>':''}${restoredStatusChoice}<button type="button" data-term-action="archive" class="tt-btn-secondary">Move to History</button></div>`
+   : `<div class="tt-term-actions"><button type="button" data-term-action="restore" class="tt-btn-secondary">Restore</button></div>`;
+  card.innerHTML=`<header><div><h3>${esc(t.name)}</h3><small>${dateText(t.startDate)} – ${dateText(t.endDate)}</small></div><div class="tt-term-status-wrap"><span class="tt-pill ${esc(t.status.toLowerCase())}">${esc(t.status)}</span>${actions}</div></header><div class="tt-program-grid"></div>`;
+  card.querySelectorAll("[data-term-action]").forEach(b=>b.onclick=()=>handleTermAction(b.dataset.termAction,t));
   const grid=card.querySelector(".tt-program-grid");
   t.programs.forEach(p=>{
    const pc=document.createElement("div");pc.className="tt-program-card";
@@ -78,7 +92,8 @@ function showProgram(term,program){
  if(!program.classes.length){host.innerHTML="<div class='tt-empty'>No classes registered for this program.</div>";return;}
  program.classes.forEach(c=>{
   const x=document.createElement("div");x.className="tt-class-card";
-  x.innerHTML=`<strong>${esc(c.className)}</strong><div><button data-open="School:view">School View</button>${term.status!=="Completed"?'<button data-open="School:edit">School Edit</button>':''}</div><div><button data-open="Tuition:view">Tuition View</button>${term.status!=="Completed"?'<button data-open="Tuition:edit">Tuition Edit</button>':''}</div>`;
+  const editable=term.status==="Active"||term.status==="Incoming";
+  x.innerHTML=`<strong>${esc(c.className)}</strong><div><button data-open="School:view">School View</button>${editable?'<button data-open="School:edit">School Edit</button>':''}</div><div><button data-open="Tuition:view">Tuition View</button>${editable?'<button data-open="Tuition:edit">Tuition Edit</button>':''}</div>`;
   x.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{const [type,mode]=b.dataset.open.split(":");openWorkspace(term,program,c,type,mode)});
   host.appendChild(x);
  });
@@ -90,17 +105,17 @@ function showDashboard(){
 }
 
 async function openWorkspace(t,p,c,type,mode){
- S.term=t;S.program=p;S.cls=c;S.type=type;S.mode=t.status==="Completed"?"view":mode;
+ S.term=t;S.program=p;S.cls=c;S.type=type;S.mode=t.status==="Warning"?"view":mode;
  $("dashboardView").hidden=true;$("programView").hidden=true;$("workspaceView").hidden=false;
  $("backDashboard").hidden=false;$("backProgram").hidden=false;
  $("ctxTerm").textContent=t.name;$("ctxStatus").textContent=t.status;$("ctxProgram").textContent=p.programCode;$("ctxClass").textContent=c.className;
- $("editBtn").hidden=t.status==="Completed";
+ $("editBtn").hidden=t.status==="Warning";
  await Promise.all([loadRooms(),loadAssignments(),loadWeeks()]);
  setMode(S.mode);await loadGrid();
 }
 
 async function switchType(type){S.type=type;$("schoolBtn").classList.toggle("active",type==="School");$("tuitionBtn").classList.toggle("active",type==="Tuition");await loadGrid();}
-function setMode(mode){if(S.term?.status==="Completed")mode="view";S.mode=mode;$("viewBtn").classList.toggle("active",mode==="view");$("editBtn").classList.toggle("active",mode==="edit");$("assignmentPanel").hidden=mode!=="edit";renderSkeleton();renderEntries();}
+function setMode(mode){if(S.term?.status==="Warning")mode="view";S.mode=mode;$("viewBtn").classList.toggle("active",mode==="view");$("editBtn").classList.toggle("active",mode==="edit");$("assignmentPanel").hidden=mode!=="edit";renderSkeleton();renderEntries();}
 
 async function loadWeeks(){
  const r=await fetch(`/Timetable/Weeks?termId=${encodeURIComponent(S.term.termId)}`);const weeks=r.ok?await r.json():[];
@@ -206,24 +221,39 @@ function showLessonError(message){$("lessonModalError").textContent=message;$("l
 async function deleteLesson(){const id=$("fTimetableId").value;if(!id||!confirm("Delete this hourly lesson from the weekly template?"))return;const r=await fetch(`/Timetable/Delete?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showLessonError(await r.text());return;}closeLessonModal();await loadGrid();}
 
 
+function openSemesterModal(term=null){
+ resetForceActiveConfirmation();
+ $("semesterError").hidden=true;
+ $("semesterTermId").value=term?.termId||"";
+ $("semesterModalTitle").textContent=term?"Edit Incoming Semester Dates":"Create New Semester";
+ $("semesterSubmitBtn").textContent=term?"Save Dates":"Create";
+ $("semesterName").disabled=!!term;
+ $("semesterName").value=term?.name||"";
+ $("semesterStart").value=term?term.startDate.slice(0,10):"";
+ $("semesterEnd").value=term?term.endDate.slice(0,10):"";
+ prepareSemesterForm();
+ $("semesterModal").hidden=false;
+}
+
 function prepareSemesterForm(){
  const today=localIso(new Date());
  const start=$("semesterStart"),end=$("semesterEnd");
  start.min=today;end.min=today;
- start.onchange=()=>{
+ const syncEndLimits=()=>{
   if(!start.value)return;
   end.min=start.value;
   const max=new Date(start.value+"T00:00:00");max.setFullYear(max.getFullYear()+1);
   end.max=localIso(max);
   if(end.value&&(end.value<end.min||end.value>end.max))end.value="";
  };
+ start.onchange=syncEndLimits;syncEndLimits();
 }
 function semesterClientError(){
  const name=$("semesterName").value.trim(),start=$("semesterStart").value,end=$("semesterEnd").value,today=localIso(new Date());
  if(name.length<3)return "Semester name must contain at least 3 characters.";
  if(!start||!end)return "Semester name, start date and end date are required.";
  if(start<today)return "Start date cannot be in the past.";
- if(end<start)return "End date cannot be earlier than the start date.";
+ if(end<=start)return "End date must be later than the start date.";
  const max=new Date(start+"T00:00:00");max.setFullYear(max.getFullYear()+1);
  if(end>localIso(max))return "Semester duration cannot exceed one year.";
  return "";
@@ -231,11 +261,95 @@ function semesterClientError(){
 async function createSemester(e){
  e.preventDefault();
  const error=semesterClientError();
- if(error){$("semesterError").textContent=error;$("semesterError").hidden=false;return;}
- const payload={name:$("semesterName").value.trim(),startDate:$("semesterStart").value,endDate:$("semesterEnd").value,status:"Upcoming"};
+ if(error){showSemesterError(error);return;}
+ const termId=$("semesterTermId").value;
+ if(termId){
+  const payload={termId,startDate:$("semesterStart").value,endDate:$("semesterEnd").value};
+  const r=await fetch("/Timetable/UpdateTermDates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  if(!r.ok){const data=await readResponseMessage(r);showSemesterError(data.message);return;}
+  closeSemesterModal();await dashboard();return;
+ }
+ await submitNewSemester(false);
+}
+async function submitNewSemester(forceActivate){
+ const payload={name:$("semesterName").value.trim(),startDate:$("semesterStart").value,endDate:$("semesterEnd").value,forceActivate};
  const r=await fetch("/Timetable/CreateTerm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
- if(!r.ok){$("semesterError").textContent=await r.text();$("semesterError").hidden=false;return;}
- $("semesterModal").hidden=true;$("semesterForm").reset();await dashboard();
+ if(r.status===409){
+  const data=await readResponseMessage(r);
+  if(data.code==="FORCE_ACTIVE_CONFIRMATION_REQUIRED"){
+   showForceActiveConfirmation(data.message);
+   return;
+  }
+  showSemesterError(data.message||"Unable to create semester.");
+  return;
+ }
+ if(!r.ok){
+  const data=await readResponseMessage(r);
+  showSemesterError(data.message||"Unable to create semester.");
+  return;
+ }
+ closeSemesterModal();await dashboard();
+}
+async function readResponseMessage(r){
+ const contentType=r.headers.get("content-type")||"";
+ if(contentType.includes("application/json")){
+  try{
+   const data=await r.json();
+   return {code:data?.code||"",message:data?.message||data?.title||"Request failed."};
+  }catch{}
+ }
+ try{
+  const text=(await r.text())||"";
+  if(r.status>=500) return {code:"",message:"A server error occurred while processing the semester. Please try again or check the server log."};
+  return {code:"",message:text||"Request failed."};
+ }catch{return {code:"",message:"Request failed."};}
+}
+function showForceActiveConfirmation(message){
+ $("semesterError").hidden=true;
+ $("forceActiveMessage").textContent=message||"This semester starts today. Creating it will make the semester Active immediately.";
+ $("forceActiveConfirm").hidden=false;
+ $("semesterSubmitBtn").hidden=true;
+ $("cancelSemesterBtn").hidden=true;
+ ["semesterName","semesterStart","semesterEnd"].forEach(id=>$(id).disabled=true);
+}
+function cancelForceActiveConfirmation(){
+ resetForceActiveConfirmation();
+}
+async function confirmForceActiveCreation(){
+ $("confirmForceActiveBtn").disabled=true;
+ try{await submitNewSemester(true);}finally{$("confirmForceActiveBtn").disabled=false;}
+}
+function resetForceActiveConfirmation(){
+ const box=$("forceActiveConfirm");
+ if(box)box.hidden=true;
+ const submit=$("semesterSubmitBtn"),cancel=$("cancelSemesterBtn");
+ if(submit)submit.hidden=false;if(cancel)cancel.hidden=false;
+ ["semesterName","semesterStart","semesterEnd"].forEach(id=>{const el=$(id);if(el)el.disabled=false;});
+ if($("semesterTermId")?.value)$("semesterName").disabled=true;
+}
+function showSemesterError(message){$("semesterError").textContent=message;$("semesterError").hidden=false;}
+function closeSemesterModal(){resetForceActiveConfirmation();$("semesterModal").hidden=true;$("semesterForm").reset();$("semesterName").disabled=false;$("semesterTermId").value="";}
+async function handleTermAction(action,term){
+ if(action==="edit"){openSemesterModal(term);return;}
+ if(action==="archive"){
+  if(!confirm(`Move ${term.name} to History? It will become Warning and will no longer be published to teachers/students.`))return;
+  const r=await fetch(`/Timetable/CompleteTerm?termId=${encodeURIComponent(term.termId)}`,{method:"POST"});
+  if(!r.ok){alert(await r.text());return;}await dashboard();return;
+ }
+ if(action==="restore"){
+  const r=await fetch(`/Timetable/RestoreTerm?termId=${encodeURIComponent(term.termId)}`,{method:"POST"});
+  if(!r.ok){alert(await r.text());return;}
+  S.bucket="current";
+  document.querySelectorAll("[data-status]").forEach(x=>x.classList.toggle("active",x.dataset.status==="current"));
+  await dashboard();
+  return;
+ }
+ if(action==="activate-restored"){
+  if(!confirm(`Set ${term.name} as the Active semester? Only Active timetables are published to teachers and students.`))return;
+  const r=await fetch(`/Timetable/ActivateRestoredTerm?termId=${encodeURIComponent(term.termId)}`,{method:"POST"});
+  if(!r.ok){alert(await r.text());return;}
+  await dashboard();
+ }
 }
 
 async function prepareHolidayHistory(){
@@ -254,7 +368,7 @@ function selectedHolidayTerm(){
  return terms.find(t=>t.termId===$("holidayTerm").value);
 }
 function updateHolidayEditingState(){
- const term=selectedHolidayTerm(),readOnly=!term||term.status==="Completed";
+ const term=selectedHolidayTerm(),readOnly=!term||term.status==="Warning";
  $("holidayForm").querySelectorAll("input,select,button").forEach(x=>x.disabled=readOnly);
  $("loadMalaysiaHolidaysBtn").disabled=readOnly;
  $("chooseHolidayFile").disabled=readOnly;
@@ -269,7 +383,7 @@ async function loadHolidayList(){
  host.innerHTML=rows.length?"":"<div class='tt-empty'>No holidays saved for this semester.</div>";
  rows.forEach(h=>{
   const row=document.createElement("div");row.className="tt-holiday-row";
-  const canDelete=term&&term.status!=="Completed";
+  const canDelete=term&&term.status!=="Warning";
   row.innerHTML=`<strong>${dateShort(h.eventDate)}</strong><span>${esc(h.name)}</span><span><small>${esc(h.eventType)}</small></span><span>${esc(term?.name||"")}</span>${canDelete?'<button type="button">Delete</button>':'<span class="tt-readonly">History</span>'}`;
   if(canDelete)row.querySelector("button").onclick=()=>deleteHoliday(h.calendarEventId);
   host.appendChild(row);
@@ -289,7 +403,7 @@ async function loadMalaysiaHolidays(){
  const result=await r.json();$("holidayImportResult").textContent=`${result.added} Malaysia holiday(s) added.`;$("holidayImportResult").hidden=false;await loadHolidayList();
 }
 async function importHolidayFile(file){
- const term=selectedHolidayTerm();if(!term||term.status==="Completed")return;
+ const term=selectedHolidayTerm();if(!term||term.status==="Warning")return;
  if(!/\.(txt|csv)$/i.test(file.name)){showHolidayError("Only .txt or .csv files are accepted.");return;}
  const fd=new FormData();fd.append("termId",term.termId);fd.append("file",file);
  const r=await fetch("/Timetable/ImportCalendarEvents",{method:"POST",body:fd});

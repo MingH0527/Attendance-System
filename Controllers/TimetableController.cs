@@ -31,12 +31,12 @@ public class TimetableController : Controller
     public async Task<IActionResult> Dashboard()
     {
         var today = DateTime.Today;
+        await SyncSemesterStatusesAsync(today);
 
         // TimetableV2 introduced TermId after older timetable rows already existed.
-        // When there is exactly one live semester, safely attach legacy rows with no TermId
-        // to that semester so the grid/export does not suddenly appear empty.
+        // Only attach legacy rows when there is exactly one usable semester.
         var liveTerms = await _db.AcademicTerms
-            .Where(t => t.Status != "Completed" && t.EndDate >= today)
+            .Where(t => t.Status != "Warning")
             .OrderBy(t => t.StartDate)
             .ToListAsync();
         if (liveTerms.Count == 1 && await _db.Timetables.AnyAsync(t => t.TermId == null))
@@ -46,14 +46,7 @@ public class TimetableController : Controller
             await _db.SaveChangesAsync();
         }
 
-        var expired = await _db.AcademicTerms.Where(t => t.Status != "Completed" && t.EndDate < today).ToListAsync();
-        if (expired.Count > 0)
-        {
-            foreach (var t in expired) t.Status = "Completed";
-            await _db.SaveChangesAsync();
-        }
-
-        var terms = await _db.AcademicTerms.AsNoTracking().OrderByDescending(t => t.StartDate).ToListAsync();
+        var terms = await _db.AcademicTerms.AsNoTracking().OrderBy(t => t.StartDate).ToListAsync();
         var programs = await _db.AcademicPrograms.AsNoTracking().Include(p => p.Classes).OrderBy(p => p.ProgramCode).ToListAsync();
 
         TermDashboardDto Map(AcademicTerm t) => new()
@@ -62,7 +55,8 @@ public class TimetableController : Controller
             Name = t.Name,
             StartDate = t.StartDate,
             EndDate = t.EndDate,
-            Status = t.Status,
+            Status = t.Status is "RestoredIncoming" or "WarningRestored" ? "Incoming" : t.Status,
+            IsRestored = t.Status is "RestoredIncoming" or "WarningRestored",
             Programs = programs.Select(p => new ProgramDashboardDto
             {
                 ProgramId = p.ProgramId,
@@ -75,8 +69,8 @@ public class TimetableController : Controller
 
         return Json(new TimetableDashboardDto
         {
-            Current = terms.Where(t => t.Status != "Completed").Select(Map).ToList(),
-            Completed = terms.Where(t => t.Status == "Completed").Select(Map).ToList()
+            Current = terms.Where(t => t.Status != "Warning").Select(Map).ToList(),
+            Completed = terms.Where(t => t.Status == "Warning").OrderByDescending(t => t.EndDate).Select(Map).ToList()
         });
     }
 
@@ -209,7 +203,7 @@ public class TimetableController : Controller
     {
         var term = await _db.AcademicTerms.FirstOrDefaultAsync(t => t.TermId == r.TermId);
         if (term is null) return BadRequest("Please select an academic term.");
-        if (term.Status == "Completed") return BadRequest("Completed semesters are read-only.");
+        if (term.Status == "Warning") return BadRequest("History semesters are read-only.");
 
         var v = await _validation.ValidateAsync(r);
         if (!v.IsValid) return BadRequest(v.ErrorMessage);
@@ -241,7 +235,7 @@ public class TimetableController : Controller
         var e = await _db.Timetables.FindAsync(id);
         if (e is null) return NotFound();
         var term = await _db.AcademicTerms.FindAsync(e.TermId);
-        if (term?.Status == "Completed") return BadRequest("Completed semesters are read-only.");
+        if (term?.Status == "Warning") return BadRequest("History semesters are read-only.");
         _db.Timetables.Remove(e);
         await _db.SaveChangesAsync();
         return Ok();
@@ -255,7 +249,7 @@ public class TimetableController : Controller
         if (t is null) return NotFound();
         var term = await _db.AcademicTerms.FindAsync(t.TermId);
         if (term is null) return BadRequest("Academic term not found.");
-        if (term.Status == "Completed") return BadRequest("Completed semesters are read-only.");
+        if (term.Status == "Warning") return BadRequest("History semesters are read-only.");
         if (r.Date.Date < term.StartDate.Date || r.Date.Date > term.EndDate.Date) return BadRequest("The selected date is outside the semester.");
         if (r.Date.DayOfWeek != t.DayOfWeek) return BadRequest("The selected date does not match the timetable day.");
 
@@ -361,53 +355,148 @@ public class TimetableController : Controller
     public async Task<IActionResult> Notifications() => Json(await _db.TimetableNotifications.AsNoTracking().OrderByDescending(n => n.CreatedAt).Take(50).ToListAsync());
 
     [HttpPost]
-    public async Task<IActionResult> CreateTerm([FromBody] AcademicTerm term)
+    public async Task<IActionResult> CreateTerm([FromBody] CreateAcademicTermRequest request)
     {
         var today = DateTime.Today;
-        term.Name = (term.Name ?? string.Empty).Trim();
-        term.StartDate = term.StartDate.Date;
-        term.EndDate = term.EndDate.Date;
+        await SyncSemesterStatusesAsync(today);
 
-        if (term.Name.Length < 3 || term.Name.Length > 100)
-            return BadRequest("Semester name must be between 3 and 100 characters.");
-        if (term.StartDate < today)
-            return BadRequest("Start date cannot be in the past.");
-        if (term.EndDate < term.StartDate)
-            return BadRequest("End date cannot be earlier than the start date.");
-        if (term.EndDate > term.StartDate.AddYears(1))
-            return BadRequest("Semester duration cannot exceed one year.");
-        if (await _db.AcademicTerms.AnyAsync(t => t.Name.ToLower() == term.Name.ToLower()))
-            return BadRequest("A semester with this name already exists.");
-        if (await _db.AcademicTerms.AnyAsync(t => t.StartDate <= term.EndDate && term.StartDate <= t.EndDate))
-            return BadRequest("Academic term dates overlap with an existing semester.");
-        term.Status = term.EndDate < today ? "Completed" : term.StartDate > today ? "Upcoming" : "Active";
-        term.TermId = await FormattedIdGenerator.NextAsync(_db.AcademicTerms, x => x.TermId, "TRM");
-        _db.AcademicTerms.Add(term);
+        var name = (request.Name ?? string.Empty).Trim();
+        var startDate = request.StartDate.Date;
+        var endDate = request.EndDate.Date;
 
-        int weekNo = 1;
-        for (var start = term.StartDate; start <= term.EndDate; start = start.AddDays(7), weekNo++)
+        var validationError = await ValidateSemesterDatesAsync(null, name, startDate, endDate, today);
+        if (validationError is not null) return BadRequest(validationError);
+
+        var currentTerms = await _db.AcademicTerms
+            .Where(t => t.Status != "Warning")
+            .OrderBy(t => t.StartDate)
+            .ToListAsync();
+        if (currentTerms.Count >= 2)
+            return BadRequest("Only two semesters can be kept on the timetable page at the same time. Move one semester to History first.");
+
+        var activeExists = currentTerms.Any(t => t.Status == "Active");
+        var incomingExists = currentTerms.Any(t => t.Status is "Incoming" or "RestoredIncoming" or "WarningRestored");
+
+        if (startDate > today && incomingExists)
+            return BadRequest("Only one Incoming semester can exist at a time. Edit or move the existing Incoming semester to History first.");
+
+        if (startDate == today && !activeExists && !request.ForceActivate)
         {
-            _db.AcademicWeeks.Add(new AcademicWeek
+            return Conflict(new
             {
-                AcademicWeekId = await FormattedIdGenerator.NextAsync(_db.AcademicWeeks, x => x.AcademicWeekId, "AWK"),
-                TermId = term.TermId,
-                WeekNumber = weekNo,
-                StartDate = start,
-                EndDate = start.AddDays(6) > term.EndDate ? term.EndDate : start.AddDays(6),
-                WeekType = "Teaching"
+                code = "FORCE_ACTIVE_CONFIRMATION_REQUIRED",
+                message = "This semester starts today, so it must become Active immediately. Confirm to create and force this semester to Active."
             });
         }
 
+        if (startDate == today && activeExists)
+            return BadRequest("An Active semester already exists. Two Active semesters are not allowed.");
+
+        var term = new AcademicTerm
+        {
+            TermId = await FormattedIdGenerator.NextAsync(_db.AcademicTerms, x => x.TermId, "TRM"),
+            Name = name,
+            StartDate = startDate,
+            EndDate = endDate,
+            Status = startDate == today && request.ForceActivate ? "Active" : "Incoming"
+        };
+
+        _db.AcademicTerms.Add(term);
+        await RebuildWeeksAsync(term);
         await _db.SaveChangesAsync();
-        return Json(term);
+
+        return Json(new
+        {
+            termId = term.TermId,
+            name = term.Name,
+            startDate = term.StartDate,
+            endDate = term.EndDate,
+            status = term.Status
+        });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateTermDates([FromBody] UpdateAcademicTermDatesRequest request)
+    {
+        var term = await _db.AcademicTerms.FirstOrDefaultAsync(t => t.TermId == request.TermId);
+        if (term is null) return NotFound("Semester not found.");
+        if (term.Status != "Incoming")
+            return BadRequest("Only an Incoming semester can change its start and end dates. Active semester dates are locked.");
+
+        var today = DateTime.Today;
+        var startDate = request.StartDate.Date;
+        var endDate = request.EndDate.Date;
+        var validationError = await ValidateSemesterDatesAsync(term.TermId, term.Name, startDate, endDate, today, checkName: false);
+        if (validationError is not null) return BadRequest(validationError);
+
+        term.StartDate = startDate;
+        term.EndDate = endDate;
+        await RebuildWeeksAsync(term);
+        await _db.SaveChangesAsync();
+
+        return Json(new
+        {
+            termId = term.TermId,
+            name = term.Name,
+            startDate = term.StartDate,
+            endDate = term.EndDate,
+            status = term.Status
+        });
     }
 
     [HttpPost]
     public async Task<IActionResult> CompleteTerm(string termId)
     {
-        var t = await _db.AcademicTerms.FindAsync(termId);
-        if (t is null) return NotFound();
-        t.Status = "Completed";
+        var term = await _db.AcademicTerms.FindAsync(termId);
+        if (term is null) return NotFound();
+        term.Status = "Warning";
+        await _db.SaveChangesAsync();
+        await SyncSemesterStatusesAsync(DateTime.Today);
+        return Ok();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> RestoreTerm(string termId)
+    {
+        var term = await _db.AcademicTerms.FindAsync(termId);
+        if (term is null) return NotFound("Semester not found.");
+        if (term.Status != "Warning") return BadRequest("Only a semester in History can be restored.");
+
+        var currentTerms = await _db.AcademicTerms
+            .Where(t => t.Status != "Warning")
+            .ToListAsync();
+
+        if (currentTerms.Count >= 2)
+            return BadRequest("The timetable page already contains two semesters. Move one semester to History before restoring another.");
+
+        if (currentTerms.Any(t => t.Status is "Incoming" or "RestoredIncoming" or "WarningRestored"))
+            return BadRequest("An Incoming semester already exists. Move it to History or activate it before restoring another semester as Incoming.");
+
+        // A restored semester returns to the timetable page as Incoming.
+        // It stays unpublished until the admin explicitly activates it.
+        term.Status = "RestoredIncoming";
+        await _db.SaveChangesAsync();
+        return Ok();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> ActivateRestoredTerm(string termId)
+    {
+        var term = await _db.AcademicTerms.FindAsync(termId);
+        if (term is null) return NotFound("Semester not found.");
+        if (term.Status is not ("RestoredIncoming" or "WarningRestored"))
+            return BadRequest("Only a restored Incoming semester can be activated from this control.");
+
+        var today = DateTime.Today;
+        if (today < term.StartDate.Date || today > term.EndDate.Date)
+            return BadRequest("This semester cannot become Active today because today's date is outside its semester dates. Edit the Incoming semester dates first.");
+
+        var anotherActive = await _db.AcademicTerms
+            .AnyAsync(t => t.TermId != termId && t.Status == "Active");
+        if (anotherActive)
+            return BadRequest("Another Active semester already exists. Only one Active semester is allowed at a time.");
+
+        term.Status = "Active";
         await _db.SaveChangesAsync();
         return Ok();
     }
@@ -473,7 +562,7 @@ public class TimetableController : Controller
     {
         var term = await _db.AcademicTerms.FindAsync(termId);
         if (term is null) return BadRequest("Academic term not found.");
-        if (term.Status == "Completed") return BadRequest("Completed semesters are read-only.");
+        if (term.Status == "Warning") return BadRequest("History semesters are read-only.");
 
         var holidays = new (DateTime Date, string Name)[]
         {
@@ -517,7 +606,7 @@ public class TimetableController : Controller
     {
         var term = await _db.AcademicTerms.FindAsync(termId);
         if (term is null) return BadRequest("Academic term not found.");
-        if (term.Status == "Completed") return BadRequest("Completed semesters are read-only.");
+        if (term.Status == "Warning") return BadRequest("History semesters are read-only.");
         if (file is null || file.Length == 0) return BadRequest("Please drop a non-empty .txt or .csv file.");
         if (file.Length > 1024 * 1024) return BadRequest("Holiday import file must be smaller than 1 MB.");
 
@@ -568,7 +657,7 @@ public class TimetableController : Controller
         var e = await _db.AcademicCalendarEvents.FindAsync(id);
         if (e is null) return NotFound();
         var term = await _db.AcademicTerms.FindAsync(e.TermId);
-        if (term?.Status == "Completed") return BadRequest("Completed semesters are read-only.");
+        if (term?.Status == "Warning") return BadRequest("History semesters are read-only.");
         _db.AcademicCalendarEvents.Remove(e);
         await _db.SaveChangesAsync();
         return Ok();
@@ -695,5 +784,94 @@ public class TimetableController : Controller
 
     private static string Csv(string text) => text.Replace("\"", "\"\"");
     private static string Row(params string[] cells) => "<Row>" + string.Concat(cells.Select(c => $"<Cell><Data ss:Type=\"String\">{SecurityElement.Escape(c)}</Data></Cell>")) + "</Row>";
+
+
+    private async Task SyncSemesterStatusesAsync(DateTime today)
+    {
+        var terms = await _db.AcademicTerms.OrderBy(t => t.StartDate).ToListAsync();
+        var changed = false;
+
+        // Backward compatibility with the previous lifecycle names.
+        foreach (var term in terms)
+        {
+            if (term.Status == "Upcoming") { term.Status = "Incoming"; changed = true; }
+            else if (term.Status == "Completed") { term.Status = "Warning"; changed = true; }
+            else if (term.Status == "WarningRestored") { term.Status = "RestoredIncoming"; changed = true; }
+        }
+
+        // Expired Active/Incoming semesters automatically move to History (Warning).
+        foreach (var term in terms.Where(t => (t.Status is "Active" or "Incoming") && t.EndDate.Date < today.Date))
+        {
+            term.Status = "Warning";
+            changed = true;
+        }
+
+        // Repair legacy duplicate Active states: keep only the earliest valid Active.
+        var activeTerms = terms.Where(t => t.Status == "Active" && t.EndDate.Date >= today.Date)
+            .OrderBy(t => t.StartDate).ToList();
+        if (activeTerms.Count > 1)
+        {
+            foreach (var extra in activeTerms.Skip(1))
+            {
+                extra.Status = extra.StartDate.Date > today.Date ? "Incoming" : "Warning";
+                changed = true;
+            }
+            activeTerms = activeTerms.Take(1).ToList();
+        }
+
+        // If there is no Active semester, the earliest Incoming semester whose date has arrived becomes Active.
+        if (activeTerms.Count == 0)
+        {
+            var candidate = terms
+                .Where(t => t.Status == "Incoming" && t.StartDate.Date <= today.Date && t.EndDate.Date >= today.Date)
+                .OrderBy(t => t.StartDate)
+                .FirstOrDefault();
+            if (candidate is not null)
+            {
+                candidate.Status = "Active";
+                changed = true;
+            }
+        }
+
+        if (changed) await _db.SaveChangesAsync();
+    }
+
+    private async Task<string?> ValidateSemesterDatesAsync(
+        string? termId, string name, DateTime startDate, DateTime endDate, DateTime today, bool checkName = true)
+    {
+        if (name.Length < 3 || name.Length > 100) return "Semester name must be between 3 and 100 characters.";
+        if (startDate < today.Date) return "Start date cannot be in the past.";
+        if (endDate <= startDate) return "End date must be later than the start date.";
+        if (endDate > startDate.AddYears(1)) return "Semester duration cannot exceed one year.";
+
+        if (checkName && await _db.AcademicTerms.AnyAsync(t => t.TermId != termId && t.Name.ToLower() == name.ToLower()))
+            return "A semester with this name already exists.";
+
+        // Inclusive dates: if Semester 1 ends on 4 Sep, Semester 2 may only start from 5 Sep.
+        if (await _db.AcademicTerms.AnyAsync(t => t.TermId != termId && t.StartDate <= endDate && startDate <= t.EndDate))
+            return "Academic term dates overlap with an existing semester. A new semester must start after the previous semester has fully ended.";
+
+        return null;
+    }
+
+    private async Task RebuildWeeksAsync(AcademicTerm term)
+    {
+        var oldWeeks = await _db.AcademicWeeks.Where(w => w.TermId == term.TermId).ToListAsync();
+        if (oldWeeks.Count > 0) _db.AcademicWeeks.RemoveRange(oldWeeks);
+
+        var weekNo = 1;
+        for (var start = term.StartDate.Date; start <= term.EndDate.Date; start = start.AddDays(7), weekNo++)
+        {
+            _db.AcademicWeeks.Add(new AcademicWeek
+            {
+                AcademicWeekId = await FormattedIdGenerator.NextAsync(_db.AcademicWeeks, x => x.AcademicWeekId, "AWK"),
+                TermId = term.TermId,
+                WeekNumber = weekNo,
+                StartDate = start,
+                EndDate = start.AddDays(6) > term.EndDate.Date ? term.EndDate.Date : start.AddDays(6),
+                WeekType = "Teaching"
+            });
+        }
+    }
 
 }

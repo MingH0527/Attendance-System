@@ -4,3 +4,14 @@
 /* Timetable navigation / validation layout */
 .tt-back-home{display:inline-flex;align-items:center;text-decoration:none;color:#1f2937}.tt-semester-row{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;align-items:end}.tt-semester-row label{margin-top:0}.tt-holiday-form{display:block}.tt-holiday-input-row{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:12px;align-items:end}.tt-holiday-input-row label{margin-top:0}.tt-holiday-action-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tt-holiday-action-row button{width:100%;height:40px}.tt-modal:has(#semesterForm){width:760px}.tt-history-panel{margin-top:0}
 @media(max-width:850px){.tt-semester-row,.tt-holiday-input-row,.tt-holiday-action-row{grid-template-columns:1fr}.tt-modal:has(#semesterForm){width:480px}}
+
+
+/* Semester lifecycle controls */
+.tt-pill.incoming{background:#dbeafe;color:#1d4ed8}.tt-pill.warning{background:#fee2e2;color:#b91c1c}.tt-term-warning{border-color:#fecaca;background:#fffafa}.tt-term-status-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.tt-term-actions{display:flex;gap:7px;flex-wrap:wrap}.tt-term-actions button{padding:7px 10px;font-size:12px}.tt-head-actions button:disabled{opacity:.5;cursor:not-allowed}
+
+
+/* Force-active confirmation */
+.tt-force-active{margin-top:14px;padding:14px;border:1px solid #fca5a5;background:#fff7f7;border-radius:10px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;color:#7f1d1d}.tt-force-active[hidden]{display:none}.tt-force-active-icon{width:28px;height:28px;border-radius:50%;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}.tt-force-active strong{display:block;margin:1px 0 5px}.tt-force-active p{margin:0 0 5px;line-height:1.4}.tt-force-active small{color:#991b1b}.tt-force-active-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}.tt-btn-danger-confirm{background:#b91c1c;color:#fff;border:0;padding:9px 15px;border-radius:7px;cursor:pointer}.tt-btn-danger-confirm:disabled{opacity:.55;cursor:not-allowed}
+
+/* Restored semester status selection */
+.tt-status-choice{display:inline-flex;align-items:center;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;background:#fff}.tt-status-choice-btn{border:0;border-right:1px solid #cbd5e1;background:#fff;padding:7px 10px;font-size:12px;cursor:pointer}.tt-status-choice-btn:last-child{border-right:0}.tt-status-choice-btn.selected{background:#dbeafe;color:#1d4ed8;font-weight:600;cursor:default}.tt-status-choice-btn.active-choice{color:#166534;background:#f0fdf4}.tt-status-choice-btn.active-choice:hover{background:#dcfce7}
