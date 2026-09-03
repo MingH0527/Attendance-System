@@ -95,6 +95,14 @@ public class StudentController : Controller
             );
         }
 
+        if(model.EndDate.Date>model.StartDate.Date.AddDays(6))
+        {
+            ModelState.AddModelError(
+                nameof(model.EndDate),
+                "Leave cannot esceed 7 days"
+             );
+        }
+
         string? documentName = null;
 
        //file validation
