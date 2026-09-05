@@ -19,4 +19,14 @@ public class UserListItemDto
     public string Status { get; set; } = "";
 
     public string? Avatar { get; set; }
+
+    // NEW: program registration info (Student only)
+    public bool HasProgram { get; set; }
+    public string? ProgramId { get; set; }
+    public string? ProgramName { get; set; }
+    public string? ClassId { get; set; }
+    public string? ClassName { get; set; }
+    public string? StudentId { get; set; }
+
 }
+

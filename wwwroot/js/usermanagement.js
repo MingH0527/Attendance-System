@@ -356,6 +356,97 @@
             "false"
         );
     }
+    
+
+    const registerOverlay = document.getElementById("registerOverlay");
+    const registerClose = document.getElementById("registerClose");
+    const registerCancel = document.getElementById("registerCancel");
+    const registerUserId = document.getElementById("registerUserId");
+    const registerUsername = document.getElementById("registerUsername");
+    const registerProgramSelect = document.getElementById("registerProgramSelect");
+    const registerClassSelect = document.getElementById("registerClassSelect");
+
+    const programsData = JSON.parse(
+        document.getElementById("programsJson")?.textContent || "[]"
+    );
+
+    const classesData = JSON.parse(
+        document.getElementById("classesJson")?.textContent || "[]"
+    );
+
+    function populatePrograms(selectedProgramId) {
+        registerProgramSelect.innerHTML = "";
+
+        programsData.forEach(p => {
+            const option = document.createElement("option");
+            option.value = p.ProgramId;
+            option.textContent = p.ProgramName;
+
+            if (p.ProgramId === selectedProgramId) {
+                option.selected = true;
+            }
+
+            registerProgramSelect.appendChild(option);
+        });
+    }
+
+    function populateClasses(programId, selectedClassId) {
+        registerClassSelect.innerHTML = "";
+
+        const filtered = classesData.filter(
+            c => c.ProgramId === programId
+        );
+
+        filtered.forEach(c => {
+            const option = document.createElement("option");
+            option.value = c.ClassId;
+            option.textContent = c.ClassName;
+
+            if (c.ClassId === selectedClassId) {
+                option.selected = true;
+            }
+
+            registerClassSelect.appendChild(option);
+        });
+    }
+
+    function openRegisterProgram(row) {
+        const userId = row.dataset.userId;
+        const username = row.dataset.username;
+        const currentProgramId = row.dataset.programId || "";
+        const currentClassId = row.dataset.classId || "";
+
+        registerUserId.value = userId;
+        registerUsername.textContent = username;
+
+        const initialProgramId =
+            currentProgramId ||
+            (programsData[0] ? programsData[0].ProgramId : "");
+
+        populatePrograms(initialProgramId);
+        populateClasses(initialProgramId, currentClassId);
+
+        registerOverlay.hidden = false;
+        document.body.classList.add("drawer-open");
+    }
+
+    function closeRegisterProgram() {
+        registerOverlay.hidden = true;
+        document.body.classList.remove("drawer-open");
+    }
+
+    registerProgramSelect.addEventListener("change", () => {
+        populateClasses(registerProgramSelect.value, "");
+    });
+
+    registerClose.addEventListener("click", closeRegisterProgram);
+    registerCancel.addEventListener("click", closeRegisterProgram);
+
+    registerOverlay.addEventListener("click", event => {
+        if (event.target === registerOverlay) {
+            closeRegisterProgram();
+        }
+    });
 
     function updateFilterCount() {
         let count = 0;
@@ -803,6 +894,9 @@
             ) {
                 cancelTeacher(row);
             }
+            else if (action === "register-program") {
+                openRegisterProgram(row);
+            }
         }
     );
 
@@ -837,6 +931,9 @@
                     !filterPanel.hidden
                 ) {
                     closeFilter();
+                }
+                if (!registerOverlay.hidden) {
+                    closeRegisterProgram();
                 }
             }
         }

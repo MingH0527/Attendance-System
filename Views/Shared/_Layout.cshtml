@@ -1,11 +1,22 @@
 ﻿@using System.Security.Claims
 
 @{
+    string? currentRole =
+        User.FindFirstValue(ClaimTypes.Role);
+
     bool isStudent =
         string.Equals(
-            User.FindFirstValue(ClaimTypes.Role),
+            currentRole,
             "Student",
             StringComparison.OrdinalIgnoreCase);
+
+    bool isAdmin =
+        string.Equals(
+            currentRole,
+            "Admin",
+            StringComparison.OrdinalIgnoreCase);
+
+    bool showChrome = isStudent || isAdmin;
 }
 
 <!DOCTYPE html>
@@ -35,9 +46,9 @@
 
 <body>
 
-    <div class="layout @(isStudent ? "" : "layout--no-chrome")">
+    <div class="layout @(showChrome ? "" : "layout--no-chrome")">
 
-        @if (isStudent)
+        @if (showChrome)
         {
             <header class="topbar">
 
@@ -49,7 +60,7 @@
 
                 <div class="top-actions">
 
-                    <form asp-controller="Student"
+                    <form asp-controller="@(isStudent ? "Student" : "Account")"
                           asp-action="Logout"
                           method="post">
                         @Html.AntiForgeryToken()
@@ -99,55 +110,109 @@
 
             <aside class="sidebar">
 
-                <a asp-controller="Student"
-                   asp-action="Index">
+                @if (isAdmin)
+                {
+                    <a asp-controller="Admin"
+                       asp-action="Index">
 
-                    Home
+                        Home
 
-                </a>
+                    </a>
 
-                <a asp-controller="MyProfile"
-                   asp-action="Index">
+                    <a asp-controller="MyProfile"
+                       asp-action="Index">
 
-                    My Profile
+                        My Profile
 
-                </a>
+                    </a>
 
-                <a asp-controller="Student"
-                    asp-action="Timetable">
+                    <a asp-controller="MyProfile"
+                       asp-action="Passkey">
 
-                    Timetable
-                
-                </a>
+                        Passkey &amp; PIN
+
+                    </a>
+
+                    <a asp-controller="Admin"
+                       asp-action="Timetable">
+
+                        Timetable
+
+                    </a>
+
+                    <a asp-controller="ProgramSubject"
+                       asp-action="Index">
+
+                        Program &amp; Subject
+
+                    </a>
+
+                    <a asp-controller="User"
+                       asp-action="Index">
+
+                        User Management
+
+                    </a>
+
+                    <a asp-controller="Admin"
+                       asp-action="LeaveManagement">
+
+                        Leave Management
+
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Student"
+                       asp-action="Index">
+
+                        Home
+
+                    </a>
+
+                    <a asp-controller="MyProfile"
+                       asp-action="Index">
+
+                        My Profile
+
+                    </a>
+
+                    <a asp-controller="Student"
+                       asp-action="Timetable">
+
+                        Timetable
+
+                    </a>
 
                       
 
-                <a asp-controller="Student"
-                    asp-action="ApplyLeave">
+                    <a asp-controller="Student"
+                       asp-action="ApplyLeave">
+
+                        Apply Leave
+
+                    </a>
+
                     
-                    Apply Leave      
-                    
-                </a>
-                    
+                    <a asp-controller="Chat"
+                       asp-action="Index">
 
-                <a asp-controller="Chat"
-                   asp-action="Index">
+                        Chat
 
-                    Chat
+                    </a>
 
-                </a>
+                    <a asp-controller="Payment"
+                       asp-action="SelectFee">
 
-                <a asp-controller="Payment"
-                   asp-action="SelectFee">
+                        Payment
 
-                    Payment
+                    </a>
 
-                </a>
-
-                <a asp-controller="Payment"
-                   asp-action="History">
-                    Payment History
-                </a>
+                    <a asp-controller="Payment"
+                       asp-action="History">
+                        Payment History
+                    </a>
+                }
             </aside>
         }
 
