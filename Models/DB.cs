@@ -36,9 +36,44 @@ public class DB : DbContext
     public DbSet<ReplacementSession> ReplacementSessions => Set<ReplacementSession>();
     public DbSet<ClassSession> ClassSessions => Set<ClassSession>();
     public DbSet<TimetableNotification> TimetableNotifications => Set<TimetableNotification>();
+    public DbSet<TimetableAudit> TimetableAudits => Set<TimetableAudit>();
     public DbSet<AttendanceSession> AttendanceSessions=> Set<AttendanceSession>();
 
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<LeaveApplication> LeaveApplications => Set<LeaveApplication>();
+
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Username)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Phone)
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
+
+        modelBuilder.Entity<AcademicCalendarEvent>()
+            .HasIndex(e => new { e.EventDate, e.Name })
+            .IsUnique();
+
+        modelBuilder.Entity<TimetableAudit>()
+            .HasIndex(a => new { a.TimetableId, a.OccurrenceDate, a.Status });
+
+        modelBuilder.Entity<TimetableNotification>()
+            .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedAt });
+
+        modelBuilder.Entity<ReplacementSession>()
+            .HasIndex(r => new { r.SourceTimetableId, r.SourceOccurrenceDate, r.Status });
+    }
 
 }

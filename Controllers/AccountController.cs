@@ -96,19 +96,19 @@ public class AccountController : Controller
         try
         {
             if (!string.IsNullOrWhiteSpace(model.Username) &&
-                await db.Users.AnyAsync(u => u.Username.ToLower() == model.Username.ToLower()))
+                await db.Users.AnyAsync(u => !u.IsDeleted && u.Username.ToLower() == model.Username.ToLower()))
             {
                 ModelState.AddModelError(nameof(model.Username), "Username already exists.");
             }
 
             if (!string.IsNullOrWhiteSpace(model.Email) &&
-                await db.Users.AnyAsync(u => u.Email.ToLower() == model.Email))
+                await db.Users.AnyAsync(u => !u.IsDeleted && u.Email.ToLower() == model.Email))
             {
                 ModelState.AddModelError(nameof(model.Email), "Email already exists.");
             }
 
             if (!string.IsNullOrWhiteSpace(model.Phone) &&
-                await db.Users.AnyAsync(u => u.Phone == model.Phone))
+                await db.Users.AnyAsync(u => !u.IsDeleted && u.Phone == model.Phone))
             {
                 ModelState.AddModelError(nameof(model.Phone), "Phone number already exists.");
             }
@@ -224,10 +224,10 @@ public class AccountController : Controller
             return View();
         }
 
-        bool duplicateExists = await db.Users.AnyAsync(u =>
+        bool duplicateExists = await db.Users.AnyAsync(u => !u.IsDeleted && (
             u.Username.ToLower() == pending.Username.ToLower() ||
             u.Email.ToLower() == pending.Email.ToLower() ||
-            u.Phone == pending.Phone);
+            u.Phone == pending.Phone));
 
         if (duplicateExists)
         {
@@ -384,13 +384,13 @@ public class AccountController : Controller
         try
         {
             bool usernameExists = await db.Users.AnyAsync(u =>
-                u.Username.ToLower() == username.ToLower());
+                !u.IsDeleted && u.Username.ToLower() == username.ToLower());
 
             bool emailExists = await db.Users.AnyAsync(u =>
-                u.Email.ToLower() == email);
+                !u.IsDeleted && u.Email.ToLower() == email);
 
             bool phoneExists = await db.Users.AnyAsync(u =>
-                u.Phone == phone);
+                !u.IsDeleted && u.Phone == phone);
 
             return Json(new
             {
@@ -483,7 +483,7 @@ public class AccountController : Controller
         }
 
         User? user = await db.Users.FirstOrDefaultAsync(u =>
-            u.Username.ToLower() == username.ToLower());
+            !u.IsDeleted && u.Username.ToLower() == username.ToLower());
 
         if (user == null)
         {
@@ -681,7 +681,7 @@ public class AccountController : Controller
         string lockoutKey = GetLoginLockoutKey(model.Username);
 
         User? user = await db.Users.FirstOrDefaultAsync(u =>
-            u.Username.ToLower() == model.Username.ToLower());
+            !u.IsDeleted && u.Username.ToLower() == model.Username.ToLower());
 
         if (user == null)
         {

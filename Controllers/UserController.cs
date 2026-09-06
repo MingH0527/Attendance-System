@@ -35,7 +35,9 @@ public class UserController : Controller
                     Gender = u.Gender,
                     Position = u.Position,
                     Status = u.Status,
-                    Avatar = u.Avatar
+                    Avatar = u.Avatar,
+                    IsDeleted = u.IsDeleted,
+                    DeletedAt = u.DeletedAt
                 })
                 .ToListAsync();
 
@@ -173,40 +175,60 @@ public class UserController : Controller
     }
 
     // POST: /User/Delete/5
+    // Soft delete only: the User row and all linked historical records are retained.
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(string id)
     {
-        User? user =
-            await db.Users.FindAsync(id);
+        User? user = await db.Users.FindAsync(id);
 
         if (user == null)
         {
-            return NotFound(
-                "User not found."
-            );
+            return NotFound("User not found.");
+        }
+
+        if (user.IsDeleted)
+        {
+            TempData["ErrorMessage"] = "This account has already been deleted.";
+            return RedirectToAction(nameof(Index));
         }
 
         if (user.Position == "Admin")
         {
-            int adminCount =
-                await db.Users.CountAsync(
-                    u => u.Position == "Admin"
-                );
+            int activeAdminCount = await db.Users.CountAsync(u =>
+                u.Position == "Admin" && !u.IsDeleted);
 
-            if (adminCount <= 1)
+            if (activeAdminCount <= 1)
             {
-                return BadRequest(
-                    "Cannot deactivate the only " +
-                    "remaining Admin."
-                );
+                TempData["ErrorMessage"] =
+                    "Cannot delete the only remaining Admin account.";
+                return RedirectToAction(nameof(Index));
             }
         }
 
-        user.Status = "Inactive";
+        user.IsDeleted = true;
+        user.DeletedAt = DateTime.Now;
+        user.Status = "Deleted";
 
         await db.SaveChangesAsync();
 
+        TempData["SuccessMessage"] =
+            $"{user.Username} was deleted. Historical attendance, payment and chat records were kept.";
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    // POST: /User/Block/5
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Block(string id)
+    {
+        User? user = await db.Users.FindAsync(id);
+        if (user == null || user.IsDeleted) return NotFound("User not found.");
+        if (user.Position == "Admin") return BadRequest("Admin accounts cannot be blocked here.");
+
+        user.Status = "Blocked";
+        await db.SaveChangesAsync();
         return RedirectToAction(nameof(Index));
     }
 
@@ -223,6 +245,11 @@ public class UserController : Controller
             return NotFound(
                 "User not found."
             );
+        }
+
+        if (user.IsDeleted)
+        {
+            return BadRequest("Deleted accounts cannot be restored from the normal user list.");
         }
 
         user.Status = "Active";
@@ -252,7 +279,7 @@ public class UserController : Controller
 
         User? user = await db.Users.FindAsync(userId);
 
-        if (user == null || user.Position != "Student")
+        if (user == null || user.IsDeleted || user.Position != "Student")
         {
             return NotFound("Student not found.");
         }

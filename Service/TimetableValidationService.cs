@@ -7,8 +7,9 @@ namespace WebAndMobile.Services;
 public class TimetableValidationService : ITimetableValidationService
 {
     private readonly DB _context;
-    private static readonly TimeSpan EarliestStart = new(9, 0, 0);
-    private static readonly TimeSpan LatestEnd = new(17, 0, 0);
+    private static readonly TimeSpan EarliestStart = new(8, 0, 0);
+    private static readonly TimeSpan LatestEnd = new(18, 0, 0);
+    private static readonly string[] FixedRoomNames = { "LR-101", "LR-102", "LR-103", "LR-104", "LR-105", "LR-106" };
 
     public TimetableValidationService(DB context)
     {
@@ -25,7 +26,7 @@ public class TimetableValidationService : ITimetableValidationService
             return ValidationResult.Fail("Start time must be before end time.");
 
         if (start < EarliestStart || end > LatestEnd)
-            return ValidationResult.Fail("Classes must be between 9:00 AM and 5:00 PM.");
+            return ValidationResult.Fail("Classes must be between 8:00 AM and 6:00 PM.");
 
         if ((end - start).TotalMinutes != 60)
             return ValidationResult.Fail("Timetable editing uses one-hour slots only.");
@@ -60,9 +61,9 @@ public class TimetableValidationService : ITimetableValidationService
         if (!string.IsNullOrWhiteSpace(request.ClassroomId))
         {
             bool classroomExists = await _context.Classrooms.AsNoTracking()
-                .AnyAsync(c => c.ClassroomId == request.ClassroomId);
+                .AnyAsync(c => c.ClassroomId == request.ClassroomId && FixedRoomNames.Contains(c.RoomName));
             if (!classroomExists)
-                return ValidationResult.Fail("The selected classroom does not exist.");
+                return ValidationResult.Fail("Invalid classroom. Please choose one of the 6 fixed classrooms (LR-101 to LR-106).");
         }
 
         bool teacherCanTeachCourse = await _context.TeacherCourses.AsNoTracking()
@@ -100,7 +101,22 @@ public class TimetableValidationService : ITimetableValidationService
 
         if (!string.IsNullOrWhiteSpace(request.ClassroomId) &&
             sameDay.Any(t => t.ClassroomId == request.ClassroomId && Overlap(t, start, end)))
-            return ValidationResult.Fail("Classroom conflict: this classroom is already occupied during this time.");
+            return ValidationResult.Fail("Classroom conflict: this classroom is already occupied during this time. Please choose another available classroom.");
+
+        if (string.IsNullOrWhiteSpace(request.ClassroomId))
+        {
+            var fixedRoomIds = await _context.Classrooms.AsNoTracking()
+                .Where(c => FixedRoomNames.Contains(c.RoomName))
+                .Select(c => c.ClassroomId)
+                .ToListAsync();
+            var occupiedCount = sameDay
+                .Where(t => !string.IsNullOrWhiteSpace(t.ClassroomId) && fixedRoomIds.Contains(t.ClassroomId!) && Overlap(t, start, end))
+                .Select(t => t.ClassroomId!)
+                .Distinct()
+                .Count();
+            if (fixedRoomIds.Count == 6 && occupiedCount < 6)
+                return ValidationResult.Fail("Please select one of the available fixed classrooms. A lesson may have no classroom only when all 6 classrooms are occupied.");
+        }
 
         double newHours = (end - start).TotalHours;
 

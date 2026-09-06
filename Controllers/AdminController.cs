@@ -858,7 +858,7 @@ public class AdminController : Controller
     public async Task<IActionResult> GetNonTeacherUsers()
     {
         var users = await _context.Users
-            .Where(u => u.Position == "Student")
+            .Where(u => u.Position == "Student" && !u.IsDeleted)
             .OrderBy(u => u.Username)
             .Select(u => new TeacherLookupDto
             {
@@ -881,7 +881,7 @@ public class AdminController : Controller
     {
         var user = await _context.Users.FindAsync(id);
 
-        if (user == null)
+        if (user == null || user.IsDeleted)
         {
             return NotFound("User not found.");
         }
@@ -904,6 +904,7 @@ public class AdminController : Controller
     public async Task<IActionResult> GetAllUsersWithRoles()
     {
         var users = await _context.Users
+            .Where(u => !u.IsDeleted)
             .OrderBy(u => u.Username)
             .Select(u => new UserRoleDto
             {
@@ -921,7 +922,7 @@ public class AdminController : Controller
     {
         var user = await _context.Users.FindAsync(id);
 
-        if (user == null)
+        if (user == null || user.IsDeleted)
         {
             return NotFound("User not found.");
         }

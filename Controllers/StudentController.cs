@@ -116,6 +116,13 @@ public class StudentController : Controller
                 .Name
             ?? "No Active Semester";
 
+        var activeTermIds = timetable.Where(t => t.TermId != null).Select(t => t.TermId!).Distinct().ToList();
+        ViewBag.TimetableNotifications = await db.TimetableNotifications
+            .AsNoTracking()
+            .Where(n => n.UserId == studentId && n.TermId != null && activeTermIds.Contains(n.TermId))
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(20)
+            .ToListAsync();
 
         return View(timetable);
     }

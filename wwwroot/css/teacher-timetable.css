@@ -106,3 +106,5 @@
         font-weight: 700;
         letter-spacing: 3px;
     }
+
+.tt-notification-card{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:18px;margin-bottom:18px}.tt-notification-card h2{margin:0 0 4px}.tt-notification-card>p{margin:0 0 12px;color:#64748b}.tt-notification-item{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-top:1px solid #eef2f7}.tt-notification-item span{color:#334155}.tt-notification-item small{color:#64748b}

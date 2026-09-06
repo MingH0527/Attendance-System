@@ -1,12 +1,12 @@
-﻿@model List<WebAndMobile.Models.UserListItemDto>
+@model List<WebAndMobile.Models.UserListItemDto>
 
 @{
     ViewData["Title"] = "User Management";
 
-    int totalUsers = Model?.Count ?? 0;
-    int activeUsers = Model?.Count(u => u.Status == "Active") ?? 0;
-    int teacherCount = Model?.Count(u => u.Position == "Teacher") ?? 0;
-    int studentCount = Model?.Count(u => u.Position == "Student") ?? 0;
+    int totalUsers = Model?.Count(u => !u.IsDeleted) ?? 0;
+    int activeUsers = Model?.Count(u => !u.IsDeleted && u.Status == "Active") ?? 0;
+    int teacherCount = Model?.Count(u => !u.IsDeleted && u.Position == "Teacher") ?? 0;
+    int studentCount = Model?.Count(u => !u.IsDeleted && u.Position == "Student") ?? 0;
 }
 
 <link rel="stylesheet" href="~/css/user.css" />
@@ -20,6 +20,16 @@
                 <p>Manage system users, account roles and access status.</p>
             </div>
         </div>
+
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="user-flash success">@TempData["SuccessMessage"]</div>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="user-flash error">@TempData["ErrorMessage"]</div>
+        }
 
         <div class="stats-grid">
             <div class="stat-card">
@@ -140,8 +150,12 @@
                                         <span>Active</span>
                                     </label>
                                     <label class="filter-chip">
-                                        <input type="radio" name="statusFilter" value="Inactive" />
-                                        <span>Inactive</span>
+                                        <input type="radio" name="statusFilter" value="Blocked" />
+                                        <span>Blocked</span>
+                                    </label>
+                                    <label class="filter-chip">
+                                        <input type="radio" name="statusFilter" value="Deleted" />
+                                        <span>Deleted</span>
                                     </label>
                                 </div>
                             </div>
@@ -225,7 +239,9 @@
                                     data-address="@user.Address"
                                     data-gender="@user.Gender"
                                     data-position="@user.Position"
-                                    data-status="@user.Status"
+                                    data-status="@(user.IsDeleted ? "Deleted" : user.Status)"
+                                    data-is-deleted="@(user.IsDeleted ? "true" : "false")"
+                                    data-deleted-at="@(user.DeletedAt?.ToString("yyyy-MM-dd HH:mm") ?? "")"
                                     data-avatar="@user.Avatar"
                                     data-program-id="@user.ProgramId"
                                     data-class-id="@user.ClassId">
@@ -245,17 +261,17 @@
                                     </td>
 
                                     <td>
-                                        @if (user.Status == "Active")
+                                        @if (user.IsDeleted)
                                         {
-                                            <span class="status status-active">
-                                                Active
-                                            </span>
+                                            <span class="status status-deleted">Deleted</span>
+                                        }
+                                        else if (user.Status == "Active")
+                                        {
+                                            <span class="status status-active">Active</span>
                                         }
                                         else
                                         {
-                                            <span class="status status-inactive">
-                                                Inactive
-                                            </span>
+                                            <span class="status status-inactive">@user.Status</span>
                                         }
                                     </td>
 
@@ -298,12 +314,12 @@
                                                 </button>
                                             }
 
-                                            @if (user.Position != "Admin")
+                                            @if (!user.IsDeleted && user.Position != "Admin")
                                             {
                                                 @if (user.Status == "Active")
                                                 {
                                                     <form asp-controller="User"
-                                                          asp-action="Delete"
+                                                          asp-action="Block"
                                                           asp-route-id="@user.UserId"
                                                           method="post"
                                                           class="action-form">
@@ -351,6 +367,19 @@
                                                         Remove Teacher
                                                     </button>
                                                 }
+
+                                                <form asp-controller="User"
+                                                      asp-action="Delete"
+                                                      asp-route-id="@user.UserId"
+                                                      method="post"
+                                                      class="action-form delete-account-form"
+                                                      data-username="@user.Username"
+                                                      data-user-id="@user.UserId">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="action-button delete-account-button">
+                                                        Delete Account
+                                                    </button>
+                                                </form>
                                             }
                                         </div>
                                     </td>
@@ -466,6 +495,11 @@
             <div class="detail-item">
                 <span class="detail-label">Status</span>
                 <strong id="detailStatus">-</strong>
+            </div>
+
+            <div class="detail-item" id="detailDeletedAtItem" hidden>
+                <span class="detail-label">Deleted At</span>
+                <strong id="detailDeletedAt">-</strong>
             </div>
         </div>
     </aside>

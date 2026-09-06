@@ -1,8 +1,8 @@
 (()=>{"use strict";
-const HOURS=[9,10,11,12,13,14,15,16];
+const HOURS=[8,9,10,11,12,13,14,15,16,17];
 const DAYS={School:[1,2,3,4,5],Tuition:[6,0]};
 const DAY_NAME={0:"Sunday",1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday",6:"Saturday"};
-const S={bucket:"current",dashboard:null,term:null,program:null,cls:null,type:"School",mode:"view",entries:[],assignments:[],rooms:[],holidays:[]};
+const S={bucket:"current",dashboard:null,term:null,program:null,cls:null,type:"School",mode:"view",entries:[],assignments:[],rooms:[],holidays:[],replacementRequired:[]};
 const $=id=>document.getElementById(id);
 const esc=value=>{const d=document.createElement("div");d.textContent=value??"";return d.innerHTML};
 
@@ -23,6 +23,8 @@ function bind(){
  $("editBtn").onclick=()=>setMode("edit");
  $("cancelLessonBtn").onclick=closeLessonModal;
  $("lessonForm").onsubmit=saveLesson;
+ $("fStatus").onchange=()=>{$("lessonModalError").hidden=true;};
+ $("fStartTime").onchange=$("fEndTime").onchange=refreshOccurrenceRooms;
  $("deleteLessonBtn").onclick=deleteLesson;
  $("assignmentSearch").oninput=renderAssignments;
  $("newSemesterBtn").onclick=()=>openSemesterModal();
@@ -31,13 +33,17 @@ function bind(){
  $("cancelForceActiveBtn").onclick=cancelForceActiveConfirmation;
  $("confirmForceActiveBtn").onclick=confirmForceActiveCreation;
  $("holidayForm").onsubmit=addHoliday;
- $("holidayTerm").onchange=loadHolidayList;
+ $("auditFilter").onchange=loadAudit;
+ $("closeReplacementBtn").onclick=closeReplacementModal;
+ $("replacementForm").onsubmit=saveReplacement;
+ $("rDate").onchange=$("rStart").onchange=$("rEnd").onchange=refreshReplacementRooms;
  $("loadMalaysiaHolidaysBtn").onclick=loadMalaysiaHolidays;
  $("chooseHolidayFile").onclick=()=>$("holidayFile").click();
  $("holidayFile").onchange=()=>{const f=$("holidayFile").files?.[0];if(f)importHolidayFile(f)};
  const dz=$("holidayDropZone");
  dz.onclick=e=>{if(e.target.tagName!=="BUTTON")$("holidayFile").click()};
- dz.ondragover=e=>{e.preventDefault();dz.classList.add("drag-over")};
+ dz.ondragenter=e=>{e.preventDefault();dz.classList.add("drag-over")};
+ dz.ondragover=e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect="copy";dz.classList.add("drag-over")};
  dz.ondragleave=()=>dz.classList.remove("drag-over");
  dz.ondrop=e=>{e.preventDefault();dz.classList.remove("drag-over");const f=e.dataTransfer.files?.[0];if(f)importHolidayFile(f)};
  ["Pdf","Excel","Csv"].forEach(format=>$("export"+format).onclick=()=>{
@@ -51,16 +57,19 @@ async function dashboard(){
  if(!r.ok){$("termCards").innerHTML="<div class='tt-error'>Unable to load timetable dashboard.</div>";return;}
  S.dashboard=await r.json();
  const host=$("termCards");host.innerHTML="";
- const holidayMode=S.bucket==="holiday";
+ const holidayMode=S.bucket==="holiday",auditMode=S.bucket==="audit";
  $("holidayHistoryPanel").hidden=!holidayMode;
- host.hidden=holidayMode;
+ $("auditPanel").hidden=!auditMode;
+ host.hidden=holidayMode||auditMode;
  if(holidayMode){await prepareHolidayHistory();return;}
+ if(auditMode){await loadAudit();return;}
  const terms=S.bucket==="current"?S.dashboard.current:S.dashboard.completed;
  $("newSemesterBtn").disabled=(S.dashboard.current||[]).length>=2;
  $("newSemesterBtn").title=$("newSemesterBtn").disabled?"Maximum two semesters can be kept on the timetable page.":"Create a new semester";
  if(!terms.length){host.innerHTML="<div class='tt-empty'>No academic terms in this section.</div>";return;}
  terms.forEach(t=>{
-  const card=document.createElement("article");card.className=`tt-term-card ${t.status==="Warning"?"tt-term-warning":""}`;
+  const card=document.createElement("article");
+  card.className=`tt-term-card ${t.status==="Warning"?"tt-term-warning":""} ${t.status==="Abandoned"?"tt-term-abandoned":""}`;
   const restoredStatusChoice=t.isRestored
    ? `<div class="tt-status-choice" aria-label="Restored semester status">
         <button type="button" class="tt-status-choice-btn selected" disabled>Incoming</button>
@@ -69,7 +78,9 @@ async function dashboard(){
    : "";
   const actions=S.bucket==="current"
    ? `<div class="tt-term-actions">${t.status==="Incoming"?'<button type="button" data-term-action="edit" class="tt-btn-secondary">Edit Dates</button>':''}${restoredStatusChoice}<button type="button" data-term-action="archive" class="tt-btn-secondary">Move to History</button></div>`
-   : `<div class="tt-term-actions"><button type="button" data-term-action="restore" class="tt-btn-secondary">Restore</button></div>`;
+   : t.status==="Abandoned"
+     ? `<div class="tt-term-actions"><button type="button" data-term-action="undo-abandon" class="tt-btn-recover">Undo Abandon</button></div>`
+     : `<div class="tt-term-actions"><button type="button" data-term-action="restore" class="tt-btn-secondary">Restore</button><button type="button" data-term-action="abandon" class="tt-btn-secondary">Abandon</button></div>`;
   card.innerHTML=`<header><div><h3>${esc(t.name)}</h3><small>${dateText(t.startDate)} – ${dateText(t.endDate)}</small></div><div class="tt-term-status-wrap"><span class="tt-pill ${esc(t.status.toLowerCase())}">${esc(t.status)}</span>${actions}</div></header><div class="tt-program-grid"></div>`;
   card.querySelectorAll("[data-term-action]").forEach(b=>b.onclick=()=>handleTermAction(b.dataset.termAction,t));
   const grid=card.querySelector(".tt-program-grid");
@@ -105,17 +116,17 @@ function showDashboard(){
 }
 
 async function openWorkspace(t,p,c,type,mode){
- S.term=t;S.program=p;S.cls=c;S.type=type;S.mode=t.status==="Warning"?"view":mode;
+ S.term=t;S.program=p;S.cls=c;S.type=type;S.mode=(t.status==="Warning"||t.status==="Abandoned")?"view":mode;
  $("dashboardView").hidden=true;$("programView").hidden=true;$("workspaceView").hidden=false;
  $("backDashboard").hidden=false;$("backProgram").hidden=false;
  $("ctxTerm").textContent=t.name;$("ctxStatus").textContent=t.status;$("ctxProgram").textContent=p.programCode;$("ctxClass").textContent=c.className;
- $("editBtn").hidden=t.status==="Warning";
+ $("editBtn").hidden=t.status==="Warning"||t.status==="Abandoned";
  await Promise.all([loadRooms(),loadAssignments(),loadWeeks()]);
  setMode(S.mode);await loadGrid();
 }
 
 async function switchType(type){S.type=type;$("schoolBtn").classList.toggle("active",type==="School");$("tuitionBtn").classList.toggle("active",type==="Tuition");await loadGrid();}
-function setMode(mode){if(S.term?.status==="Warning")mode="view";S.mode=mode;$("viewBtn").classList.toggle("active",mode==="view");$("editBtn").classList.toggle("active",mode==="edit");$("assignmentPanel").hidden=mode!=="edit";renderSkeleton();renderEntries();}
+function setMode(mode){if(S.term?.status==="Warning"||S.term?.status==="Abandoned")mode="view";S.mode=mode;$("viewBtn").classList.toggle("active",mode==="view");$("editBtn").classList.toggle("active",mode==="edit");$("assignmentPanel").hidden=mode!=="edit";renderSkeleton();renderEntries();updateReplacementPanel();}
 
 async function loadWeeks(){
  const r=await fetch(`/Timetable/Weeks?termId=${encodeURIComponent(S.term.termId)}`);const weeks=r.ok?await r.json():[];
@@ -134,8 +145,20 @@ function renderAssignments(){
 async function loadGrid(){
  renderSkeleton();const date=$("weekDate").value;
  const url=`/Timetable/Grid?termId=${encodeURIComponent(S.term.termId)}&classId=${encodeURIComponent(S.cls.classId)}&classType=${S.type}${date?`&weekDate=${date}`:""}`;
- const r=await fetch(url);S.entries=r.ok?await r.json():[];
- await updateWeekNotice();renderEntries();
+ const r=await fetch(url);
+ if(!r.ok){
+  S.entries=[];
+  const raw=await r.text();
+  const box=$("weekNotice");
+  box.hidden=false;
+  box.textContent=raw||"Unable to load this Week. Please make sure the latest database migration has been applied.";
+  box.classList.add("tt-room-alert");
+  renderEntries();
+  return;
+ }
+ S.entries=await r.json();
+ $("weekNotice").classList.remove("tt-room-alert");
+ await updateWeekNotice();renderEntries();await updateReplacementPanel();
 }
 
 async function updateWeekNotice(){
@@ -154,7 +177,7 @@ function renderSkeleton(){
  DAYS[S.type].forEach(day=>{
   const tr=document.createElement("tr");tr.dataset.day=day;tr.innerHTML=`<td class="tt-day-label">${DAY_NAME[day]}</td>`;
   HOURS.forEach(h=>{const td=document.createElement("td");td.className="tt-cell";td.dataset.hour=h;td.dataset.day=day;
-   if(S.mode==="edit"){td.ondragover=e=>{e.preventDefault();td.classList.add("drag-over")};td.ondragleave=()=>td.classList.remove("drag-over");td.ondrop=e=>{e.preventDefault();td.classList.remove("drag-over");const raw=e.dataTransfer.getData("assignment");if(raw)openCreate(day,h,JSON.parse(raw))};}
+   if(S.mode==="edit"&&!$("weekDate").value){td.ondragover=e=>{e.preventDefault();td.classList.add("drag-over")};td.ondragleave=()=>td.classList.remove("drag-over");td.ondrop=e=>{e.preventDefault();td.classList.remove("drag-over");const raw=e.dataTransfer.getData("assignment");if(raw)openCreate(day,h,JSON.parse(raw))};}
    tr.appendChild(td);
   });body.appendChild(tr);
  });
@@ -164,7 +187,7 @@ function merge(entries){
  const out=[];
  for(const e of [...entries].sort((a,b)=>a.dayOfWeek-b.dayOfWeek||a.startTime.localeCompare(b.startTime))){
   const p=out.at(-1);
-  if(p&&p.dayOfWeek===e.dayOfWeek&&p.endTime===e.startTime&&p.courseId===e.courseId&&p.teacherId===e.teacherId&&p.classId===e.classId&&(p.classroomId||"")===(e.classroomId||"")&&p.classType===e.classType&&p.status===e.status&&p.statusReason===e.statusReason){p.endTime=e.endTime;p.ids.push(e.timetableId)}
+  if(p&&p.dayOfWeek===e.dayOfWeek&&p.endTime===e.startTime&&p.courseId===e.courseId&&p.teacherId===e.teacherId&&p.classId===e.classId&&(p.classroomId||"")===(e.classroomId||"")&&p.classType===e.classType&&p.status===e.status&&p.statusReason===e.statusReason&&p.isReplacement===e.isReplacement&&p.replacementId===e.replacementId){p.endTime=e.endTime;p.ids.push(e.timetableId)}
   else out.push({...e,ids:[e.timetableId]});
  }
  return out;
@@ -172,54 +195,177 @@ function merge(entries){
 
 function renderEntries(){
  document.querySelectorAll(".tt-cell").forEach(x=>{x.innerHTML="";x.style.display="";x.removeAttribute("colspan")});
- const rows=S.mode==="view"?merge(S.entries):S.entries;
+ const visible=S.mode==="view"?S.entries.filter(e=>!(e.status==="Cancelled"&&e.hasReplacement)):S.entries;
+ const rows=S.mode==="view"?merge(visible):visible;
  rows.forEach(e=>{
   const sh=+e.startTime.split(":")[0],eh=+e.endTime.split(":")[0],tr=document.querySelector(`tr[data-day='${e.dayOfWeek}']`),cell=tr?.querySelector(`[data-hour='${sh}']`);if(!cell)return;
   const span=Math.max(1,eh-sh);if(S.mode==="view")cell.colSpan=span;
   const block=document.createElement("div");block.className=`tt-lesson-block ${(e.status||"Normal").toLowerCase()}`;
-  block.innerHTML=`<strong>${esc(e.courseName)}</strong><span>${esc(e.teacherName)}${e.roomName?" · "+esc(e.roomName):""}</span>${e.statusReason?`<small>⚠ ${esc(e.statusReason)}</small>`:""}`;
-  if(S.mode==="edit")block.onclick=()=>openEdit(e);cell.appendChild(block);
+  block.innerHTML=`<strong>${esc(e.courseName)}${e.isReplacement?'<em class="tt-replacement-badge">Replacement</em>':e.isUpdated?'<em class="tt-updated-badge">Updated</em>':''}</strong><span>${esc(e.teacherName)}${e.roomName?" · "+esc(e.roomName):""}</span>${e.statusReason?`<small>${e.isReplacement?"↪":"⚠"} ${esc(e.statusReason)}</small>`:""}`;
+  if(S.mode==="edit"&&!e.isReplacement)block.onclick=()=>openEdit(e);cell.appendChild(block);
   if(S.mode==="view")for(let h=sh+1;h<eh;h++){const x=tr.querySelector(`[data-hour='${h}']`);if(x)x.style.display="none";}
  });
 }
 
-function openCreate(day,h,a){
+async function openCreate(day,h,a){
  $("lessonModalTitle").textContent="Assign hourly lesson";$("fTimetableId").value="";$("fTeacherId").value=a.teacherId;$("fCourseId").value=a.courseId;$("fDayOfWeek").value=day;
- $("fAssignment").value=`${a.courseName} · ${a.teacherName}`;$("fStartTime").value=`${String(h).padStart(2,"0")}:00`;$("fEndTime").value=`${String(h+1).padStart(2,"0")}:00`;fillRooms();
+ $("fAssignment").value=`${a.courseName} · ${a.teacherName}`;$("fStartTime").value=`${String(h).padStart(2,"0")}:00`;$("fEndTime").value=`${String(h+1).padStart(2,"0")}:00`;
+ await fillRooms("",day,$("fStartTime").value,$("fEndTime").value,null);
  $("deleteLessonBtn").hidden=true;configureStatus(day,"Normal",null);showLessonModal();
 }
-function openEdit(e){
- $("lessonModalTitle").textContent="Edit hourly lesson";$("fTimetableId").value=e.timetableId;$("fTeacherId").value=e.teacherId;$("fCourseId").value=e.courseId;$("fDayOfWeek").value=e.dayOfWeek;
- $("fAssignment").value=`${e.courseName} · ${e.teacherName}`;$("fStartTime").value=e.startTime;$("fEndTime").value=e.endTime;fillRooms(e.classroomId);$("deleteLessonBtn").hidden=false;
- configureStatus(e.dayOfWeek,e.status,e.statusReason);showLessonModal();
+async function openEdit(e){
+ $("lessonModalTitle").textContent=$("weekDate").value?"Edit this lesson date":"Edit weekly template lesson";$("fTimetableId").value=e.timetableId;$("fTeacherId").value=e.teacherId;$("fCourseId").value=e.courseId;$("fDayOfWeek").value=e.dayOfWeek;
+ $("fAssignment").value=`${e.courseName} · ${e.teacherName}`;$("fStartTime").value=e.startTime;$("fEndTime").value=e.endTime;
+ await fillRooms(e.classroomId,e.dayOfWeek,e.startTime,e.endTime,e.timetableId);$("deleteLessonBtn").hidden=!!$("weekDate").value;
+ const actual=!!$("weekDate").value; $("fStartTime").readOnly=!actual; $("fEndTime").readOnly=!actual;
+ configureStatus(e.dayOfWeek,e.status,e.statusReason,e.hasReplacement);showLessonModal();
 }
-function configureStatus(day,status,reason){
+function configureStatus(day,status,reason,hasReplacement=false){
  const selected=$("weekDate").value,sel=$("fStatus"),label=$("statusDateLabel"),hint=$("statusHint");
- if(!selected){sel.value="Normal";sel.disabled=true;label.textContent="";hint.textContent="Select an actual week to set Normal/Cancelled for a specific lesson date. Holiday and conflict are system status.";return;}
- const d=occurrenceDate(selected,+day);label.textContent=`· ${dateShort(d)}`;sel.disabled=false;sel.value=status==="Cancelled"?"Cancelled":"Normal";
- hint.textContent=reason?`System status: ${reason}. Selecting Normal keeps the lesson; selecting Cancelled cancels this occurrence.`:"Normal/Cancelled applies only to this selected week's lesson. Holiday and conflict are detected automatically.";
+ sel.disabled=false;
+ [...sel.options].forEach(o=>o.disabled=false);
+ if(!selected){sel.value="Normal";label.textContent="";hint.textContent="Weekly template is the parent schedule. To change lesson status, select the specific Week first.";return;}
+ const d=occurrenceDate(selected,+day);label.textContent=`· ${dateShort(d)}`;sel.value=status==="Cancelled"?"Cancelled":"Normal";
+ if(status==="Cancelled"&&hasReplacement){
+  const normalOption=[...sel.options].find(o=>o.value==="Normal");if(normalOption)normalOption.disabled=true;
+  sel.value="Cancelled";
+  hint.textContent=`A replacement class has already been scheduled for ${dateShort(d)}. This original lesson must remain Cancelled and cannot be changed back to Normal unless the replacement is cancelled or removed first.`;
+  return;
+ }
+ hint.textContent=reason?`System status: ${reason}. Any change here applies only to ${dateShort(d)}; the weekly template and other weeks stay unchanged.`:`Changes here apply only to ${dateShort(d)}; the weekly template and other weeks stay unchanged.`;
 }
-function fillRooms(v=""){$("fClassroomId").innerHTML='<option value="">-- none --</option>'+S.rooms.map(r=>`<option value="${r.id}" ${r.id===v?"selected":""}>${esc(r.name)}</option>`).join("");}
+async function refreshOccurrenceRooms(){
+ if(!$("weekDate").value||!$("fTimetableId").value)return;
+ const s=$("fStartTime").value,e=$("fEndTime").value;if(!s||!e||s>=e)return;
+ await fillRooms($("fClassroomId").value,+$("fDayOfWeek").value,s,e,$("fTimetableId").value);
+}
+async function fillRooms(v="",day,start,end,timetableId=null){
+ const selected=$("weekDate").value;
+ let url;
+ if(selected){
+  const date=occurrenceDate(selected,+day);
+  url=`/Timetable/RoomAvailability?termId=${encodeURIComponent(S.term.termId)}&date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(start)}&endTime=${encodeURIComponent(end)}${timetableId?`&excludeTimetableId=${encodeURIComponent(timetableId)}`:""}`;
+ }else{
+  url=`/Timetable/TemplateRoomAvailability?termId=${encodeURIComponent(S.term.termId)}&dayOfWeek=${encodeURIComponent(day)}&startTime=${encodeURIComponent(start)}&endTime=${encodeURIComponent(end)}${timetableId?`&excludeTimetableId=${encodeURIComponent(timetableId)}`:""}`;
+ }
+ const r=await fetch(url);const rooms=r.ok?await r.json():S.rooms.map(x=>({...x,available:true,reason:null}));
+ const available=rooms.filter(x=>x.available),hint=$("roomHint");
+ $("fClassroomId").innerHTML=(available.length?'<option value="">-- select classroom --</option>':'<option value="">-- No classroom available --</option>')+rooms.map(x=>`<option value="${x.id}" ${x.id===v?"selected":""} ${!x.available&&x.id!==v?"disabled":""}>${esc(x.name)}${x.available?"":" · occupied"}</option>`).join("");
+ hint.textContent=available.length?`${available.length} of 6 classroom(s) available. Occupied rooms cannot be selected.`:"All 6 fixed classrooms are occupied at this time. The lesson will remain yellow (Attention) until Admin changes the time/day or another room becomes available.";
+ hint.classList.toggle("tt-room-alert",!available.length);
+}
 function showLessonModal(){$("lessonModal").hidden=false;$("lessonModalError").hidden=true;}
 function closeLessonModal(){$("lessonModal").hidden=true;}
 
 async function saveLesson(e){
  e.preventDefault();
- const p={timetableId:$("fTimetableId").value||null,termId:S.term.termId,teacherId:$("fTeacherId").value,courseId:$("fCourseId").value,classId:S.cls.classId,classroomId:$("fClassroomId").value||null,dayOfWeek:+$("fDayOfWeek").value,startTime:$("fStartTime").value,endTime:$("fEndTime").value,classType:S.type==="School"?0:1};
- let r=await fetch("/Timetable/Save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
- if(!r.ok){showLessonError(await r.text());return;}
- const saved=await r.json();
  const selected=$("weekDate").value;
- if(selected&&!$("fStatus").disabled){
-  const statusPayload={timetableId:saved.timetableId,date:occurrenceDate(selected,p.dayOfWeek),status:$("fStatus").value,note:null};
-  r=await fetch("/Timetable/SetOccurrenceStatus",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(statusPayload)});
-  if(!r.ok){showLessonError(await r.text());return;}
+ if(!selected && $("fTimetableId").value && $("fStatus").value!=="Normal"){
+  showLessonError("Please select the Week and specific lesson date you want to change. Status cannot be changed from the Weekly template because it would affect the parent schedule.");
+  return;
  }
+ if(selected&&$("fTimetableId").value){
+  const p={timetableId:$("fTimetableId").value,date:occurrenceDate(selected,+$("fDayOfWeek").value),classroomId:$("fClassroomId").value||null,startTime:$("fStartTime").value,endTime:$("fEndTime").value,status:$("fStatus").value,note:null};
+  const r=await fetch("/Timetable/SaveOccurrence",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
+  if(!r.ok){showLessonError(await r.text());return;}
+  closeLessonModal();await loadGrid();return;
+ }
+ if(selected){showLessonError("Adding a new recurring lesson from an actual week is disabled because it would change the whole semester. Use Weekly template to add recurring lessons; use the replacement function for a one-day make-up class.");return;}
+ if(!$("fTimetableId").value&&$("fStatus").value!=="Normal"){showLessonError("A new lesson cannot be created as Cancelled. Create the lesson first, then select a specific Week and lesson date to cancel it.");return;}
+ const p={timetableId:$("fTimetableId").value||null,termId:S.term.termId,teacherId:$("fTeacherId").value,courseId:$("fCourseId").value,classId:S.cls.classId,classroomId:$("fClassroomId").value||null,dayOfWeek:+$("fDayOfWeek").value,startTime:$("fStartTime").value,endTime:$("fEndTime").value,classType:S.type==="School"?0:1,status:$("fStatus").value};
+ const r=await fetch("/Timetable/Save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
+ if(!r.ok){showLessonError(await r.text());return;}
  closeLessonModal();await loadGrid();
 }
 function showLessonError(message){$("lessonModalError").textContent=message;$("lessonModalError").hidden=false;}
 async function deleteLesson(){const id=$("fTimetableId").value;if(!id||!confirm("Delete this hourly lesson from the weekly template?"))return;const r=await fetch(`/Timetable/Delete?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showLessonError(await r.text());return;}closeLessonModal();await loadGrid();}
 
+
+
+async function updateReplacementPanel(){
+ const panel=$("replacementPanel"),host=$("replacementRequiredList"),week=$("weekDate").value;
+ const show=S.type==="Tuition"&&S.mode==="edit"&&!!week&&S.term?.status!=="Warning"&&S.term?.status!=="Abandoned";
+ panel.hidden=!show;if(!show){host.innerHTML="";return;}
+ const r=await fetch(`/Timetable/ReplacementRequired?termId=${encodeURIComponent(S.term.termId)}&classId=${encodeURIComponent(S.cls.classId)}&weekDate=${encodeURIComponent(week)}`);
+ S.replacementRequired=r.ok?await r.json():[];
+ if(!S.replacementRequired.length){host.innerHTML='<div class="tt-replacement-empty">No cancelled lesson is recorded for this Week.</div>';return;}
+ host.innerHTML="";
+ S.replacementRequired.forEach(x=>{
+  const card=document.createElement("article");card.className=`tt-replacement-card ${x.hasReplacement?"scheduled":"pending"}`;
+  const replacement=x.hasReplacement?`<span class="tt-replacement-linked">↪ Replacement Scheduled: ${dateShort(x.replacementDate)} · ${esc(x.replacementStartTime)}-${esc(x.replacementEndTime)}${x.replacementRoomName?" · "+esc(x.replacementRoomName):""}</span>`:"";
+  card.innerHTML=`<div><strong>${esc(x.courseName)} · ${esc(x.teacherName)}</strong><span>🟥 Cancelled ${dateShort(x.occurrenceDate)} · ${esc(x.startTime)}-${esc(x.endTime)}${x.roomName?" · "+esc(x.roomName):""}</span>${replacement}</div>${x.hasReplacement?'<em class="tt-replacement-done">Scheduled</em>':'<button type="button" class="tt-btn-primary">Schedule Replacement</button>'}`;
+  if(!x.hasReplacement)card.querySelector("button").onclick=()=>openReplacementModal(x);host.appendChild(card);
+ });
+}
+function openReplacementModal(x){
+ $("replacementError").hidden=true;$("rTimetableId").value=x.timetableId;$("rSourceDate").value=x.occurrenceDate.slice(0,10);$("rTeacherId").value=x.teacherId;
+ $("rOriginal").value=`${x.courseName} · ${x.teacherName} · ${dateShort(x.occurrenceDate)} · ${x.startTime}-${x.endTime}`;
+ $("rDate").min=x.occurrenceDate.slice(0,10);$("rDate").max=S.term.endDate.slice(0,10);
+ const weekStart=new Date($("weekDate").value+"T00:00:00");let d=new Date(weekStart);while(d<new Date(x.occurrenceDate)&&d<=new Date(S.term.endDate)){d.setDate(d.getDate()+1)}
+ while(d.getDay()!==6&&d.getDay()!==0)d.setDate(d.getDate()+1);
+ if(d<new Date(x.occurrenceDate))d=new Date(x.occurrenceDate);
+ const termEnd=new Date(S.term.endDate);
+ $("rDate").value=d<=termEnd?localIso(d):"";$("rStart").value=x.startTime;$("rEnd").value=x.endTime;$("replacementModal").hidden=false;
+ if(d>termEnd){$("replacementError").textContent="No valid Tuition date remains on or after this cancelled lesson before the semester ends.";$("replacementError").hidden=false;$("rClassroom").innerHTML='<option value="">-- No valid replacement date --</option>';return;}
+ refreshReplacementRooms();
+}
+function closeReplacementModal(){$("replacementModal").hidden=true;}
+async function refreshReplacementRooms(){
+ if($("replacementModal").hidden)return;const date=$("rDate").value,s=$("rStart").value,e=$("rEnd").value;if(!date||!s||!e||s>=e)return;
+ const r=await fetch(`/Timetable/ReplacementRoomAvailability?termId=${encodeURIComponent(S.term.termId)}&date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(s)}&endTime=${encodeURIComponent(e)}`);
+ const rooms=r.ok?await r.json():[];const available=rooms.filter(x=>x.available);$("rClassroom").innerHTML=(available.length?'<option value="">-- select classroom --</option>':'<option value="">-- No classroom available --</option>')+rooms.map(x=>`<option value="${x.id}" ${!x.available?"disabled":""}>${esc(x.name)}${x.available?"":" · occupied"}</option>`).join("");
+ $("replacementRoomHint").textContent=available.length?`${available.length} of 6 classroom(s) available.`:"All 6 fixed classrooms are occupied. Please choose another replacement time.";
+ $("replacementRoomHint").classList.toggle("tt-room-alert",!available.length);
+}
+async function saveReplacement(e){
+ e.preventDefault();$("replacementError").hidden=true;
+ const p={sourceTimetableId:$("rTimetableId").value,sourceOccurrenceDate:$("rSourceDate").value,date:$("rDate").value,startTime:$("rStart").value,endTime:$("rEnd").value,classroomId:$("rClassroom").value||null};
+ const r=await fetch("/Timetable/CreateReplacement",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
+ if(!r.ok){$("replacementError").textContent=await r.text();$("replacementError").hidden=false;return;}
+ const saved=await r.json();
+
+ // Once scheduled, the item leaves Replacement Required and Admin must be taken
+ // to the actual Week containing the new Tuition lesson. Use the Week returned by
+ // the server instead of assuming every academic Week is exactly seven days.
+ const weekSelect=$("weekDate");
+ let targetValue=saved.replacementWeekStart ? String(saved.replacementWeekStart).slice(0,10) : "";
+
+ // If Weeks were regenerated or the current select is stale, reload it once.
+ if(targetValue && ![...weekSelect.options].some(o=>o.value===targetValue)){
+  await loadWeeks();
+ }
+
+ if(targetValue && [...weekSelect.options].some(o=>o.value===targetValue)){
+  weekSelect.value=targetValue;
+ }else{
+  // Safe fallback for legacy data without an AcademicWeek row.
+  const replacementDate=new Date((saved.replacementDate||p.date).slice(0,10)+"T00:00:00");
+  const target=[...weekSelect.options].find(o=>{
+   if(!o.value)return false;
+   const start=new Date(o.value+"T00:00:00");
+   const next=[...weekSelect.options].find(x=>x.value&&new Date(x.value+"T00:00:00")>start);
+   const end=next?new Date(new Date(next.value+"T00:00:00").getTime()-86400000):new Date(S.term.endDate);
+   return replacementDate>=start&&replacementDate<=end;
+  });
+  if(target)weekSelect.value=target.value;
+ }
+
+ // Replacement classes always live in Tuition. Reload after changing the Week so
+ // the new class is immediately rendered in Saturday/Sunday instead of vanishing.
+ S.type="Tuition";
+ $("schoolBtn").classList.remove("active");
+ $("tuitionBtn").classList.add("active");
+ closeReplacementModal();
+ await loadGrid();
+
+ // If no Week could be resolved, do not silently leave Admin with an empty grid.
+ if(!S.entries.some(x=>x.isReplacement&&x.replacementId===saved.replacementId)){
+  const box=$("weekNotice");
+  box.hidden=false;
+  box.classList.add("tt-room-alert");
+  box.textContent=`Replacement was saved for ${dateShort(saved.replacementDate||p.date)}, but that date is not inside the currently generated Academic Weeks. Regenerate/check the semester Weeks to display it in the timetable.`;
+ }
+}
 
 function openSemesterModal(term=null){
  resetForceActiveConfirmation();
@@ -344,6 +490,19 @@ async function handleTermAction(action,term){
   await dashboard();
   return;
  }
+ if(action==="abandon"){
+  if(!confirm(`Abandon ${term.name}?\n\nIts timetable and history will be kept, but its date range will no longer block creation of another semester.`))return;
+  const r=await fetch(`/Timetable/AbandonTerm?termId=${encodeURIComponent(term.termId)}`,{method:"POST"});
+  if(!r.ok){alert(await r.text());return;}
+  await dashboard();
+  return;
+ }
+ if(action==="undo-abandon"){
+  const r=await fetch(`/Timetable/UndoAbandonTerm?termId=${encodeURIComponent(term.termId)}`,{method:"POST"});
+  if(!r.ok){alert(await r.text());return;}
+  await dashboard();
+  return;
+ }
  if(action==="activate-restored"){
   if(!confirm(`Set ${term.name} as the Active semester? Only Active timetables are published to teachers and students.`))return;
   const r=await fetch(`/Timetable/ActivateRestoredTerm?termId=${encodeURIComponent(term.termId)}`,{method:"POST"});
@@ -352,68 +511,52 @@ async function handleTermAction(action,term){
  }
 }
 
+async function loadAudit(){
+ const filter=$("auditFilter").value||"all",host=$("auditList"),summary=$("auditSummary");
+ const r=await fetch(`/Timetable/Audit?status=${encodeURIComponent(filter)}`);const rows=r.ok?await r.json():[];
+ const pending=rows.filter(x=>x.status==="Pending").length,resolved=rows.filter(x=>x.status==="Resolved").length;
+ summary.innerHTML=`<span class="tt-audit-pending">Pending ${pending}</span><span class="tt-audit-resolved">Resolved ${resolved}</span>`;
+ host.innerHTML=rows.length?"":"<div class='tt-empty'>No audit records.</div>";
+ rows.forEach(a=>{const row=document.createElement("article");row.className=`tt-audit-item ${a.status.toLowerCase()}`;row.innerHTML=`<div><strong>${esc(a.issueType)}</strong><span>${dateShort(a.occurrenceDate)} · ${esc(a.timetableId)}</span></div><span class="tt-audit-state">${esc(a.status)}</span><p>${esc(a.reason||"")}</p>${a.beforeValue?`<small><b>Before:</b> ${esc(a.beforeValue)}</small>`:""}${a.afterValue?`<small><b>After:</b> ${esc(a.afterValue)}</small>`:""}${a.resolvedAt?`<small>Resolved ${dateShort(a.resolvedAt)}</small>`:""}`;host.appendChild(row)});
+}
+
 async function prepareHolidayHistory(){
- if(!S.dashboard)return;
- const terms=[...(S.dashboard.current||[]),...(S.dashboard.completed||[])];
- const sel=$("holidayTerm");
- const previous=sel.value;
- sel.innerHTML=terms.map(t=>`<option value="${t.termId}" data-status="${esc(t.status)}">${esc(t.name)} · ${esc(t.status)}</option>`).join("");
- if(previous&&terms.some(t=>t.termId===previous))sel.value=previous;
- else if(terms.length)sel.value=terms[0].termId;
- updateHolidayEditingState();
  await loadHolidayList();
 }
-function selectedHolidayTerm(){
- const terms=[...(S.dashboard?.current||[]),...(S.dashboard?.completed||[])];
- return terms.find(t=>t.termId===$("holidayTerm").value);
-}
-function updateHolidayEditingState(){
- const term=selectedHolidayTerm(),readOnly=!term||term.status==="Warning";
- $("holidayForm").querySelectorAll("input,select,button").forEach(x=>x.disabled=readOnly);
- $("loadMalaysiaHolidaysBtn").disabled=readOnly;
- $("chooseHolidayFile").disabled=readOnly;
- $("holidayDropZone").classList.toggle("disabled",readOnly);
-}
 async function loadHolidayList(){
- updateHolidayEditingState();
- const term=selectedHolidayTerm(),termId=$("holidayTerm").value,host=$("holidayList");
- if(!termId){host.innerHTML="<div class='tt-empty'>No semester available.</div>";return;}
- const r=await fetch(`/Timetable/Calendar?termId=${encodeURIComponent(termId)}`);
+ const host=$("holidayList");
+ const r=await fetch("/Timetable/Calendar");
  const rows=r.ok?await r.json():[];
- host.innerHTML=rows.length?"":"<div class='tt-empty'>No holidays saved for this semester.</div>";
+ host.innerHTML=rows.length?"":"<div class='tt-empty'>No holidays saved in the central Holiday Calendar.</div>";
  rows.forEach(h=>{
   const row=document.createElement("div");row.className="tt-holiday-row";
-  const canDelete=term&&term.status!=="Warning";
-  row.innerHTML=`<strong>${dateShort(h.eventDate)}</strong><span>${esc(h.name)}</span><span><small>${esc(h.eventType)}</small></span><span>${esc(term?.name||"")}</span>${canDelete?'<button type="button">Delete</button>':'<span class="tt-readonly">History</span>'}`;
-  if(canDelete)row.querySelector("button").onclick=()=>deleteHoliday(h.calendarEventId);
+  row.innerHTML=`<strong>${dateShort(h.eventDate)}</strong><span>${esc(h.name)}</span><span><small>${esc(h.eventType)}</small></span><button type="button">Delete</button>`;
+  row.querySelector("button").onclick=()=>deleteHoliday(h.calendarEventId);
   host.appendChild(row);
  });
 }
 async function addHoliday(e){
  e.preventDefault();
- const payload={termId:$("holidayTerm").value,eventDate:$("holidayDate").value,name:$("holidayName").value.trim(),eventType:$("holidayType").value,affectsClasses:true};
+ const payload={termId:null,eventDate:$("holidayDate").value,name:$("holidayName").value.trim(),eventType:$("holidayType").value,affectsClasses:true};
  const r=await fetch("/Timetable/AddCalendarEvent",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
  if(!r.ok){showHolidayError(await r.text());return;}
- $("holidayError").hidden=true;$("holidayName").value="";$("holidayDate").value="";await loadHolidayList();if(S.term?.termId===payload.termId)await loadGrid();
+ $("holidayError").hidden=true;$("holidayImportResult").hidden=true;$("holidayName").value="";$("holidayDate").value="";await loadHolidayList();if(S.term)await loadGrid();
 }
 async function loadMalaysiaHolidays(){
- const termId=$("holidayTerm").value;if(!termId)return;
- const r=await fetch(`/Timetable/LoadMalaysia2026Holidays?termId=${encodeURIComponent(termId)}`,{method:"POST"});
+ const r=await fetch("/Timetable/LoadMalaysia2026Holidays",{method:"POST"});
  if(!r.ok){showHolidayError(await r.text());return;}
- const result=await r.json();$("holidayImportResult").textContent=`${result.added} Malaysia holiday(s) added.`;$("holidayImportResult").hidden=false;await loadHolidayList();
+ const result=await r.json();$("holidayImportResult").textContent=`${result.added} Malaysia holiday(s) added; ${result.skipped} already existed.`;$("holidayImportResult").hidden=false;$("holidayError").hidden=true;await loadHolidayList();
 }
 async function importHolidayFile(file){
- const term=selectedHolidayTerm();if(!term||term.status==="Warning")return;
- if(!/\.(txt|csv)$/i.test(file.name)){showHolidayError("Only .txt or .csv files are accepted.");return;}
- const fd=new FormData();fd.append("termId",term.termId);fd.append("file",file);
+ if(!/\.(txt|csv)$/i.test(file.name)){showHolidayError("Only .txt or .csv files are accepted. CSV uses commas; TXT uses | separators.");return;}
+ const fd=new FormData();fd.append("file",file);
  const r=await fetch("/Timetable/ImportCalendarEvents",{method:"POST",body:fd});
- if(!r.ok){showHolidayError(await r.text());return;}
+ if(!r.ok){showHolidayError(await r.text());$("holidayImportResult").hidden=true;$("holidayFile").value="";return;}
  const result=await r.json();
- const extra=result.errors?.length?` Errors: ${result.errors.join(" | ")}`:"";
- $("holidayImportResult").textContent=`Imported ${result.added}; skipped ${result.skipped}.${extra}`;$("holidayImportResult").hidden=false;$("holidayError").hidden=true;$("holidayFile").value="";await loadHolidayList();
+ $("holidayImportResult").textContent=`Imported ${result.added} holiday(s) successfully.`;$("holidayImportResult").hidden=false;$("holidayError").hidden=true;$("holidayFile").value="";await loadHolidayList();
 }
 function showHolidayError(message){$("holidayError").textContent=message;$("holidayError").hidden=false;}
-async function deleteHoliday(id){if(!confirm("Delete this holiday?"))return;const r=await fetch(`/Timetable/DeleteCalendarEvent?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showHolidayError(await r.text());return;}await loadHolidayList();if(S.term?.termId===$("holidayTerm").value)await loadGrid();}
+async function deleteHoliday(id){if(!confirm("Delete this holiday from the central Holiday Calendar?"))return;const r=await fetch(`/Timetable/DeleteCalendarEvent?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showHolidayError(await r.text());return;}await loadHolidayList();if(S.term)await loadGrid();}
 
 function occurrenceDate(weekStart,day){const d=new Date(weekStart+"T00:00:00"),delta=(day-d.getDay()+7)%7;d.setDate(d.getDate()+delta);return localIso(d);}
 function localIso(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}

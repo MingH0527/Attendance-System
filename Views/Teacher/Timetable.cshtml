@@ -48,6 +48,26 @@
         </div>
     }
 
+
+    @{
+        var timetableNotifications = ViewBag.TimetableNotifications as List<WebAndMobile.Models.TimetableNotification> ?? new();
+    }
+    @if (timetableNotifications.Count > 0)
+    {
+        <section class="tt-notification-card">
+            <h2>Notifications</h2>
+            <p>Only timetable changes related to your classes in the Active semester are shown.</p>
+            @foreach (var notification in timetableNotifications)
+            {
+                <div class="tt-notification-item">
+                    <strong>@(notification.Type == "LessonCancelled" ? "Class Cancelled" : "Timetable Updated")</strong>
+                    <span>@notification.Message</span>
+                    <small>@notification.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
+                </div>
+            }
+        </section>
+    }
+
     <section class="tt-table-card">
 
         @if (Model == null || Model.Count == 0)

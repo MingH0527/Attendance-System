@@ -236,3 +236,5 @@
         gap: 12px;
     }
 }
+
+.student-notification-panel{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:18px;margin:0 0 18px}.student-notification-panel h2{margin:0 0 4px}.student-notification-panel>p{margin:0 0 12px;color:#64748b}.student-notification-item{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-top:1px solid #eef2f7}.student-notification-item span{color:#334155}.student-notification-item small{color:#64748b}

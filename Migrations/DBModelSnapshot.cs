@@ -45,13 +45,15 @@ namespace WebAndMobile.Migrations
                         .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("TermId")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
                     b.HasKey("CalendarEventId");
 
                     b.HasIndex("TermId");
+
+                    b.HasIndex("EventDate", "Name")
+                        .IsUnique();
 
                     b.ToTable("AcademicCalendarEvents");
                 });
@@ -745,6 +747,9 @@ namespace WebAndMobile.Migrations
                     b.Property<DateTime>("ReplacementDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("SourceOccurrenceDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("SourceTimetableId")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -768,7 +773,7 @@ namespace WebAndMobile.Migrations
 
                     b.HasKey("ReplacementId");
 
-                    b.HasIndex("SourceTimetableId");
+                    b.HasIndex("SourceTimetableId", "SourceOccurrenceDate", "Status");
 
                     b.ToTable("ReplacementSessions");
                 });
@@ -950,6 +955,63 @@ namespace WebAndMobile.Migrations
                     b.ToTable("Timetables");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.TimetableAudit", b =>
+                {
+                    b.Property<string>("AuditId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("AfterValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("BeforeValue")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ChangedBy")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssueType")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime>("OccurrenceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TermId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TimetableId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("AuditId");
+
+                    b.HasIndex("TimetableId", "OccurrenceDate", "Status");
+
+                    b.ToTable("TimetableAudits");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.TimetableException", b =>
                 {
                     b.Property<string>("ExceptionId")
@@ -971,10 +1033,27 @@ namespace WebAndMobile.Migrations
                     b.Property<DateTime>("OccurrenceDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("OverrideClassroomId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<TimeSpan?>("OverrideEndTime")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan?>("OverrideStartTime")
+                        .HasColumnType("time");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("TimetableId")
                         .IsRequired()
@@ -1005,6 +1084,9 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<DateTime?>("OccurrenceDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("TermId")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -1018,7 +1100,13 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<string>("UserId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.HasKey("NotificationId");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAt");
 
                     b.ToTable("TimetableNotifications");
                 });
@@ -1039,6 +1127,9 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1048,6 +1139,9 @@ namespace WebAndMobile.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Password")
                         .IsRequired()
@@ -1077,13 +1171,16 @@ namespace WebAndMobile.Migrations
                     b.HasKey("UserId");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("Phone")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("Username")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Users");
                 });
@@ -1215,8 +1312,7 @@ namespace WebAndMobile.Migrations
                     b.HasOne("WebAndMobile.Models.AcademicTerm", "Term")
                         .WithMany()
                         .HasForeignKey("TermId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Term");
                 });
