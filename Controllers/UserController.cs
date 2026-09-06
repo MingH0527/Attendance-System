@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Services;
 using WebAndMobile.ViewModels;
 
 namespace WebAndMobile.Controllers;
@@ -36,6 +37,43 @@ public class UserController : Controller
                     Status = u.Status,
                     Avatar = u.Avatar
                 })
+                .ToListAsync();
+
+        //program registration info for Students
+        Dictionary<string, StudentClass> studentClasses =
+            await db.StudentClasses
+                .AsNoTracking()
+                .Include(sc => sc.Program)
+                .Include(sc => sc.ClassGroup)
+                .ToDictionaryAsync(sc => sc.UserId);
+
+        foreach (UserListItemDto user in users)
+        {
+            if (user.Position == "Student" &&
+                studentClasses.TryGetValue(user.UserId, out StudentClass? sc))
+            {
+                user.HasProgram = true;
+                user.ProgramId = sc.ProgramId;
+                user.ProgramName = sc.Program?.ProgramName;
+                user.ClassId = sc.ClassId;
+                user.ClassName = sc.ClassGroup?.ClassName;
+                user.StudentId = sc.StudentId;
+            }
+        }
+
+        // NEW: data for the "Register Program" modal dropdowns
+        ViewBag.AvailablePrograms =
+            await db.AcademicPrograms
+                .AsNoTracking()
+                .OrderBy(p => p.ProgramName)
+                .Select(p => new { p.ProgramId, p.ProgramName })
+                .ToListAsync();
+
+        ViewBag.AvailableClasses =
+            await db.ClassGroups
+                .AsNoTracking()
+                .OrderBy(c => c.ClassName)
+                .Select(c => new { c.ClassId, c.ClassName, c.ProgramId })
                 .ToListAsync();
 
         return View(users);
@@ -102,7 +140,6 @@ public class UserController : Controller
             );
         }
 
-        // Guard: don't let the last Admin get demoted by accident.
         if (user.Position == "Admin" &&
             model.Position != "Admin")
         {
@@ -123,8 +160,6 @@ public class UserController : Controller
             }
         }
 
-        // Only touch the fields this screen is allowed to edit.
-        // Address and Password are never bound or overwritten here.
         user.Username = model.Username.Trim();
         user.Email = model.Email.Trim();
         user.Phone = model.Phone.Trim();
@@ -137,7 +172,7 @@ public class UserController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // POST: /User/Delete/5  (soft delete -> Status = Inactive)
+    // POST: /User/Delete/5
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(string id)
@@ -175,7 +210,7 @@ public class UserController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // POST: /User/Activate/5  (reverse of soft delete)
+    // POST: /User/Activate/5
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Activate(string id)
@@ -195,5 +230,77 @@ public class UserController : Controller
         await db.SaveChangesAsync();
 
         return RedirectToAction(nameof(Index));
+    }
+
+    // POST: /User/RegisterProgram
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegisterProgram(
+        string userId,
+        string programId,
+        string classId)
+    {
+        if (string.IsNullOrWhiteSpace(userId) ||
+            string.IsNullOrWhiteSpace(programId) ||
+            string.IsNullOrWhiteSpace(classId))
+        {
+            TempData["ErrorMessage"] =
+                "Please select both a program and a class.";
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        User? user = await db.Users.FindAsync(userId);
+
+        if (user == null || user.Position != "Student")
+        {
+            return NotFound("Student not found.");
+        }
+
+        StudentClass? existing =
+            await db.StudentClasses
+                .FirstOrDefaultAsync(sc => sc.UserId == userId);
+
+        if (existing != null)
+        {
+            existing.ProgramId = programId;
+            existing.ClassId = classId;
+            existing.RegisteredDate = DateTime.Now;
+        }
+        else
+        {
+            string newStudentId = await GenerateStudentIdAsync();
+
+            db.StudentClasses.Add(new StudentClass
+            {
+                StudentClassId = await FormattedIdGenerator.NextAsync(
+                    db.StudentClasses,
+                    sc => sc.StudentClassId,
+                    "STC"
+                ),
+                UserId = userId,
+                StudentId = newStudentId,
+                ProgramId = programId,
+                ClassId = classId
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        TempData["SuccessMessage"] =
+            $"{user.Username} has been registered to the selected program.";
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<string> GenerateStudentIdAsync()
+    {
+        int year = DateTime.Now.Year;
+        string prefix = $"S{year}";
+
+        int countThisYear = await db.StudentClasses
+            .CountAsync(sc => sc.StudentId.StartsWith(prefix));
+
+        return $"{prefix}{(countThisYear + 1):D3}";
     }
 }

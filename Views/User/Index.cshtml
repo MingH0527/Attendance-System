@@ -207,6 +207,7 @@
                             <th>Username</th>
                             <th>Position</th>
                             <th>Status</th>
+                            <th>Program</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -225,7 +226,9 @@
                                     data-gender="@user.Gender"
                                     data-position="@user.Position"
                                     data-status="@user.Status"
-                                    data-avatar="@user.Avatar">
+                                    data-avatar="@user.Avatar"
+                                    data-program-id="@user.ProgramId"
+                                    data-class-id="@user.ClassId">
 
                                     <td class="row-number"></td>
 
@@ -257,6 +260,27 @@
                                     </td>
 
                                     <td>
+                                        @if (user.Position == "Student")
+                                        {
+                                            if (user.HasProgram)
+                                            {
+                                                <span class="status status-active">Registered</span>
+                                                <div style="font-size:12px;color:#667085;margin-top:4px;">
+                                                    @user.ProgramName
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="status status-inactive">Not Registered</span>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span>—</span>
+                                        }
+                                    </td>
+
+                                    <td>
                                         <div class="actions">
 
                                             <button type="button"
@@ -264,6 +288,15 @@
                                                     data-action="detail">
                                                 Detail
                                             </button>
+
+                                            @if (user.Position == "Student")
+                                            {
+                                                <button type="button"
+                                                        class="action-button teacher-button"
+                                                        data-action="register-program">
+                                                    @(user.HasProgram ? "Edit Program" : "Register Program")
+                                                </button>
+                                            }
 
                                             @if (user.Position != "Admin")
                                             {
@@ -326,7 +359,7 @@
                         }
 
                         <tr id="emptyRow" hidden>
-                            <td colspan="6"
+                            <td colspan="7"
                                 class="empty-message">
                                 No users found.
                             </td>
@@ -435,6 +468,62 @@
                 <strong id="detailStatus">-</strong>
             </div>
         </div>
+    </aside>
+</div>
+
+<script id="programsJson" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.AvailablePrograms))
+</script>
+
+<script id="classesJson" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.AvailableClasses))
+</script>
+
+<div class="detail-overlay" id="registerOverlay" hidden>
+    <aside class="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+
+        <div class="detail-header">
+            <div>
+                <span class="detail-eyebrow">Program registration</span>
+                <h2 id="registerTitle">Register Student to Program</h2>
+            </div>
+
+            <button type="button" class="detail-close" id="registerClose" aria-label="Close">
+                ×
+            </button>
+        </div>
+
+        <form id="registerForm"
+              method="post"
+              asp-controller="User"
+              asp-action="RegisterProgram">
+
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" name="userId" id="registerUserId" />
+
+            <div class="detail-list" style="grid-template-columns: 1fr;">
+                <div class="detail-item detail-item-wide">
+                    <span class="detail-label">Student</span>
+                    <strong id="registerUsername">-</strong>
+                </div>
+
+                <div class="detail-item detail-item-wide">
+                    <label class="detail-label" for="registerProgramSelect">Program</label>
+                    <select id="registerProgramSelect" name="programId" required style="width:100%;padding:8px;"></select>
+                </div>
+
+                <div class="detail-item detail-item-wide">
+                    <label class="detail-label" for="registerClassSelect">Class</label>
+                    <select id="registerClassSelect" name="classId" required style="width:100%;padding:8px;"></select>
+                </div>
+            </div>
+
+            <div class="filter-actions" style="margin-top:16px;">
+                <button type="button" class="filter-reset" id="registerCancel">Cancel</button>
+                <button type="submit" class="filter-apply">Save Registration</button>
+            </div>
+        </form>
     </aside>
 </div>
 
