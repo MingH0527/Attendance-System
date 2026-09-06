@@ -94,9 +94,19 @@
                         data-user-id="@item.OtherUserId"
                         data-conversation-id="@item.ConversationId">
 
-                    <img src="~/image/@item.OtherAvatar"
+                    @{
+                        string avatarUrl =
+                            string.IsNullOrWhiteSpace(item.OtherAvatar) ||
+                            item.OtherAvatar == "default.png"
+                                ? "/image/default.png"
+                                : item.OtherAvatar.StartsWith("/")
+                                    ? item.OtherAvatar
+                                    : $"/image/{item.OtherAvatar}";
+                    }
+
+                    <img src="@avatarUrl"
                          alt="@item.OtherUsername"
-                         onerror="this.src='/image/default.png'" />
+                         onerror="this.onerror=null; this.src='/image/default.png';" />
 
                     <span class="conversation-main">
 

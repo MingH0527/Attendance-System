@@ -271,6 +271,23 @@
         return element.innerHTML;
     }
 
+    function avatarUrl(value) {
+        const avatar = String(value || "").trim();
+
+        if (!avatar || avatar === "default.png") {
+            return "/image/default.png";
+        }
+
+        // Uploaded profile picture
+        if (avatar.startsWith("/")) {
+            return avatar;
+        }
+
+        // Old/default image stored as filename
+        return `/image/${avatar}`;
+    }
+
+
     function parseUtcDate(
         utcValue) {
         if (!utcValue) {
@@ -478,19 +495,33 @@
         const mine =
             String(message.senderId || "") ===
             currentUserId;
-        const isCall = (message.messageType || "Text") === "VideoCall";
+
+        const isCall =
+            (message.messageType || "Text") === "VideoCall";
+
+        const senderAvatar =
+            avatarUrl(message.senderAvatar);
+
+        const senderName =
+            message.senderName ||
+            (mine ? "You" : selectedUserName || "User");
 
         let contentHtml;
 
         if (isCall) {
-            const status = message.callStatus || "Calling";
+            const status =
+                message.callStatus || "Calling";
+
             let detail = "Calling…";
 
             if (status === "Connected") {
                 detail = "Video call in progress";
             }
             else if (status === "Completed") {
-                detail = `Ended · ${formatDuration(message.callDurationSeconds)}`;
+                detail =
+                    `Ended · ${formatDuration(
+                        message.callDurationSeconds
+                    )}`;
             }
             else if (status === "Declined") {
                 detail = "Declined";
@@ -500,40 +531,63 @@
             }
 
             contentHtml = `
-                <div class="call-message-card">
-                    <div class="call-message-icon">📹</div>
-                    <div>
-                        <strong>Video call</strong>
-                        <div class="call-message-detail">${escapeHtml(detail)}</div>
+            <div class="call-message-card">
+                <div class="call-message-icon">📹</div>
+                <div>
+                    <strong>Video call</strong>
+                    <div class="call-message-detail">
+                        ${escapeHtml(detail)}
                     </div>
-                </div>`;
+                </div>
+            </div>`;
         }
         else {
             contentHtml = `
-                <div class="message-content">
-                    ${escapeHtml(message.content).replace(/\n/g, "<br>")}
-                </div>`;
+            <div class="message-content">
+                ${escapeHtml(message.content)
+                    .replace(/\n/g, "<br>")}
+            </div>`;
         }
 
+        const avatarHtml = `
+        <img
+            class="message-avatar"
+            src="${escapeHtml(senderAvatar)}"
+            alt="${escapeHtml(senderName)}"
+            onerror="this.onerror=null; this.src='/image/default.png';" />
+    `;
+
         return `
-            <article
-                class="message-row ${mine ? "message-mine" : "message-other"}"
-                data-message-id="${message.messageId}">
+        <article
+            class="message-row ${mine ? "message-mine" : "message-other"
+            }"
+            data-message-id="${message.messageId}">
 
-                <div class="message-bubble ${isCall ? "call-message-bubble" : ""}">
-                    ${contentHtml}
+            ${mine ? "" : avatarHtml}
 
-                    <div class="message-meta">
-                        <time data-utc="${escapeHtml(message.sentAtUtc)}">
-                            ${formatTime(message.sentAtUtc)}
-                        </time>
+            <div class="message-bubble ${isCall ? "call-message-bubble" : ""
+            }">
 
-                        ${mine
-                            ? `<span class="read-state">${message.isRead ? "Read" : "Sent"}</span>`
-                            : ""}
-                    </div>
+                ${contentHtml}
+
+                <div class="message-meta">
+                    <time data-utc="${escapeHtml(message.sentAtUtc)}">
+                        ${formatTime(message.sentAtUtc)}
+                    </time>
+
+                    ${mine
+                ? `<span class="read-state">
+                                ${message.isRead ? "Read" : "Sent"}
+                               </span>`
+                : ""
+            }
                 </div>
-            </article>`;
+
+            </div>
+
+            ${mine ? avatarHtml : ""}
+
+        </article>`;
     }
 
     function replaceMessage(message) {
@@ -675,7 +729,7 @@
                 data.otherUser.username;
 
             activeChatAvatar.src =
-                `/image/${data.otherUser.avatar}`;
+                avatarUrl(data.otherUser.avatar);
 
             activeChatAvatar.onerror =
                 () => {
@@ -864,8 +918,9 @@
                                 data-user-id="${user.userId}">
 
                                 <img
-                                    src="/image/${escapeHtml(
-                                        user.avatar
+                                 src="${escapeHtml(
+                                     avatarUrl(
+                                         user.avatar)
                                     )}"
                                     alt="${escapeHtml(
                                         user.username
@@ -987,14 +1042,11 @@
                                 data-conversation-id="${item.conversationId}">
 
                                 <img
-                                    src="/image/${escapeHtml(
-                                        item.otherAvatar
+                                    src="${escapeHtml(avatarUrl(user.avatar))}"
                                     )}"
-                                    alt="${escapeHtml(
-                                        item.otherUsername
-                                    )}"
-                                    onerror="this.onerror=null; this.src='/image/default.png';" />
+                                    alt"${escapeHtml(user.username)}"
 
+                                    onerror="this.onerror=null; this.src='/image/default.png';" />
                                 <span class="conversation-main">
 
                                     <span class="conversation-topline">

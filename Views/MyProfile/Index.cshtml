@@ -27,7 +27,9 @@
         };
 }
 
-<link rel="stylesheet" href="~/css/myprofile.css" />
+<link rel="stylesheet"
+      href="~/css/myprofile.css"
+      asp-append-version="true" />
 
 <div class="profile-page">
 
@@ -36,24 +38,58 @@
         <!-- Profile Header -->
         <div class="profile-header">
 
-            <div class="profile-avatar">
-                @username.Substring(0, 1).ToUpper()
+            <div class="profile-avatar-wrapper">
+
+                @if (!string.IsNullOrWhiteSpace(ViewBag.Avatar as string) &&
+                     ViewBag.Avatar != "default.png")
+                {
+                    <img src="@ViewBag.Avatar"
+                         class="profile-avatar-image"
+                         alt="Profile Picture" />
+                }
+                else
+                {
+                    <div class="profile-avatar-default">
+                        @username.Substring(0, 1).ToUpper()
+                    </div>
+                }
+
+                <button type="button"
+                        class="avatar-edit-button"
+                        title="Change profile picture"
+                        onclick="document.getElementById('avatarInput').click()">
+                    ✎
+                </button>
+
+                <form asp-controller="MyProfile"
+                      asp-action="UploadAvatar"
+                      method="post"
+                      enctype="multipart/form-data"
+                      id="avatarForm">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="file"
+                           id="avatarInput"
+                           name="avatar"
+                           accept=".jpg,.jpeg,.png,.webp"
+                           hidden
+                           onchange="document.getElementById('avatarForm').submit()" />
+                </form>
+
             </div>
 
-            <div>
-                <p class="profile-label">
-                    My Profile
-                </p>
+            <h1 class="profile-username">
+                @username
+            </h1>
 
-                <h1>@username</h1>
-
-                <span class="role-badge">
-                    @role
-                </span>
-            </div>
+            <span class="role-badge">
+                @role
+            </span>
 
         </div>
-
+            
+    
 
         <!-- Profile Information -->
         <div class="profile-information">

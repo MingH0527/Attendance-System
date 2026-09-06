@@ -41,9 +41,20 @@
                         : Model.Avatar;
             }
 
-            <img src="~/image/@avatar"
-                 alt="Teacher profile picture"
-                 onerror="this.src='/image/default.png'" />
+            @{
+                string teacherAvatar =
+                    string.IsNullOrWhiteSpace(Model.Avatar) ||
+                    Model.Avatar == "default.png"
+                        ? "/image/default.png"
+                        : Model.Avatar.StartsWith("/")
+                            ? Model.Avatar
+                            : $"/image/{Model.Avatar}";
+            }
+
+            <img src="@teacherAvatar"
+                 class="teacher-home-avatar"
+                 alt="@Model.Username"
+                 onerror="this.onerror=null; this.src='/image/default.png';" />
         </div>
 
     </header>

@@ -28,6 +28,13 @@ public class ChatHub : Hub
         string currentUserId =
             GetCurrentUserId();
 
+        User currentUser =
+    await db.Users
+        .AsNoTracking()
+        .SingleAsync(
+            u => u.UserId == currentUserId
+        );
+
         string currentRole =
             GetCurrentRole();
 
@@ -149,32 +156,58 @@ public class ChatHub : Hub
         await db.SaveChangesAsync();
 
         ChatMessageDto dto =
-            new()
-            {
-                MessageId =
-                    message.ChatMessageId,
+      new()
+      {
+          MessageId =
+              message.ChatMessageId,
 
-                ConversationId =
-                    message.ConversationId,
+          ConversationId =
+              message.ConversationId,
 
-                SenderId =
-                    message.SenderId,
+          SenderId =
+              message.SenderId,
 
-                ReceiverId =
-                    message.ReceiverId,
+          ReceiverId =
+              message.ReceiverId,
 
-                Content =
-                    message.Content,
+          SenderName =
+              currentUser.Username,
 
-                SentAtUtc =
-                    DateTime.SpecifyKind(
-                        message.SentAtUtc,
-                        DateTimeKind.Utc
-                    ),
+          SenderAvatar =
+              string.IsNullOrWhiteSpace(currentUser.Avatar)
+                  ? "default.png"
+                  : currentUser.Avatar,
 
-                IsRead =
-                    message.IsRead
-            };
+          Content =
+              message.Content,
+
+          SentAtUtc =
+              DateTime.SpecifyKind(
+                  message.SentAtUtc,
+                  DateTimeKind.Utc
+              ),
+
+          IsRead =
+              message.IsRead,
+
+          MessageType =
+              message.MessageType,
+
+          CallStatus =
+              message.CallStatus,
+
+          CallStartedAtUtc =
+              message.CallStartedAtUtc,
+
+          CallAnsweredAtUtc =
+              message.CallAnsweredAtUtc,
+
+          CallEndedAtUtc =
+              message.CallEndedAtUtc,
+
+          CallDurationSeconds =
+              message.CallDurationSeconds
+      };
 
         await Clients.Group(UserGroup(currentUserId))
             .SendAsync(
