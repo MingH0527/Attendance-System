@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Filters;
 
 namespace WebAndMobile.Controllers;
 
 [Authorize(Roles = "Student,Teacher")]
+[RequireStudentProfile]
 public class ChatController : Controller
 {
     private readonly DB db;

@@ -33,6 +33,13 @@
 
 <div class="profile-page">
 
+    @if (TempData["ProfileRequired"] != null)
+    {
+        <div class="profile-required-alert">
+            ⚠️ @TempData["ProfileRequired"]
+        </div>
+    }
+
     <div class="profile-container">
 
         <!-- Profile Header -->

@@ -1,8 +1,674 @@
-﻿@{
+﻿@using WebAndMobile.Models
+
+@{
     Layout = "_Layout";
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = "Student Home";
+
+    <link rel="stylesheet"
+          href="~/css/student.css"
+          asp-append-version="true" />
+
+    // ==============================
+    // CURRENT USER
+    // ==============================
+
+    string username =
+        User.Identity?.Name ?? "Student";
+
+
+    // ==============================
+    // PROFILE INFORMATION
+    // ==============================
+
+    bool profileCompleted =
+        ViewBag.ProfileCompleted == true;
+
+    string programName =
+        ViewBag.ProgramName ?? "Not Registered";
+
+    string className =
+        ViewBag.ClassName ?? "Not Registered";
+
+
+    // ==============================
+    // DASHBOARD COUNTS
+    // ==============================
+
+    int todayClassCount =
+        ViewBag.TodayClassCount ?? 0;
+
+    int pendingLeaveCount =
+        ViewBag.PendingLeaveCount ?? 0;
+
+    int unreadMessageCount =
+        ViewBag.UnreadMessageCount ?? 0;
+
+
+    // ==============================
+    // TODAY TIMETABLE
+    // ==============================
+
+    List<Timetable> todayTimetable =
+        ViewBag.TodayTimetable as List<Timetable>
+        ?? new List<Timetable>();
 }
 
-<h1>Dashboard</h1>
 
-<p>Welcome back!</p>
+<link rel="stylesheet"
+      href="~/css/student-home.css"
+      asp-append-version="true" />
+
+
+<div class="student-dashboard">
+
+
+    <!-- ==========================================
+         WELCOME SECTION
+    =========================================== -->
+
+    <section class="dashboard-hero">
+
+        <div class="hero-content">
+
+            <span class="dashboard-eyebrow">
+                STUDENT PORTAL
+            </span>
+
+            <h1>
+                Welcome back, @username 👋
+            </h1>
+
+            <p>
+                Here's an overview of your student activities.
+            </p>
+
+        </div>
+
+
+        <div class="hero-date">
+
+            <span>
+                Today
+            </span>
+
+            <strong>
+                @DateTime.Now.ToString("dd MMM yyyy")
+            </strong>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- ==========================================
+         COMPLETE PROFILE WARNING
+    =========================================== -->
+    @if (!profileCompleted)
+    {
+        <section class="profile-warning-card">
+
+            <div class="warning-icon">
+                !
+            </div>
+
+
+            <div class="warning-content">
+
+                <strong>
+                    Complete Your Profile
+                </strong>
+
+                <span>
+                    Register your program and class
+                    to unlock all student features.
+                </span>
+
+            </div>
+
+
+            <a asp-controller="Program"
+               asp-action="RegisterProgram"
+               class="complete-profile-button">
+
+                Complete Profile
+
+            </a>
+
+        </section>
+    }
+
+
+
+    <!-- ==========================================
+         SUMMARY CARDS
+    =========================================== -->
+
+    <section class="dashboard-stats">
+
+
+        <!-- Program -->
+        <div class="stat-card">
+
+            <span class="stat-label">
+                PROGRAM
+            </span>
+
+            <strong class="stat-value stat-text">
+                @programName
+            </strong>
+
+        </div>
+
+
+
+        <!-- Class -->
+        <div class="stat-card">
+
+            <span class="stat-label">
+                CLASS
+            </span>
+
+            <strong class="stat-value">
+                @className
+            </strong>
+
+        </div>
+
+
+
+        <!-- Today's Classes -->
+        <div class="stat-card">
+
+            <span class="stat-label">
+                TODAY'S CLASSES
+            </span>
+
+            <strong class="stat-number">
+                @todayClassCount
+            </strong>
+
+        </div>
+
+
+
+        <!-- Unread Chat -->
+        <div class="stat-card">
+
+            <span class="stat-label">
+                UNREAD MESSAGES
+            </span>
+
+            <strong class="stat-number">
+                @unreadMessageCount
+            </strong>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- ==========================================
+     MAIN DASHBOARD CONTENT
+=========================================== -->
+
+    <section class="dashboard-content">
+
+        <!-- ======================================
+         TODAY'S TIMETABLE
+    ======================================= -->
+
+        <div class="dashboard-card timetable-card">
+
+            <div class="card-heading">
+
+                <div>
+                    <span class="card-eyebrow">
+                        SCHEDULE
+                    </span>
+
+                    <h2>
+                        Today's Timetable
+                    </h2>
+                </div>
+
+                @if (profileCompleted)
+                {
+                    <a asp-controller="Student"
+                       asp-action="Timetable"
+                       class="card-link">
+                        View Timetable →
+                    </a>
+                }
+
+            </div>
+
+
+            @if (!profileCompleted)
+            {
+                <div class="dashboard-empty">
+
+                    <div class="empty-icon">
+                        📅
+                    </div>
+
+                    <strong>
+                        Complete your profile first
+                    </strong>
+
+                    <span>
+                        Your timetable will appear here
+                        after you register your program and class.
+                    </span>
+
+                </div>
+            }
+            else if (todayTimetable.Count == 0)
+            {
+                <div class="dashboard-empty">
+
+                    <div class="empty-icon">
+                        ✨
+                    </div>
+
+                    <strong>
+                        No classes today
+                    </strong>
+
+                    <span>
+                        You don't have any scheduled classes for today.
+                    </span>
+
+                </div>
+            }
+            else
+            {
+                <div class="today-class-list">
+
+                    @foreach (var item in todayTimetable)
+                    {
+                        <div class="today-class">
+
+                            <div class="class-time">
+
+                                <strong>
+                                    @item.StartTime.ToString(@"hh\:mm")
+                                </strong>
+
+                                <span>
+                                    @item.EndTime.ToString(@"hh\:mm")
+                                </span>
+
+                            </div>
+
+
+                            <div class="class-details">
+
+                                <strong>
+                                    @(item.Course?.CourseName
+                                        ?? item.CourseId)
+                                </strong>
+
+                                <span>
+                                    @(
+                                        !string.IsNullOrWhiteSpace(item.ClassroomId)
+                                            ? "Classroom: " + item.ClassroomId
+                                            : "Classroom not assigned"
+                                    )
+                                </span>
+
+                            </div>
+
+                        </div>
+                    }
+
+                </div>
+            }
+
+        </div>
+
+
+        <!-- ======================================
+         STUDENT STATUS
+    ======================================= -->
+
+        <div class="dashboard-card">
+
+            <div class="card-heading">
+
+                <div>
+
+                    <span class="card-eyebrow">
+                        OVERVIEW
+                    </span>
+
+                    <h2>
+                        Student Status
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div class="status-list">
+
+                <!-- Pending Leave -->
+                <div class="status-row">
+
+                    <div>
+
+                        <span class="status-icon">
+                            📝
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Pending Leave
+                            </strong>
+
+                            <small>
+                                Applications waiting for approval
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <span class="status-number">
+                        @pendingLeaveCount
+                    </span>
+
+                </div>
+
+
+                <!-- Unread Messages -->
+                <div class="status-row">
+
+                    <div>
+
+                        <span class="status-icon">
+                            💬
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Unread Chat
+                            </strong>
+
+                            <small>
+                                Messages you have not read
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <span class="status-number">
+                        @unreadMessageCount
+                    </span>
+
+                </div>
+
+
+                <!-- Profile Status -->
+                <div class="status-row">
+
+                    <div>
+
+                        <span class="status-icon">
+                            👤
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Profile Status
+                            </strong>
+
+                            <small>
+                                Program and class registration
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    @if (profileCompleted)
+                    {
+                        <span class="status-badge complete">
+                            Complete
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="status-badge incomplete">
+                            Incomplete
+                        </span>
+                    }
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ==========================================
+         QUICK ACCESS
+    =========================================== -->
+
+    <section class="quick-section">
+
+
+        <div class="section-heading">
+
+            <span class="card-eyebrow">
+                QUICK ACCESS
+            </span>
+
+            <h2>
+                Student Services
+            </h2>
+
+        </div>
+
+
+
+        <div class="quick-grid">
+
+
+            <!-- Timetable -->
+            <a asp-controller="Student"
+               asp-action="Timetable"
+               class="quick-card">
+
+                <span class="quick-icon">
+                    📅
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        My Timetable
+                    </strong>
+
+                    <span>
+                        View your class schedule.
+                    </span>
+
+                </div>
+
+
+                <span class="quick-arrow">
+                    →
+                </span>
+
+            </a>
+
+
+
+            <!-- Apply Leave -->
+            <a asp-controller="Student"
+               asp-action="ApplyLeave"
+               class="quick-card">
+
+                <span class="quick-icon">
+                    📝
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Apply Leave
+                    </strong>
+
+                    <span>
+                        Submit and review leave applications.
+                    </span>
+
+                </div>
+
+
+                <span class="quick-arrow">
+                    →
+                </span>
+
+            </a>
+
+
+
+            <!-- Chat -->
+            <a asp-controller="Chat"
+               asp-action="Index"
+               class="quick-card">
+
+                <span class="quick-icon">
+                    💬
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Teacher Chat
+                    </strong>
+
+                    <span>
+                        Message your teachers in real time.
+                    </span>
+
+                </div>
+
+
+                <span class="quick-arrow">
+                    →
+                </span>
+
+            </a>
+
+
+
+            <!-- Payment -->
+            <a asp-controller="Payment"
+               asp-action="Index"
+               class="quick-card">
+
+                <span class="quick-icon">
+                    💳
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Payment
+                    </strong>
+
+                    <span>
+                        View and make your payments.
+                    </span>
+
+                </div>
+
+
+                <span class="quick-arrow">
+                    →
+                </span>
+
+            </a>
+
+
+
+            <!-- Payment History -->
+            <a asp-controller="Payment"
+               asp-action="History"
+               class="quick-card">
+
+                <span class="quick-icon">
+                    🧾
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        Payment History
+                    </strong>
+
+                    <span>
+                        Review your previous transactions.
+                    </span>
+
+                </div>
+
+
+                <span class="quick-arrow">
+                    →
+                </span>
+
+            </a>
+
+
+
+            <!-- My Profile -->
+            <a asp-controller="MyProfile"
+               asp-action="Index"
+               class="quick-card">
+
+                <span class="quick-icon">
+                    👤
+                </span>
+
+
+                <div>
+
+                    <strong>
+                        My Profile
+                    </strong>
+
+                    <span>
+                        View your account details and security.
+                    </span>
+
+                </div>
+
+
+                <span class="quick-arrow">
+                    →
+                </span>
+
+            </a>
+
+        </div>
+
+    </section>
+
+
+</div>
