@@ -33,7 +33,7 @@ public class TeacherController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var userId =
+        string? userId =
             GetCurrentUserId();
 
         if (userId == null)
@@ -44,14 +44,14 @@ public class TeacherController : Controller
             );
         }
 
-        var user =
+
+        User? user =
             await db.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    u =>
-                        u.UserId ==
-                        userId
+                .FirstOrDefaultAsync(u =>
+                    u.UserId == userId
                 );
+
 
         if (user == null)
         {
@@ -61,43 +61,47 @@ public class TeacherController : Controller
             );
         }
 
+
         await TryLinkLegacyProfileAsync(
             userId
         );
 
-        if (
-            !await db.TeacherCourses
-                .AnyAsync(
-                    tc =>
-                        tc.UserId ==
-                        userId
-                )
-        )
+
+        bool hasTeacherCourse =
+            await db.TeacherCourses
+                .AnyAsync(tc =>
+                    tc.UserId == userId
+                );
+
+
+        if (!hasTeacherCourse)
         {
             return RedirectToAction(
                 nameof(Create)
             );
         }
 
+
         ViewBag.PasskeyCount =
             await db.UserPasskeys
-                .CountAsync(
-                    p =>
-                        p.UserId ==
-                        user.UserId
+                .CountAsync(p =>
+                    p.UserId ==
+                    user.UserId
                 );
+
 
         ViewBag.TimetableCount =
             await db.Timetables
-                .CountAsync(
-                    t =>
-                        t.TeacherId ==
-                            user.UserId &&
-                        t.Term !=
-                            null &&
+                .CountAsync(t =>
+                    t.TeacherId ==
+                        user.UserId &&
+                    (
+                        t.Term == null ||
                         t.Term.Status ==
                             "Active"
+                    )
                 );
+
 
         return View(user);
     }
@@ -114,6 +118,7 @@ public class TeacherController : Controller
         string? userId =
             GetCurrentUserId();
 
+
         if (userId == null)
         {
             return RedirectToAction(
@@ -122,18 +127,20 @@ public class TeacherController : Controller
             );
         }
 
+
         await TryLinkLegacyProfileAsync(
             userId
         );
 
-        if (
-            !await db.TeacherCourses
-                .AnyAsync(
-                    tc =>
-                        tc.UserId ==
-                        userId
-                )
-        )
+
+        bool hasTeacherCourse =
+            await db.TeacherCourses
+                .AnyAsync(tc =>
+                    tc.UserId == userId
+                );
+
+
+        if (!hasTeacherCourse)
         {
             return RedirectToAction(
                 nameof(Create)
@@ -141,27 +148,24 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
+        TeacherTimetableViewModel model =
+            new();
+
+
+        // ==================================================
         // ACTIVE SEMESTER
-        // ==========================================
+        // ==================================================
 
         AcademicTerm? activeTerm =
             await db.AcademicTerms
                 .AsNoTracking()
-                .Where(
-                    t =>
-                        t.Status ==
-                        "Active"
+                .Where(t =>
+                    t.Status == "Active"
                 )
-                .OrderBy(
-                    t =>
-                        t.StartDate
+                .OrderBy(t =>
+                    t.StartDate
                 )
                 .FirstOrDefaultAsync();
-
-
-        TeacherTimetableViewModel model =
-            new();
 
 
         if (activeTerm == null)
@@ -174,37 +178,32 @@ public class TeacherController : Controller
             activeTerm.Name;
 
 
-        // ==========================================
+        // ==================================================
         // ACADEMIC WEEKS
-        // ==========================================
+        // ==================================================
 
         model.Weeks =
             await db.AcademicWeeks
                 .AsNoTracking()
-                .Where(
-                    w =>
-                        w.TermId ==
-                        activeTerm.TermId
+                .Where(w =>
+                    w.TermId ==
+                    activeTerm.TermId
                 )
-                .OrderBy(
-                    w =>
-                        w.WeekNumber
+                .OrderBy(w =>
+                    w.WeekNumber
                 )
                 .ToListAsync();
 
 
-        // ==========================================
+        // ==================================================
         // WEEK SELECTION
         //
-        // 0 = Weekly Template
+        // 0    = Weekly Template
         // null = Current Week
-        // 1,2,3... = Specific Week
-        // ==========================================
+        // 1... = Specific Week
+        // ==================================================
 
-        if (
-            weekNumber ==
-            0
-        )
+        if (weekNumber == 0)
         {
             model.IsTemplate =
                 true;
@@ -218,41 +217,34 @@ public class TeacherController : Controller
                 null;
 
 
-            if (
-                weekNumber.HasValue
-            )
+            if (weekNumber.HasValue)
             {
                 selectedWeek =
                     model.Weeks
-                        .FirstOrDefault(
-                            w =>
-                                w.WeekNumber ==
-                                weekNumber.Value
+                        .FirstOrDefault(w =>
+                            w.WeekNumber ==
+                            weekNumber.Value
                         );
             }
 
 
-            // No week selected:
-            // automatically find current week
             if (selectedWeek == null)
             {
                 DateTime today =
                     DateTime.Today;
 
+
                 selectedWeek =
                     model.Weeks
-                        .FirstOrDefault(
-                            w =>
-                                today >=
-                                    w.StartDate.Date &&
-                                today <=
-                                    w.EndDate.Date
+                        .FirstOrDefault(w =>
+                            today >=
+                                w.StartDate.Date &&
+                            today <=
+                                w.EndDate.Date
                         );
             }
 
 
-            // If current date is outside all academic weeks,
-            // show the first week.
             selectedWeek ??=
                 model.Weeks
                     .FirstOrDefault();
@@ -280,53 +272,52 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // BASE WEEKLY TIMETABLE
-        // ==========================================
+        // ==================================================
+        // GET TEACHER TIMETABLE
+        //
+        // IMPORTANT:
+        // Old timetable may have TermId = NULL.
+        // New timetable uses Active TermId.
+        // Both are accepted.
+        // ==================================================
 
         List<Timetable> entries =
             await db.Timetables
                 .AsNoTracking()
-                .Where(
-                    t =>
-                        t.TeacherId ==
-                            userId &&
+                .Where(t =>
+                    t.TeacherId ==
+                        userId &&
+                    (
                         t.TermId ==
-                            activeTerm.TermId
+                            activeTerm.TermId ||
+                        t.TermId ==
+                            null
+                    )
                 )
-                .Include(
-                    t =>
-                        t.Term
+                .Include(t =>
+                    t.Term
                 )
-                .Include(
-                    t =>
-                        t.Course
+                .Include(t =>
+                    t.Course
                 )
-                .Include(
-                    t =>
-                        t.ClassGroup
+                .Include(t =>
+                    t.ClassGroup
                 )
-                .Include(
-                    t =>
-                        t.Classroom
+                .Include(t =>
+                    t.Classroom
                 )
-                .OrderBy(
-                    t =>
-                        t.DayOfWeek
+                .OrderBy(t =>
+                    t.DayOfWeek
                 )
-                .ThenBy(
-                    t =>
-                        t.StartTime
+                .ThenBy(t =>
+                    t.StartTime
                 )
                 .ToListAsync();
 
 
-        // ==========================================
+        // ==================================================
         // WEEKLY TEMPLATE
-        //
-        // Template does NOT show cancellation /
-        // replacement for specific dates.
-        // ==========================================
+        // ==================================================
 
         if (model.IsTemplate)
         {
@@ -388,9 +379,9 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
+        // ==================================================
         // SPECIFIC WEEK
-        // ==========================================
+        // ==================================================
 
         else if (
             model.WeekStart != null &&
@@ -406,95 +397,84 @@ public class TeacherController : Controller
 
             List<string> timetableIds =
                 entries
-                    .Select(
-                        t =>
-                            t.TimetableId
+                    .Select(t =>
+                        t.TimetableId
                     )
                     .ToList();
 
 
-            // ======================================
+            // ==================================================
             // TIMETABLE EXCEPTIONS
-            // ======================================
+            // ==================================================
 
             List<TimetableException> exceptions =
                 await db.TimetableExceptions
                     .AsNoTracking()
-                    .Where(
-                        e =>
-                            timetableIds.Contains(
-                                e.TimetableId
-                            ) &&
-                            e.OccurrenceDate.Date >=
-                                weekStart &&
-                            e.OccurrenceDate.Date <=
-                                weekEnd
+                    .Where(e =>
+                        timetableIds.Contains(
+                            e.TimetableId
+                        ) &&
+                        e.OccurrenceDate.Date >=
+                            weekStart &&
+                        e.OccurrenceDate.Date <=
+                            weekEnd
                     )
                     .ToListAsync();
 
 
-            // ======================================
+            // ==================================================
             // REPLACEMENT CLASSES
-            // ======================================
+            // ==================================================
 
             List<ReplacementSession> replacements =
                 await db.ReplacementSessions
                     .AsNoTracking()
-                    .Where(
-                        r =>
-                            r.TeacherId ==
-                                userId &&
-                            r.ReplacementDate.Date >=
-                                weekStart &&
-                            r.ReplacementDate.Date <=
-                                weekEnd
+                    .Where(r =>
+                        r.TeacherId ==
+                            userId &&
+                        r.ReplacementDate.Date >=
+                            weekStart &&
+                        r.ReplacementDate.Date <=
+                            weekEnd
                     )
-                    .Include(
-                        r =>
-                            r.SourceTimetable
+                    .Include(r =>
+                        r.SourceTimetable
                     )
-                    .ThenInclude(
-                        t =>
-                            t!.Course
+                    .ThenInclude(t =>
+                        t!.Course
                     )
-                    .Include(
-                        r =>
-                            r.SourceTimetable
+                    .Include(r =>
+                        r.SourceTimetable
                     )
-                    .ThenInclude(
-                        t =>
-                            t!.ClassGroup
+                    .ThenInclude(t =>
+                        t!.ClassGroup
                     )
                     .ToListAsync();
 
 
-            // ======================================
+            // ==================================================
             // SPECIAL CLASSROOM IDS
-            // ======================================
+            // ==================================================
 
             List<string> specialRoomIds =
                 exceptions
-                    .Where(
-                        e =>
-                            !string.IsNullOrWhiteSpace(
-                                e.OverrideClassroomId
-                            )
+                    .Where(e =>
+                        !string.IsNullOrWhiteSpace(
+                            e.OverrideClassroomId
+                        )
                     )
-                    .Select(
-                        e =>
-                            e.OverrideClassroomId!
+                    .Select(e =>
+                        e.OverrideClassroomId!
                     )
                     .Concat(
                         replacements
-                            .Where(
-                                r =>
-                                    !string.IsNullOrWhiteSpace(
-                                        r.ClassroomId
-                                    )
+                            .Where(r =>
+                                !string.IsNullOrWhiteSpace(
+                                    r.ClassroomId
+                                )
                             )
-                            .Select(
-                                r =>
-                                    r.ClassroomId!
+                            .Select(r =>
+                                r.ClassroomId!
                             )
                     )
                     .Distinct()
@@ -505,25 +485,20 @@ public class TeacherController : Controller
                 roomNames =
                     await db.Classrooms
                         .AsNoTracking()
-                        .Where(
-                            c =>
-                                specialRoomIds
-                                    .Contains(
-                                        c.ClassroomId
-                                    )
+                        .Where(c =>
+                            specialRoomIds.Contains(
+                                c.ClassroomId
+                            )
                         )
                         .ToDictionaryAsync(
-                            c =>
-                                c.ClassroomId,
-
-                            c =>
-                                c.RoomName
+                            c => c.ClassroomId,
+                            c => c.RoomName
                         );
 
 
-            // ======================================
+            // ==================================================
             // NORMAL / CANCELLED CLASSES
-            // ======================================
+            // ==================================================
 
             foreach (
                 Timetable entry
@@ -550,15 +525,14 @@ public class TeacherController : Controller
 
                 TimetableException? exception =
                     exceptions
-                        .FirstOrDefault(
-                            e =>
-                                e.TimetableId ==
-                                    entry.TimetableId &&
-                                e.OccurrenceDate.Date ==
-                                    occurrenceDate.Date &&
-                                !IsPendingDecision(
-                                    e.Decision
-                                )
+                        .FirstOrDefault(e =>
+                            e.TimetableId ==
+                                entry.TimetableId &&
+                            e.OccurrenceDate.Date ==
+                                occurrenceDate.Date &&
+                            !IsPendingDecision(
+                                e.Decision
+                            )
                         );
 
 
@@ -590,12 +564,10 @@ public class TeacherController : Controller
                 if (
                     exception != null &&
                     !string.IsNullOrWhiteSpace(
-                        exception
-                            .OverrideClassroomId
+                        exception.OverrideClassroomId
                     ) &&
                     roomNames.TryGetValue(
-                        exception
-                            .OverrideClassroomId!,
+                        exception.OverrideClassroomId!,
                         out string? overrideRoom
                     )
                 )
@@ -628,8 +600,7 @@ public class TeacherController : Controller
                             roomName,
 
                         DayOfWeek =
-                            occurrenceDate
-                                .DayOfWeek,
+                            occurrenceDate.DayOfWeek,
 
                         OccurrenceDate =
                             occurrenceDate,
@@ -652,24 +623,21 @@ public class TeacherController : Controller
                             null,
 
                         Reason =
-                            exception
-                                ?.Reason
+                            exception?.Reason
                     }
                 );
             }
 
 
-            // ======================================
-            // ADD REPLACEMENT CLASSES
-            // ======================================
+            // ==================================================
+            // REPLACEMENT CLASSES
+            // ==================================================
 
             foreach (
                 ReplacementSession replacement
                 in replacements
             )
             {
-                // Cancelled / rejected replacement
-                // should not appear.
                 if (
                     IsCancelledValue(
                         replacement.Status
@@ -677,8 +645,7 @@ public class TeacherController : Controller
                     string.Equals(
                         replacement.Status,
                         "Rejected",
-                        StringComparison
-                            .OrdinalIgnoreCase
+                        StringComparison.OrdinalIgnoreCase
                     )
                 )
                 {
@@ -687,8 +654,7 @@ public class TeacherController : Controller
 
 
                 Timetable? source =
-                    replacement
-                        .SourceTimetable;
+                    replacement.SourceTimetable;
 
 
                 if (source == null)
@@ -706,8 +672,7 @@ public class TeacherController : Controller
                         replacement.ClassroomId
                     ) &&
                     roomNames.TryGetValue(
-                        replacement
-                            .ClassroomId!,
+                        replacement.ClassroomId!,
                         out string? replacementRoom
                     )
                 )
@@ -724,8 +689,7 @@ public class TeacherController : Controller
                             source.TimetableId,
 
                         ReplacementId =
-                            replacement
-                                .ReplacementId,
+                            replacement.ReplacementId,
 
                         CourseId =
                             source.CourseId,
@@ -754,46 +718,40 @@ public class TeacherController : Controller
                                 .Date,
 
                         StartTime =
-                            replacement
-                                .StartTime,
+                            replacement.StartTime,
 
                         EndTime =
-                            replacement
-                                .EndTime,
+                            replacement.EndTime,
 
                         ClassType =
-                            replacement
-                                .TargetClassType,
+                            replacement.TargetClassType,
 
                         Status =
                             "Replacement",
 
                         Reason =
-                            replacement
-                                .Reason
+                            replacement.Reason
                     }
                 );
             }
         }
 
 
-        // ==========================================
-        // TIMETABLE NOTIFICATIONS
-        // ==========================================
+        // ==================================================
+        // NOTIFICATIONS
+        // ==================================================
 
         model.Notifications =
             await db.TimetableNotifications
                 .AsNoTracking()
-                .Where(
-                    n =>
-                        n.UserId ==
-                            userId &&
-                        n.TermId ==
-                            activeTerm.TermId
+                .Where(n =>
+                    n.UserId ==
+                        userId &&
+                    n.TermId ==
+                        activeTerm.TermId
                 )
-                .OrderByDescending(
-                    n =>
-                        n.CreatedAt
+                .OrderByDescending(n =>
+                    n.CreatedAt
                 )
                 .Take(10)
                 .ToListAsync();
@@ -801,15 +759,13 @@ public class TeacherController : Controller
 
         model.Items =
             model.Items
-                .OrderBy(
-                    i =>
-                        GetDayOrder(
-                            i.DayOfWeek
-                        )
+                .OrderBy(i =>
+                    GetDayOrder(
+                        i.DayOfWeek
+                    )
                 )
-                .ThenBy(
-                    i =>
-                        i.StartTime
+                .ThenBy(i =>
+                    i.StartTime
                 )
                 .ToList();
 
@@ -845,10 +801,8 @@ public class TeacherController : Controller
 
         if (
             !await db.TeacherCourses
-                .AnyAsync(
-                    tc =>
-                        tc.UserId ==
-                        userId
+                .AnyAsync(tc =>
+                    tc.UserId == userId
                 )
         )
         {
@@ -873,21 +827,18 @@ public class TeacherController : Controller
             };
 
 
-        // ==========================================
+        // ==================================================
         // ACTIVE SEMESTER
-        // ==========================================
+        // ==================================================
 
         AcademicTerm? activeTerm =
             await db.AcademicTerms
                 .AsNoTracking()
-                .Where(
-                    t =>
-                        t.Status ==
-                        "Active"
+                .Where(t =>
+                    t.Status == "Active"
                 )
-                .OrderBy(
-                    t =>
-                        t.StartDate
+                .OrderBy(t =>
+                    t.StartDate
                 )
                 .FirstOrDefaultAsync();
 
@@ -898,157 +849,141 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // NORMAL CLASSES TODAY
-        // ==========================================
+        // ==================================================
+        // TODAY NORMAL CLASSES
+        //
+        // Also accept old TermId = NULL records.
+        // ==================================================
 
         List<Timetable> normalClasses =
             await db.Timetables
                 .AsNoTracking()
-                .Where(
-                    t =>
-                        t.TeacherId ==
-                            userId &&
+                .Where(t =>
+                    t.TeacherId ==
+                        userId &&
+                    t.DayOfWeek ==
+                        today.DayOfWeek &&
+                    (
                         t.TermId ==
-                            activeTerm.TermId &&
-                        t.DayOfWeek ==
-                            today.DayOfWeek
+                            activeTerm.TermId ||
+                        t.TermId ==
+                            null
+                    )
                 )
-                .Include(
-                    t =>
-                        t.Course
+                .Include(t =>
+                    t.Course
                 )
-                .Include(
-                    t =>
-                        t.ClassGroup
+                .Include(t =>
+                    t.ClassGroup
                 )
-                .Include(
-                    t =>
-                        t.Classroom
+                .Include(t =>
+                    t.Classroom
                 )
-                .OrderBy(
-                    t =>
-                        t.StartTime
+                .OrderBy(t =>
+                    t.StartTime
                 )
                 .ToListAsync();
 
 
         List<string> timetableIds =
             normalClasses
-                .Select(
-                    t =>
-                        t.TimetableId
+                .Select(t =>
+                    t.TimetableId
                 )
                 .ToList();
 
 
-        // ==========================================
+        // ==================================================
         // TODAY EXCEPTIONS
-        // ==========================================
+        // ==================================================
 
         List<TimetableException> exceptions =
             await db.TimetableExceptions
                 .AsNoTracking()
-                .Where(
-                    e =>
-                        timetableIds.Contains(
-                            e.TimetableId
-                        ) &&
-                        e.OccurrenceDate.Date ==
-                            today
+                .Where(e =>
+                    timetableIds.Contains(
+                        e.TimetableId
+                    ) &&
+                    e.OccurrenceDate.Date ==
+                        today
                 )
                 .ToListAsync();
 
 
-        // ==========================================
-        // TODAY REPLACEMENT CLASSES
-        // ==========================================
+        // ==================================================
+        // TODAY REPLACEMENTS
+        // ==================================================
 
         List<ReplacementSession> replacements =
             await db.ReplacementSessions
                 .AsNoTracking()
-                .Where(
-                    r =>
-                        r.TeacherId ==
-                            userId &&
-                        r.ReplacementDate.Date ==
-                            today
+                .Where(r =>
+                    r.TeacherId ==
+                        userId &&
+                    r.ReplacementDate.Date ==
+                        today
                 )
-                .Include(
-                    r =>
-                        r.SourceTimetable
+                .Include(r =>
+                    r.SourceTimetable
                 )
-                .ThenInclude(
-                    t =>
-                        t!.Course
+                .ThenInclude(t =>
+                    t!.Course
                 )
-                .Include(
-                    r =>
-                        r.SourceTimetable
+                .Include(r =>
+                    r.SourceTimetable
                 )
-                .ThenInclude(
-                    t =>
-                        t!.ClassGroup
+                .ThenInclude(t =>
+                    t!.ClassGroup
                 )
                 .ToListAsync();
 
 
-        // ==========================================
-        // CLASSROOMS USED BY OVERRIDES /
-        // REPLACEMENTS
-        // ==========================================
+        // ==================================================
+        // ROOM IDS
+        // ==================================================
 
         List<string> roomIds =
             exceptions
-                .Where(
-                    e =>
-                        !string.IsNullOrWhiteSpace(
-                            e.OverrideClassroomId
-                        )
+                .Where(e =>
+                    !string.IsNullOrWhiteSpace(
+                        e.OverrideClassroomId
+                    )
                 )
-                .Select(
-                    e =>
-                        e.OverrideClassroomId!
+                .Select(e =>
+                    e.OverrideClassroomId!
                 )
                 .Concat(
                     replacements
-                        .Where(
-                            r =>
-                                !string.IsNullOrWhiteSpace(
-                                    r.ClassroomId
-                                )
+                        .Where(r =>
+                            !string.IsNullOrWhiteSpace(
+                                r.ClassroomId
+                            )
                         )
-                        .Select(
-                            r =>
-                                r.ClassroomId!
+                        .Select(r =>
+                            r.ClassroomId!
                         )
                 )
                 .Distinct()
                 .ToList();
 
 
-        Dictionary<string, string>
-            rooms =
-                await db.Classrooms
-                    .AsNoTracking()
-                    .Where(
-                        r =>
-                            roomIds.Contains(
-                                r.ClassroomId
-                            )
+        Dictionary<string, string> rooms =
+            await db.Classrooms
+                .AsNoTracking()
+                .Where(r =>
+                    roomIds.Contains(
+                        r.ClassroomId
                     )
-                    .ToDictionaryAsync(
-                        r =>
-                            r.ClassroomId,
-
-                        r =>
-                            r.RoomName
-                    );
+                )
+                .ToDictionaryAsync(
+                    r => r.ClassroomId,
+                    r => r.RoomName
+                );
 
 
-        // ==========================================
-        // BUILD NORMAL CLASS LIST
-        // ==========================================
+        // ==================================================
+        // NORMAL CLASSES
+        // ==================================================
 
         foreach (
             Timetable timetable
@@ -1057,19 +992,15 @@ public class TeacherController : Controller
         {
             TimetableException? exception =
                 exceptions
-                    .FirstOrDefault(
-                        e =>
-                            e.TimetableId ==
-                                timetable
-                                    .TimetableId &&
-                            !IsPendingDecision(
-                                e.Decision
-                            )
+                    .FirstOrDefault(e =>
+                        e.TimetableId ==
+                            timetable.TimetableId &&
+                        !IsPendingDecision(
+                            e.Decision
+                        )
                     );
 
 
-            // Cancelled classes should not
-            // allow attendance generation.
             if (
                 exception != null &&
                 IsCancelledValue(
@@ -1102,12 +1033,10 @@ public class TeacherController : Controller
             if (
                 exception != null &&
                 !string.IsNullOrWhiteSpace(
-                    exception
-                        .OverrideClassroomId
+                    exception.OverrideClassroomId
                 ) &&
                 rooms.TryGetValue(
-                    exception
-                        .OverrideClassroomId!,
+                    exception.OverrideClassroomId!,
                     out string? overrideRoom
                 )
             )
@@ -1152,9 +1081,9 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // BUILD REPLACEMENT CLASS LIST
-        // ==========================================
+        // ==================================================
+        // REPLACEMENT CLASSES
+        // ==================================================
 
         foreach (
             ReplacementSession replacement
@@ -1165,8 +1094,7 @@ public class TeacherController : Controller
                 !string.Equals(
                     replacement.Status,
                     "Scheduled",
-                    StringComparison
-                        .OrdinalIgnoreCase
+                    StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -1175,8 +1103,7 @@ public class TeacherController : Controller
 
 
             Timetable? source =
-                replacement
-                    .SourceTimetable;
+                replacement.SourceTimetable;
 
 
             if (source == null)
@@ -1194,8 +1121,7 @@ public class TeacherController : Controller
                     replacement.ClassroomId
                 ) &&
                 rooms.TryGetValue(
-                    replacement
-                        .ClassroomId!,
+                    replacement.ClassroomId!,
                     out string? replacementRoom
                 )
             )
@@ -1212,8 +1138,7 @@ public class TeacherController : Controller
                         source.TimetableId,
 
                     ReplacementId =
-                        replacement
-                            .ReplacementId,
+                        replacement.ReplacementId,
 
                     CourseName =
                         source.Course
@@ -1229,12 +1154,10 @@ public class TeacherController : Controller
                         roomName,
 
                     StartTime =
-                        replacement
-                            .StartTime,
+                        replacement.StartTime,
 
                     EndTime =
-                        replacement
-                            .EndTime,
+                        replacement.EndTime,
 
                     Status =
                         "Replacement"
@@ -1243,15 +1166,14 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
+        // ==================================================
         // ACTIVE ATTENDANCE CODES
-        // ==========================================
+        // ==================================================
 
         List<string> allTimetableIds =
             model.Classes
-                .Select(
-                    c =>
-                        c.TimetableId
+                .Select(c =>
+                    c.TimetableId
                 )
                 .Distinct()
                 .ToList();
@@ -1260,23 +1182,22 @@ public class TeacherController : Controller
         List<AttendanceSession> sessions =
             await db.AttendanceSessions
                 .AsNoTracking()
-                .Where(
-                    s =>
-                        allTimetableIds.Contains(
-                            s.TimetableId
-                        ) &&
-                        s.SessionDate ==
-                            today &&
-                        s.IsActive &&
-                        s.ExpiresAt >
-                            now
+                .Where(s =>
+                    allTimetableIds.Contains(
+                        s.TimetableId
+                    ) &&
+                    s.SessionDate ==
+                        today &&
+                    s.IsActive &&
+                    s.ExpiresAt >
+                        now
                 )
                 .ToListAsync();
 
 
-        // ==========================================
+        // ==================================================
         // GENERATE BUTTON VALIDATION
-        // ==========================================
+        // ==================================================
 
         foreach (
             TeacherAttendanceCodeItemViewModel item
@@ -1285,10 +1206,9 @@ public class TeacherController : Controller
         {
             AttendanceSession? session =
                 sessions
-                    .FirstOrDefault(
-                        s =>
-                            s.TimetableId ==
-                            item.TimetableId
+                    .FirstOrDefault(s =>
+                        s.TimetableId ==
+                        item.TimetableId
                     );
 
 
@@ -1310,7 +1230,6 @@ public class TeacherController : Controller
             }
 
 
-            // Class has not started
             if (
                 now.TimeOfDay <
                 item.StartTime
@@ -1329,7 +1248,7 @@ public class TeacherController : Controller
 
             // Class already ended
             if (
-                now.TimeOfDay >
+                now.TimeOfDay >=
                 item.EndTime
             )
             {
@@ -1343,7 +1262,6 @@ public class TeacherController : Controller
             }
 
 
-            // Currently inside class period
             item.CanGenerate =
                 true;
 
@@ -1354,9 +1272,8 @@ public class TeacherController : Controller
 
         model.Classes =
             model.Classes
-                .OrderBy(
-                    c =>
-                        c.StartTime
+                .OrderBy(c =>
+                    c.StartTime
                 )
                 .ToList();
 
@@ -1372,7 +1289,7 @@ public class TeacherController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        var userId =
+        string? userId =
             GetCurrentUserId();
 
 
@@ -1390,46 +1307,32 @@ public class TeacherController : Controller
         );
 
 
-        // ==========================================
-        // SELECTED PROGRAMS
-        // ==========================================
-
-        var selectedProgramIds =
+        List<string> selectedProgramIds =
             await db.TeacherPrograms
                 .AsNoTracking()
-                .Where(
-                    tp =>
-                        tp.UserId ==
-                        userId
+                .Where(tp =>
+                    tp.UserId == userId
                 )
-                .Select(
-                    tp =>
-                        tp.ProgramId
+                .Select(tp =>
+                    tp.ProgramId
                 )
                 .ToListAsync();
 
 
-        // ==========================================
-        // SELECTED SUBJECTS
-        // ==========================================
-
-        var selectedCourseIds =
+        List<string> selectedCourseIds =
             await db.TeacherCourses
                 .AsNoTracking()
-                .Where(
-                    tc =>
-                        tc.UserId ==
-                        userId
+                .Where(tc =>
+                    tc.UserId == userId
                 )
-                .Select(
-                    tc =>
-                        tc.CourseId
+                .Select(tc =>
+                    tc.CourseId
                 )
                 .ToListAsync();
 
 
-        var model =
-            new TeacherProfileSetupViewModel
+        TeacherProfileSetupViewModel model =
+            new()
             {
                 SelectedProgramIds =
                     selectedProgramIds,
@@ -1458,9 +1361,8 @@ public class TeacherController : Controller
         model.Programs =
             await db.AcademicPrograms
                 .AsNoTracking()
-                .OrderBy(
-                    p =>
-                        p.ProgramCode
+                .OrderBy(p =>
+                    p.ProgramCode
                 )
                 .ToListAsync();
 
@@ -1468,42 +1370,33 @@ public class TeacherController : Controller
         model.Subjects =
             await db.ProgramCourses
                 .AsNoTracking()
-                .Include(
-                    pc =>
-                        pc.Course
+                .Include(pc =>
+                    pc.Course
                 )
-                .Where(
-                    pc =>
-                        pc.Course !=
-                        null
+                .Where(pc =>
+                    pc.Course != null
                 )
-                .OrderBy(
-                    pc =>
-                        pc.ProgramId
+                .OrderBy(pc =>
+                    pc.ProgramId
                 )
-                .ThenBy(
-                    pc =>
-                        pc.Course!
-                            .CourseName
+                .ThenBy(pc =>
+                    pc.Course!.CourseName
                 )
-                .Select(
-                    pc =>
-                        new TeacherSubjectOptionViewModel
-                        {
-                            ProgramId =
-                                pc.ProgramId,
+                .Select(pc =>
+                    new TeacherSubjectOptionViewModel
+                    {
+                        ProgramId =
+                            pc.ProgramId,
 
-                            CourseId =
-                                pc.CourseId,
+                        CourseId =
+                            pc.CourseId,
 
-                            CourseName =
-                                pc.Course!
-                                    .CourseName,
+                        CourseName =
+                            pc.Course!.CourseName,
 
-                            CourseCode =
-                                pc.Course
-                                    .CourseCode
-                        }
+                        CourseCode =
+                            pc.Course.CourseCode
+                    }
                 )
                 .ToListAsync();
     }
@@ -1520,35 +1413,28 @@ public class TeacherController : Controller
         var rows =
             await db.ProgramCourses
                 .AsNoTracking()
-                .Where(
-                    pc =>
-                        pc.ProgramId ==
-                        programId
+                .Where(pc =>
+                    pc.ProgramId ==
+                    programId
                 )
-                .Include(
-                    pc =>
-                        pc.Course
+                .Include(pc =>
+                    pc.Course
                 )
-                .OrderBy(
-                    pc =>
-                        pc.Course!
-                            .CourseName
+                .OrderBy(pc =>
+                    pc.Course!.CourseName
                 )
-                .Select(
-                    pc =>
-                        new
-                        {
-                            id =
-                                pc.CourseId,
+                .Select(pc =>
+                    new
+                    {
+                        id =
+                            pc.CourseId,
 
-                            name =
-                                pc.Course!
-                                    .CourseName,
+                        name =
+                            pc.Course!.CourseName,
 
-                            code =
-                                pc.Course
-                                    .CourseCode
-                        }
+                        code =
+                            pc.Course.CourseCode
+                    }
                 )
                 .ToListAsync();
 
@@ -1566,7 +1452,7 @@ public class TeacherController : Controller
     public async Task<IActionResult> Create(
         TeacherProfileSetupViewModel model)
     {
-        var userId =
+        string? userId =
             GetCurrentUserId();
 
 
@@ -1579,17 +1465,12 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // REMOVE DUPLICATES
-        // ==========================================
-
         model.SelectedProgramIds =
             model.SelectedProgramIds
-                .Where(
-                    x =>
-                        !string.IsNullOrWhiteSpace(
-                            x
-                        )
+                .Where(x =>
+                    !string.IsNullOrWhiteSpace(
+                        x
+                    )
                 )
                 .Distinct()
                 .ToList();
@@ -1597,19 +1478,14 @@ public class TeacherController : Controller
 
         model.SelectedCourseIds =
             model.SelectedCourseIds
-                .Where(
-                    x =>
-                        !string.IsNullOrWhiteSpace(
-                            x
-                        )
+                .Where(x =>
+                    !string.IsNullOrWhiteSpace(
+                        x
+                    )
                 )
                 .Distinct()
                 .ToList();
 
-
-        // ==========================================
-        // PROGRAM REQUIRED
-        // ==========================================
 
         if (
             model.SelectedProgramIds.Count ==
@@ -1622,10 +1498,6 @@ public class TeacherController : Controller
             );
         }
 
-
-        // ==========================================
-        // SUBJECT REQUIRED
-        // ==========================================
 
         if (
             model.SelectedCourseIds.Count ==
@@ -1649,24 +1521,17 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // VALIDATE PROGRAM IDS
-        // ==========================================
-
-        var validProgramIds =
+        List<string> validProgramIds =
             await db.AcademicPrograms
                 .AsNoTracking()
-                .Where(
-                    p =>
-                        model
-                            .SelectedProgramIds
-                            .Contains(
-                                p.ProgramId
-                            )
+                .Where(p =>
+                    model.SelectedProgramIds
+                        .Contains(
+                            p.ProgramId
+                        )
                 )
-                .Select(
-                    p =>
-                        p.ProgramId
+                .Select(p =>
+                    p.ProgramId
                 )
                 .ToListAsync();
 
@@ -1691,42 +1556,33 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // VALIDATE SUBJECT / PROGRAM MAPPING
-        // ==========================================
-
         var validMappings =
             await db.ProgramCourses
                 .AsNoTracking()
-                .Where(
-                    pc =>
-                        model
-                            .SelectedProgramIds
-                            .Contains(
-                                pc.ProgramId
-                            ) &&
-                        model
-                            .SelectedCourseIds
-                            .Contains(
-                                pc.CourseId
-                            )
-                )
-                .Select(
-                    pc =>
-                        new
-                        {
-                            pc.ProgramId,
+                .Where(pc =>
+                    model.SelectedProgramIds
+                        .Contains(
+                            pc.ProgramId
+                        ) &&
+                    model.SelectedCourseIds
+                        .Contains(
                             pc.CourseId
-                        }
+                        )
+                )
+                .Select(pc =>
+                    new
+                    {
+                        pc.ProgramId,
+                        pc.CourseId
+                    }
                 )
                 .ToListAsync();
 
 
-        var validCourseIds =
+        List<string> validCourseIds =
             validMappings
-                .Select(
-                    x =>
-                        x.CourseId
+                .Select(x =>
+                    x.CourseId
                 )
                 .Distinct()
                 .ToList();
@@ -1752,20 +1608,15 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // EVERY PROGRAM MUST HAVE SUBJECT
-        // ==========================================
-
         foreach (
-            var programId
+            string programId
             in model.SelectedProgramIds
         )
         {
             bool hasSubject =
-                validMappings.Any(
-                    x =>
-                        x.ProgramId ==
-                        programId
+                validMappings.Any(x =>
+                    x.ProgramId ==
+                    programId
                 );
 
 
@@ -1787,16 +1638,11 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // CREATE / UPDATE TEACHER RECORD
-        // ==========================================
-
-        var teacher =
+        Teacher? teacher =
             await db.Teacher
-                .FirstOrDefaultAsync(
-                    t =>
-                        t.UserId ==
-                        userId
+                .FirstOrDefaultAsync(t =>
+                    t.UserId ==
+                    userId
                 );
 
 
@@ -1825,50 +1671,38 @@ public class TeacherController : Controller
         }
 
 
-        // ==========================================
-        // LEGACY PROGRAM / SUBJECT FIELDS
-        // ==========================================
-
-        var programCodes =
+        List<string> programCodes =
             await db.AcademicPrograms
                 .AsNoTracking()
-                .Where(
-                    p =>
-                        model
-                            .SelectedProgramIds
-                            .Contains(
-                                p.ProgramId
-                            )
+                .Where(p =>
+                    model.SelectedProgramIds
+                        .Contains(
+                            p.ProgramId
+                        )
                 )
-                .OrderBy(
-                    p =>
-                        p.ProgramCode
+                .OrderBy(p =>
+                    p.ProgramCode
                 )
-                .Select(
-                    p =>
-                        p.ProgramCode
+                .Select(p =>
+                    p.ProgramCode
                 )
                 .ToListAsync();
 
 
-        var courseNames =
+        List<string> courseNames =
             await db.Courses
                 .AsNoTracking()
-                .Where(
-                    c =>
-                        model
-                            .SelectedCourseIds
-                            .Contains(
-                                c.CourseId
-                            )
+                .Where(c =>
+                    model.SelectedCourseIds
+                        .Contains(
+                            c.CourseId
+                        )
                 )
-                .OrderBy(
-                    c =>
-                        c.CourseName
+                .OrderBy(c =>
+                    c.CourseName
                 )
-                .Select(
-                    c =>
-                        c.CourseName
+                .Select(c =>
+                    c.CourseName
                 )
                 .ToListAsync();
 
@@ -1887,10 +1721,6 @@ public class TeacherController : Controller
             );
 
 
-        // ==========================================
-        // TRANSACTION
-        // ==========================================
-
         await using var transaction =
             await db.Database
                 .BeginTransactionAsync();
@@ -1898,29 +1728,22 @@ public class TeacherController : Controller
 
         try
         {
-            // ======================================
-            // UPDATE TEACHER PROGRAMS
-            // ======================================
-
-            var existingPrograms =
+            List<TeacherProgram> existingPrograms =
                 await db.TeacherPrograms
-                    .Where(
-                        tp =>
-                            tp.UserId ==
-                            userId
+                    .Where(tp =>
+                        tp.UserId ==
+                        userId
                     )
                     .ToListAsync();
 
 
-            var programsToRemove =
+            List<TeacherProgram> programsToRemove =
                 existingPrograms
-                    .Where(
-                        tp =>
-                            !model
-                                .SelectedProgramIds
-                                .Contains(
-                                    tp.ProgramId
-                                )
+                    .Where(tp =>
+                        !model.SelectedProgramIds
+                            .Contains(
+                                tp.ProgramId
+                            )
                     )
                     .ToList();
 
@@ -1931,25 +1754,23 @@ public class TeacherController : Controller
                 );
 
 
-            var existingProgramIds =
+            HashSet<string> existingProgramIds =
                 existingPrograms
-                    .Select(
-                        tp =>
-                            tp.ProgramId
+                    .Select(tp =>
+                        tp.ProgramId
                     )
                     .ToHashSet();
 
 
             foreach (
-                var programId
+                string programId
                 in model.SelectedProgramIds
             )
             {
                 if (
-                    !existingProgramIds
-                        .Contains(
-                            programId
-                        )
+                    !existingProgramIds.Contains(
+                        programId
+                    )
                 )
                 {
                     db.TeacherPrograms.Add(
@@ -1969,29 +1790,22 @@ public class TeacherController : Controller
             }
 
 
-            // ======================================
-            // UPDATE TEACHER SUBJECTS
-            // ======================================
-
-            var existingCourses =
+            List<TeacherCourse> existingCourses =
                 await db.TeacherCourses
-                    .Where(
-                        tc =>
-                            tc.UserId ==
-                            userId
+                    .Where(tc =>
+                        tc.UserId ==
+                        userId
                     )
                     .ToListAsync();
 
 
-            var coursesToRemove =
+            List<TeacherCourse> coursesToRemove =
                 existingCourses
-                    .Where(
-                        tc =>
-                            !model
-                                .SelectedCourseIds
-                                .Contains(
-                                    tc.CourseId
-                                )
+                    .Where(tc =>
+                        !model.SelectedCourseIds
+                            .Contains(
+                                tc.CourseId
+                            )
                     )
                     .ToList();
 
@@ -2005,38 +1819,31 @@ public class TeacherController : Controller
             await db.SaveChangesAsync();
 
 
-            var remainingCourseIds =
+            List<string> remainingCourseIds =
                 await db.TeacherCourses
-                    .Where(
-                        tc =>
-                            tc.UserId ==
-                            userId
+                    .Where(tc =>
+                        tc.UserId ==
+                        userId
                     )
-                    .Select(
-                        tc =>
-                            tc.CourseId
+                    .Select(tc =>
+                        tc.CourseId
                     )
                     .ToListAsync();
 
 
-            // ======================================
-            // ADD NEW SUBJECTS
-            // ======================================
-
             foreach (
-                var courseId
+                string courseId
                 in model.SelectedCourseIds
             )
             {
                 if (
-                    !remainingCourseIds
-                        .Contains(
-                            courseId
-                        )
+                    !remainingCourseIds.Contains(
+                        courseId
+                    )
                 )
                 {
-                    var teacherCourse =
-                        new TeacherCourse
+                    TeacherCourse teacherCourse =
+                        new()
                         {
                             TeacherCourseId =
                                 await FormattedIdGenerator
@@ -2063,8 +1870,6 @@ public class TeacherController : Controller
                     );
 
 
-                    // Save here so the next
-                    // generated TCR ID is unique.
                     await db.SaveChangesAsync();
                 }
             }
@@ -2096,7 +1901,7 @@ public class TeacherController : Controller
     [HttpGet]
     public async Task<IActionResult> Profile()
     {
-        var userId =
+        string? userId =
             GetCurrentUserId();
 
 
@@ -2109,12 +1914,11 @@ public class TeacherController : Controller
         }
 
 
-        var teacher =
+        Teacher? teacher =
             await db.Teacher
-                .FirstOrDefaultAsync(
-                    t =>
-                        t.UserId ==
-                        userId
+                .FirstOrDefaultAsync(t =>
+                    t.UserId ==
+                    userId
                 );
 
 
@@ -2133,10 +1937,9 @@ public class TeacherController : Controller
 
         if (
             !await db.TeacherCourses
-                .AnyAsync(
-                    tc =>
-                        tc.UserId ==
-                        userId
+                .AnyAsync(tc =>
+                    tc.UserId ==
+                    userId
                 )
         )
         {
@@ -2151,7 +1954,7 @@ public class TeacherController : Controller
 
 
     // ==================================================
-    // LEGACY TEACHER PROFILE LINK
+    // LEGACY PROFILE LINK
     // ==================================================
 
     private async Task TryLinkLegacyProfileAsync(
@@ -2159,10 +1962,9 @@ public class TeacherController : Controller
     {
         if (
             await db.TeacherCourses
-                .AnyAsync(
-                    tc =>
-                        tc.UserId ==
-                        userId
+                .AnyAsync(tc =>
+                    tc.UserId ==
+                    userId
                 )
         )
         {
@@ -2170,13 +1972,12 @@ public class TeacherController : Controller
         }
 
 
-        var teacher =
+        Teacher? teacher =
             await db.Teacher
                 .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    t =>
-                        t.UserId ==
-                        userId
+                .FirstOrDefaultAsync(t =>
+                    t.UserId ==
+                    userId
                 );
 
 
@@ -2194,15 +1995,14 @@ public class TeacherController : Controller
         }
 
 
-        var program =
+        AcademicProgram? program =
             await db.AcademicPrograms
                 .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    p =>
-                        p.ProgramCode
-                            .ToLower() ==
-                        teacher.Program
-                            .ToLower()
+                .FirstOrDefaultAsync(p =>
+                    p.ProgramCode
+                        .ToLower() ==
+                    teacher.Program
+                        .ToLower()
                 );
 
 
@@ -2212,24 +2012,21 @@ public class TeacherController : Controller
         }
 
 
-        var mapping =
+        ProgramCourse? mapping =
             await db.ProgramCourses
                 .AsNoTracking()
-                .Include(
-                    pc =>
-                        pc.Course
+                .Include(pc =>
+                    pc.Course
                 )
-                .FirstOrDefaultAsync(
-                    pc =>
-                        pc.ProgramId ==
-                            program.ProgramId &&
-                        pc.Course !=
-                            null &&
-                        pc.Course
-                            .CourseName
-                            .ToLower() ==
-                        teacher.Subject
-                            .ToLower()
+                .FirstOrDefaultAsync(pc =>
+                    pc.ProgramId ==
+                        program.ProgramId &&
+                    pc.Course !=
+                        null &&
+                    pc.Course.CourseName
+                        .ToLower() ==
+                    teacher.Subject
+                        .ToLower()
                 );
 
 
@@ -2268,7 +2065,7 @@ public class TeacherController : Controller
 
 
     // ==================================================
-    // GET DATE FOR A DAY INSIDE ACADEMIC WEEK
+    // GET DATE FOR DAY
     // ==================================================
 
     private static DateTime GetDateForDay(
@@ -2293,11 +2090,6 @@ public class TeacherController : Controller
 
     // ==================================================
     // DAY ORDER
-    //
-    // Monday = 1
-    // Tuesday = 2
-    // ...
-    // Sunday = 7
     // ==================================================
 
     private static int GetDayOrder(
@@ -2311,7 +2103,7 @@ public class TeacherController : Controller
 
 
     // ==================================================
-    // PENDING TIMETABLE CHANGE
+    // PENDING DECISION
     // ==================================================
 
     private static bool IsPendingDecision(
@@ -2320,14 +2112,13 @@ public class TeacherController : Controller
         return string.Equals(
             value,
             "Pending",
-            StringComparison
-                .OrdinalIgnoreCase
+            StringComparison.OrdinalIgnoreCase
         );
     }
 
 
     // ==================================================
-    // CANCELLED STATUS HELPER
+    // CANCELLED STATUS
     // ==================================================
 
     private static bool IsCancelledValue(
@@ -2347,8 +2138,7 @@ public class TeacherController : Controller
             .Trim()
             .Contains(
                 "cancel",
-                StringComparison
-                    .OrdinalIgnoreCase
+                StringComparison.OrdinalIgnoreCase
             );
     }
 }

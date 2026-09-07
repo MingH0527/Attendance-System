@@ -13,10 +13,13 @@ public class Timetable
     [DeleteBehavior(DeleteBehavior.Restrict)]
     public AcademicTerm? Term { get; set; }
 
+
     [Key]
     [MaxLength(20)]
     public string TimetableId { get; set; } = string.Empty;
 
+
+    [Required]
     [MaxLength(20)]
     public string CourseId { get; set; } = string.Empty;
 
@@ -24,12 +27,15 @@ public class Timetable
     [DeleteBehavior(DeleteBehavior.Restrict)]
     public Course? Course { get; set; }
 
+
+    [Required]
     [MaxLength(20)]
     public string ClassId { get; set; } = string.Empty;
 
     [ForeignKey(nameof(ClassId))]
     [DeleteBehavior(DeleteBehavior.Restrict)]
     public ClassGroup? ClassGroup { get; set; }
+
 
     [MaxLength(20)]
     public string? ClassroomId { get; set; }
@@ -38,6 +44,8 @@ public class Timetable
     [DeleteBehavior(DeleteBehavior.Restrict)]
     public Classroom? Classroom { get; set; }
 
+
+    [Required]
     [MaxLength(20)]
     public string TeacherId { get; set; } = string.Empty;
 
@@ -45,9 +53,15 @@ public class Timetable
     [DeleteBehavior(DeleteBehavior.Restrict)]
     public User Teacher { get; set; } = null!;
 
+
     public DayOfWeek DayOfWeek { get; set; }
+
+
     public TimeSpan StartTime { get; set; }
+
+
     public TimeSpan EndTime { get; set; }
+
 
     public ClassType ClassType { get; set; }
 }

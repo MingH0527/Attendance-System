@@ -1,412 +1,816 @@
-﻿.tt-back-link {
-    display: inline-block;
-    margin-bottom: 14px;
-    color: #14789a;
-    font-weight: 700;
-    text-decoration: none;
+﻿/* =========================================================
+   TEACHER TIMETABLE PAGE
+   ========================================================= */
+
+.teacher-dashboard {
+    width: 100%;
+    max-width: 1450px;
+    margin: 0 auto;
+    padding: 38px 32px 60px;
+    box-sizing: border-box;
 }
 
-.timetable-header {
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.teacher-header.timetable-header {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 25px;
+    gap: 35px;
+    padding: 36px 38px;
+    background: linear-gradient( 135deg, #ffffff 0%, #f8fbff 100% );
+    border: 1px solid #e3eaf3;
+    border-radius: 22px;
+    box-shadow: 0 14px 40px rgba(15, 23, 42, 0.07);
+    overflow: hidden;
 }
+
+
+    .teacher-header.timetable-header::before {
+        content: "";
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        right: -130px;
+        top: -150px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.07);
+        pointer-events: none;
+    }
+
+
+    .teacher-header.timetable-header::after {
+        content: "";
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        right: -45px;
+        bottom: -115px;
+        border-radius: 50%;
+        background: rgba(99, 102, 241, 0.05);
+        pointer-events: none;
+    }
+
+
+.timetable-header-content {
+    position: relative;
+    z-index: 2;
+}
+
+
+.tt-back-link {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 18px;
+    color: #08799d;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.2s, color 0.2s;
+}
+
+
+    .tt-back-link:hover {
+        color: #075f7c;
+        transform: translateX(-3px);
+    }
+
+
+.teacher-role {
+    margin: 0 0 7px;
+    color: #0b879e;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+}
+
+
+.teacher-header h1 {
+    margin: 0;
+    color: #172033;
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+}
+
+
+.teacher-header-description {
+    margin: 11px 0 0 !important;
+    color: #6d7c91;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   GENERATE ATTENDANCE BUTTON
+   ========================================================= */
 
 .attendance-page-button {
-    background: #2563eb;
-    color: white;
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-width: 245px;
+    padding: 15px 20px;
+    border-radius: 11px;
+    background: linear-gradient( 135deg, #2563eb, #3157d8 );
+    color: #ffffff;
     text-decoration: none;
-    border-radius: 10px;
-    padding: 13px 18px;
-    font-weight: 700;
-    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 750;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
+
 
     .attendance-page-button:hover {
-        background: #1d4ed8;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 12px 25px rgba(37, 99, 235, 0.30);
     }
 
 
-/* ==============================
-   WEEK SELECTOR
-   ============================== */
-
-.teacher-week-bar {
-    background: white;
-    border: 1px solid #e1e8f0;
-    border-radius: 15px;
-    margin: 24px 0 14px;
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    box-shadow: 0 5px 18px rgba(24, 39, 75, 0.05);
+.attendance-button-icon {
+    font-size: 17px;
 }
 
-    .teacher-week-bar > div {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
+
+/* =========================================================
+   WEEK SELECTOR
+   ========================================================= */
+
+.teacher-week-bar {
+    margin-top: 24px;
+    padding: 17px 21px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    background: #ffffff;
+    border: 1px solid #e3e9f1;
+    border-radius: 15px;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045);
+}
+
+
+.week-information {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+
+.week-label {
+    color: #8794a8;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+
+.week-information strong {
+    color: #172033;
+    font-size: 16px;
+    font-weight: 750;
+}
+
+
+.week-date {
+    color: #7b899d;
+    font-size: 12px;
+}
+
+
+.week-selector-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+    .week-selector-form label {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
     }
 
-    .teacher-week-bar strong {
-        color: #172033;
-        font-size: 17px;
-    }
 
-    .teacher-week-bar span {
-        color: #718096;
-        font-size: 13px;
-    }
-
-    .teacher-week-bar select {
-        min-width: 180px;
-        padding: 10px 12px;
-        border: 1px solid #cbd5e1;
+    .week-selector-form select {
+        min-width: 190px;
+        padding: 10px 38px 10px 13px;
+        border: 1px solid #d1d9e5;
         border-radius: 9px;
-        background: white;
-        color: #253047;
+        background: #ffffff;
+        color: #263249;
+        font-size: 13px;
+        font-weight: 650;
+        outline: none;
+        cursor: pointer;
+    }
+
+
+        .week-selector-form select:focus {
+            border-color: #5b7ce7;
+            box-shadow: 0 0 0 3px rgba(91, 124, 231, 0.12);
+        }
+
+
+/* =========================================================
+   LEGEND
+   ========================================================= */
+
+.teacher-tt-legend {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 22px 0 13px;
+    padding: 7px 9px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid #e5eaf1;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.025);
+}
+
+
+    .teacher-tt-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 8px;
+        color: #64748b;
+        font-size: 12px;
         font-weight: 600;
     }
 
 
-/* ==============================
-   LEGEND
-   ============================== */
-
-.teacher-tt-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin: 14px 0;
-    color: #64748b;
-    font-size: 13px;
-}
-
-    .teacher-tt-legend span {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-    }
-
     .teacher-tt-legend i {
-        width: 13px;
-        height: 13px;
-        border-radius: 4px;
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
     }
 
+
+/* Normal subject */
 .legend-normal {
-    background: #bfdbfe;
+    background: #00a8c6;
 }
 
+
+/* Replacement */
 .legend-replacement {
-    background: #ddd6fe;
+    background: #8b5cf6;
 }
 
+
+/* Cancelled */
 .legend-cancelled {
-    background: #fecaca;
+    background: #ef4444;
 }
 
 
-/* ==============================
-   NOTIFICATION
-   ============================== */
+/* =========================================================
+   NOTIFICATIONS
+   ========================================================= */
 
 .teacher-notifications {
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 13px;
-    padding: 15px 18px;
     margin-bottom: 18px;
+    padding: 17px 20px;
+    background: linear-gradient( 135deg, #fffbeb, #fffdf6 );
+    border: 1px solid #fde68a;
+    border-radius: 14px;
 }
 
-    .teacher-notifications > strong {
-        display: block;
-        color: #92400e;
-        margin-bottom: 9px;
+
+.notification-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+
+    .notification-heading > div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
+
+
+    .notification-heading strong {
+        color: #92400e;
+        font-size: 14px;
+    }
+
+
+.notification-icon {
+    font-size: 16px;
+}
+
+
+.notification-count {
+    min-width: 27px;
+    height: 27px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+}
+
 
 .teacher-notification {
     display: flex;
     justify-content: space-between;
-    gap: 15px;
-    padding: 7px 0;
+    align-items: center;
+    gap: 20px;
+    padding: 9px 0;
     border-top: 1px solid #fef3c7;
 }
 
-    .teacher-notification span {
-        color: #5f4b32;
-        font-size: 13px;
+
+.notification-message {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+
+    .notification-message strong {
+        color: #78350f;
+        font-size: 12px;
     }
 
-    .teacher-notification small {
-        color: #a16207;
-        white-space: nowrap;
+
+    .notification-message span {
+        color: #62594c;
+        font-size: 12px;
     }
 
 
-/* ==============================
-   GRID
-   ============================== */
+.teacher-notification small {
+    color: #a16207;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TIMETABLE CARD
+   ========================================================= */
 
 .teacher-grid-card {
-    background: white;
+    position: relative;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.96);
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: 0 8px 25px rgba(18, 32, 58, 0.06);
+    border-radius: 20px;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.065);
 }
+
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.teacher-tt-empty {
+    min-height: 330px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 45px 25px;
+    box-sizing: border-box;
+    text-align: center;
+    background: linear-gradient( 180deg, #ffffff 0%, #fbfdff 100% );
+    border: 1.5px dashed #cad7e6;
+    border-radius: 15px;
+    color: #718096;
+}
+
+
+.empty-calendar-icon {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    background: linear-gradient( 135deg, #e9f3ff, #eef2ff );
+    font-size: 31px;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.10);
+}
+
+
+.teacher-tt-empty strong {
+    margin-bottom: 8px;
+    color: #273449;
+    font-size: 18px;
+    font-weight: 750;
+}
+
+
+.teacher-tt-empty span {
+    max-width: 450px;
+    color: #8190a5;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+
+/* =========================================================
+   HORIZONTAL SCROLL
+   ========================================================= */
 
 .teacher-grid-scroll {
     width: 100%;
     overflow-x: auto;
     padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #adb8c5 #edf1f5;
 }
 
+
+    .teacher-grid-scroll::-webkit-scrollbar {
+        height: 9px;
+    }
+
+
+    .teacher-grid-scroll::-webkit-scrollbar-track {
+        background: #edf1f5;
+        border-radius: 99px;
+    }
+
+
+    .teacher-grid-scroll::-webkit-scrollbar-thumb {
+        background: #adb8c5;
+        border-radius: 99px;
+    }
+
+
+        .teacher-grid-scroll::-webkit-scrollbar-thumb:hover {
+            background: #929daa;
+        }
+
+
+/* =========================================================
+   TIMETABLE GRID
+   ========================================================= */
+
 .teacher-tt-grid {
-    border-collapse: collapse;
     width: 100%;
-    min-width: 1250px;
+    min-width: 1320px;
     table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid #dce4ed;
+    border-radius: 14px;
+    overflow: hidden;
 }
+
 
     .teacher-tt-grid th,
     .teacher-tt-grid td {
-        border: 1px solid #d7e0eb;
+        border-right: 1px solid #dce4ed;
+        border-bottom: 1px solid #dce4ed;
     }
+
+
+    .teacher-tt-grid tr:last-child > * {
+        border-bottom: 0;
+    }
+
+
+    .teacher-tt-grid tr > *:last-child {
+        border-right: 0;
+    }
+
+
+    /* =========================================================
+   TIME HEADER
+   ========================================================= */
 
     .teacher-tt-grid thead th {
-        background: #f1f5f9;
-        padding: 16px 9px;
-        color: #172033;
-        font-size: 13px;
-        font-weight: 800;
+        height: 68px;
+        padding: 11px 8px;
+        background: linear-gradient( 180deg, #f6f9fc, #edf2f7 );
+        color: #26334a;
+        font-size: 11px;
+        font-weight: 750;
         text-align: center;
+        vertical-align: middle;
     }
 
+
+        .teacher-tt-grid thead th:not(.teacher-day-heading) {
+            min-width: 145px;
+        }
+
+
 .teacher-day-heading {
-    width: 110px;
+    width: 115px;
+    background: linear-gradient( 180deg, #edf3f9, #e7eef6 ) !important;
 }
+
+
+.time-start,
+.time-end {
+    display: block;
+    white-space: nowrap;
+}
+
+
+.time-start {
+    color: #1e293b;
+    font-weight: 750;
+}
+
+
+.time-end {
+    color: #64748b;
+}
+
+
+.time-separator {
+    display: block;
+    height: 3px;
+    color: transparent;
+}
+
+
+/* =========================================================
+   DAY LABEL
+   ========================================================= */
 
 .teacher-day-label {
-    width: 110px;
-    background: #f8fafc;
-    color: #26334a;
-    font-size: 14px;
+    width: 115px;
     padding: 14px;
+    background: linear-gradient( 90deg, #f8fafc, #f6f9fc );
+    color: #334155;
+    font-size: 13px;
+    font-weight: 750;
     text-align: left;
+    vertical-align: middle;
 }
+
+
+    .teacher-day-label span {
+        display: block;
+    }
+
+
+/* =========================================================
+   TIMETABLE CELL
+   ========================================================= */
 
 .teacher-tt-cell {
-    height: 120px;
-    min-width: 135px;
+    position: relative;
+    height: 128px;
+    min-width: 145px;
     padding: 5px;
     vertical-align: top;
+    background: #ffffff;
+    transition: background 0.15s;
 }
 
 
-/* ==============================
+    .teacher-tt-cell:hover {
+        background: #fbfdff;
+    }
+
+
+/* =========================================================
    CLASS BLOCK
-   ============================== */
+   ========================================================= */
 
 .teacher-class-block {
-    min-height: 102px;
-    border-radius: 8px;
-    box-sizing: border-box;
-    padding: 8px 9px;
+    position: relative;
+    min-height: 110px;
+    padding: 9px 10px;
     margin-bottom: 5px;
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 11px;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    border-left-width: 4px;
+    border-left-style: solid;
+    border-radius: 8px;
     overflow: hidden;
-    border-left: 4px solid;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    transition: transform 0.18s, box-shadow 0.18s;
 }
 
-    .teacher-class-block strong {
-        font-size: 13px;
-        line-height: 1.25;
+
+    .teacher-class-block:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.10);
     }
 
-    .teacher-class-block span,
-    .teacher-class-block small {
-        overflow-wrap: anywhere;
-    }
 
-    .teacher-class-block small {
-        font-size: 10px;
-    }
-
-.teacher-class-reason {
-    margin-top: auto;
-    font-style: italic;
+.class-course-name {
+    margin-top: 1px;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.3;
 }
 
 
-/* ==============================
-   SUBJECT COLORS
-   ============================== */
-
-.subject-color-1 {
-    background: #dbeafe;
-    border-color: #3b82f6;
-    color: #1e3a8a;
-}
-
-.subject-color-2 {
-    background: #dcfce7;
-    border-color: #22c55e;
-    color: #14532d;
-}
-
-.subject-color-3 {
-    background: #fef3c7;
-    border-color: #f59e0b;
-    color: #78350f;
-}
-
-.subject-color-4 {
-    background: #fce7f3;
-    border-color: #ec4899;
-    color: #831843;
-}
-
-.subject-color-5 {
-    background: #cffafe;
-    border-color: #06b6d4;
-    color: #164e63;
-}
-
-.subject-color-6 {
-    background: #ffedd5;
-    border-color: #f97316;
-    color: #7c2d12;
-}
-
-.subject-color-7 {
-    background: #ccfbf1;
-    border-color: #14b8a6;
-    color: #134e4a;
-}
-
-.subject-color-8 {
-    background: #e0e7ff;
-    border-color: #6366f1;
-    color: #312e81;
-}
-
-.subject-color-9 {
-    background: #ecfccb;
-    border-color: #84cc16;
-    color: #365314;
-}
-
-.subject-color-10 {
-    background: #fae8ff;
-    border-color: #d946ef;
-    color: #701a75;
+.class-time {
+    font-size: 10px;
+    font-weight: 650;
 }
 
 
-/* ==============================
-   REPLACEMENT
-   ============================== */
-
-.teacher-class-block.replacement {
-    background: #ede9fe;
-    border-color: #8b5cf6;
-    color: #4c1d95;
-}
-
-.replacement-badge {
-    background: #7c3aed;
-    color: white;
+.class-group {
+    font-size: 10px;
 }
 
 
-/* ==============================
-   CANCELLED
-   ============================== */
-
-.teacher-class-block.cancelled {
-    background: #fee2e2;
-    border-color: #ef4444;
-    color: #7f1d1d;
+.class-room {
+    font-size: 9px;
     opacity: 0.85;
 }
 
-    .teacher-class-block.cancelled strong {
-        text-decoration: line-through;
-    }
 
-.cancelled-badge {
-    background: #dc2626;
-    color: white;
-}
-
-.teacher-status-badge {
+.class-type {
     align-self: flex-start;
+    margin-top: 1px;
+    padding: 2px 6px;
     border-radius: 999px;
-    padding: 2px 7px;
-    font-size: 9px !important;
-    font-weight: 800;
+    background: rgba(255, 255, 255, 0.55);
+    font-size: 8px;
+    font-weight: 750;
     text-transform: uppercase;
 }
 
 
-/* ==============================
-   EMPTY
-   ============================== */
-
-.teacher-tt-empty {
-    min-height: 250px;
-    border: 1px dashed #cbd5e1;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    color: #718096;
-    font-size: 30px;
+.teacher-class-reason {
+    margin-top: auto;
+    padding-top: 3px;
+    font-size: 9px;
+    font-style: italic;
+    opacity: 0.8;
 }
 
-    .teacher-tt-empty strong {
-        color: #273449;
-        font-size: 17px;
+
+/* =========================================================
+   NORMAL SUBJECT
+   ALL NORMAL SUBJECTS USE SAME COLOR
+   ========================================================= */
+
+.subject-color-1,
+.subject-color-2,
+.subject-color-3,
+.subject-color-4,
+.subject-color-5,
+.subject-color-6,
+.subject-color-7,
+.subject-color-8,
+.subject-color-9,
+.subject-color-10,
+.teacher-class-block.normal-subject {
+    background: #e0f7fa;
+    border-color: #b2ebf2;
+    border-left-color: #00a8c6;
+    color: #164e63;
+}
+
+
+/* =========================================================
+   STATUS BADGE
+   ========================================================= */
+
+.teacher-status-badge {
+    align-self: flex-start;
+    padding: 3px 7px;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 8px !important;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+
+/* =========================================================
+   REPLACEMENT
+   PURPLE
+   ========================================================= */
+
+.teacher-class-block.replacement {
+    background: linear-gradient( 135deg, #f0ebff, #e7e0ff );
+    border-color: #d8cffc;
+    border-left-color: #8b5cf6;
+    color: #4c1d95;
+}
+
+
+.replacement-badge {
+    background: #7c3aed;
+}
+
+
+/* =========================================================
+   CANCELLED
+   RED
+   ========================================================= */
+
+.teacher-class-block.cancelled {
+    background: linear-gradient( 135deg, #fff1f1, #fee2e2 );
+    border-color: #fecaca;
+    border-left-color: #ef4444;
+    color: #7f1d1d;
+    opacity: 0.88;
+}
+
+
+    .teacher-class-block.cancelled .class-course-name {
+        text-decoration: line-through;
     }
 
-    .teacher-tt-empty span {
-        font-size: 13px;
-    }
+
+.cancelled-badge {
+    background: #dc2626;
+}
 
 
-/* ==============================
+/* =========================================================
    RESPONSIVE
-   ============================== */
+   ========================================================= */
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
 
-    .timetable-header {
+    .teacher-dashboard {
+        padding: 22px 17px 45px;
+    }
+
+
+    .teacher-header.timetable-header {
         flex-direction: column;
         align-items: flex-start;
+        padding: 28px 25px;
     }
+
+
+    .teacher-header h1 {
+        font-size: 29px;
+    }
+
+
+    .attendance-page-button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
 
     .teacher-week-bar {
         flex-direction: column;
         align-items: flex-start;
     }
 
-        .teacher-week-bar form,
-        .teacher-week-bar select {
+
+    .week-selector-form {
+        width: 100%;
+    }
+
+
+        .week-selector-form select {
             width: 100%;
         }
 
-    .attendance-page-button {
-        width: 100%;
-        text-align: center;
-        box-sizing: border-box;
+
+    .teacher-grid-card {
+        padding: 12px;
+    }
+
+
+    .teacher-tt-empty {
+        min-height: 290px;
+    }
+
+
+    .teacher-notification {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
     }
 }
