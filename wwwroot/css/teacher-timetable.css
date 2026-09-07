@@ -259,21 +259,18 @@
     }
 
 
-/* Normal subject */
 .legend-normal {
-    background: #00a8c6;
+    background: #93c5fd;
 }
 
 
-/* Replacement */
 .legend-replacement {
-    background: #8b5cf6;
+    background: #c4b5fd;
 }
 
 
-/* Cancelled */
 .legend-cancelled {
-    background: #ef4444;
+    background: #fca5a5;
 }
 
 
@@ -520,7 +517,7 @@
     }
 
 
-        .teacher-tt-grid thead th:not(.teacher-day-heading) {
+        .teacher-tt-grid thead th:not( .teacher-day-heading ) {
             min-width: 145px;
         }
 
@@ -673,25 +670,86 @@
 
 
 /* =========================================================
-   NORMAL SUBJECT
-   ALL NORMAL SUBJECTS USE SAME COLOR
+   SUBJECT COLORS
    ========================================================= */
 
-.subject-color-1,
-.subject-color-2,
-.subject-color-3,
-.subject-color-4,
-.subject-color-5,
-.subject-color-6,
-.subject-color-7,
-.subject-color-8,
-.subject-color-9,
-.subject-color-10,
-.teacher-class-block.normal-subject {
-    background: #e0f7fa;
-    border-color: #b2ebf2;
-    border-left-color: #00a8c6;
+.subject-color-1 {
+    background: #e8f2ff;
+    border-color: #c8ddff;
+    border-left-color: #3b82f6;
+    color: #1e3a8a;
+}
+
+
+.subject-color-2 {
+    background: #e7f8ee;
+    border-color: #c9eed8;
+    border-left-color: #22c55e;
+    color: #14532d;
+}
+
+
+.subject-color-3 {
+    background: #fff5d9;
+    border-color: #fae8ad;
+    border-left-color: #f59e0b;
+    color: #78350f;
+}
+
+
+.subject-color-4 {
+    background: #fcecf5;
+    border-color: #f5cde3;
+    border-left-color: #ec4899;
+    color: #831843;
+}
+
+
+.subject-color-5 {
+    background: #e2f8fb;
+    border-color: #bdebf1;
+    border-left-color: #06b6d4;
     color: #164e63;
+}
+
+
+.subject-color-6 {
+    background: #fff0e3;
+    border-color: #f9d9bd;
+    border-left-color: #f97316;
+    color: #7c2d12;
+}
+
+
+.subject-color-7 {
+    background: #e1f8f4;
+    border-color: #bcebe3;
+    border-left-color: #14b8a6;
+    color: #134e4a;
+}
+
+
+.subject-color-8 {
+    background: #eaedff;
+    border-color: #ccd2fa;
+    border-left-color: #6366f1;
+    color: #312e81;
+}
+
+
+.subject-color-9 {
+    background: #f2fbdc;
+    border-color: #deefb7;
+    border-left-color: #84cc16;
+    color: #365314;
+}
+
+
+.subject-color-10 {
+    background: #f8eafe;
+    border-color: #eecbf8;
+    border-left-color: #d946ef;
+    color: #701a75;
 }
 
 
@@ -713,7 +771,6 @@
 
 /* =========================================================
    REPLACEMENT
-   PURPLE
    ========================================================= */
 
 .teacher-class-block.replacement {
@@ -731,7 +788,6 @@
 
 /* =========================================================
    CANCELLED
-   RED
    ========================================================= */
 
 .teacher-class-block.cancelled {
@@ -743,7 +799,8 @@
 }
 
 
-    .teacher-class-block.cancelled .class-course-name {
+    .teacher-class-block.cancelled
+    .class-course-name {
         text-decoration: line-through;
     }
 
@@ -814,3 +871,49 @@
         gap: 6px;
     }
 }
+
+
+/* =========================================================
+   NORMAL SUBJECT - SAME COLOUR
+   ========================================================= */
+
+.subject-color-1,
+.subject-color-2,
+.subject-color-3,
+.subject-color-4,
+.subject-color-5,
+.subject-color-6,
+.subject-color-7,
+.subject-color-8,
+.subject-color-9,
+.subject-color-10,
+.teacher-class-block.normal-subject {
+    background: #e2f8fb;
+    border-color: #bdebf1;
+    border-left-color: #06b6d4;
+    color: #164e63;
+}
+
+
+/* =========================================================
+   NOTIFICATION VIEW ALL
+   ========================================================= */
+
+.notification-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.notification-view-all {
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 750;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+    .notification-view-all:hover {
+        color: #78350f;
+        text-decoration: underline;
+    }

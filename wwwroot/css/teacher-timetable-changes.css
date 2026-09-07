@@ -1,0 +1,490 @@
+﻿/* =========================================================
+   TIMETABLE CHANGES PAGE
+   ========================================================= */
+
+.changes-page {
+    width: 100%;
+    min-height: 100vh;
+    padding: 42px 28px 65px;
+    box-sizing: border-box;
+    background: #eef3f8;
+}
+
+
+.changes-container {
+    width: 100%;
+    max-width: 1220px;
+    margin: 0 auto;
+}
+
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.changes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    padding: 34px 36px;
+    background: #ffffff;
+    border: 1px solid #d5dfeb;
+    border-radius: 22px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+
+.changes-header-content {
+    min-width: 0;
+}
+
+
+.changes-eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: 1.8px;
+}
+
+
+.changes-header h1 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+
+.changes-header p {
+    margin: 10px 0 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+
+
+/* =========================================================
+   BACK BUTTON
+   ========================================================= */
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 17px;
+    border: 1px solid #cfdbea;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 750;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+
+    .back-button:hover {
+        background: #f8fafc;
+        border-color: #b9c9dc;
+        color: #0f172a;
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(15, 23, 42, 0.06);
+    }
+
+
+
+/* =========================================================
+   SUMMARY
+   ========================================================= */
+
+.changes-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 24px 0 18px;
+    padding: 10px 15px;
+    background: #ffffff;
+    border: 1px solid #d3deea;
+    border-radius: 11px;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+    color: #475569;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+
+    .changes-summary strong {
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 850;
+    }
+
+
+
+/* =========================================================
+   LIST
+   ========================================================= */
+
+.changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+}
+
+
+
+/* =========================================================
+   CHANGE CARD
+   ========================================================= */
+
+.change-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    padding: 21px 23px;
+    background: #ffffff;
+    border: 1px solid #d3deea;
+    border-radius: 15px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.055);
+    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+
+
+    .change-card:hover {
+        transform: translateY(-1px);
+        border-color: #c3d0df;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    }
+
+
+.change-card-main {
+    min-width: 0;
+    flex: 1;
+}
+
+
+
+/* =========================================================
+   TYPE BADGE
+   ========================================================= */
+
+.change-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 11px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #e0e7ff;
+    color: #4338ca;
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+
+
+    /* Cancelled */
+
+    .change-type.cancelled,
+    .change-type.classcancelled,
+    .change-type.lessoncancelled,
+    .change-type.class-cancelled,
+    .change-type.lesson-cancelled,
+    .change-type.deleted {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+
+
+    /* Replacement */
+
+    .change-type.replacement,
+    .change-type.replacementclass,
+    .change-type.replacement-class {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+
+
+
+    /* Updated */
+
+    .change-type.updated,
+    .change-type.timechanged,
+    .change-type.time-changed,
+    .change-type.classroomchanged,
+    .change-type.classroom-changed {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+
+
+    /* Created / Restored */
+
+    .change-type.created,
+    .change-type.restored {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+
+
+/* =========================================================
+   MESSAGE
+   ========================================================= */
+
+.change-message {
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 520;
+    line-height: 1.65;
+    word-break: break-word;
+}
+
+
+
+/* =========================================================
+   LESSON DATE
+   ========================================================= */
+
+.change-lesson-date {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 11px;
+    color: #64748b;
+    font-size: 11px;
+}
+
+
+    .change-lesson-date strong {
+        color: #334155;
+        font-weight: 750;
+    }
+
+
+
+/* =========================================================
+   CREATED DATE
+   ========================================================= */
+
+.change-time {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    padding-top: 2px;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+
+.change-created-date {
+    color: #475569;
+    font-weight: 700;
+}
+
+
+.change-time small {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 550;
+}
+
+
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.changes-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 330px;
+    padding: 50px 25px;
+    background: #ffffff;
+    border: 1.5px dashed #bac9db;
+    border-radius: 18px;
+    text-align: center;
+}
+
+
+.empty-icon {
+    width: 68px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    border-radius: 18px;
+    background: #eef4fb;
+    font-size: 29px;
+}
+
+
+.changes-empty h2 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 19px;
+    font-weight: 800;
+}
+
+
+.changes-empty p {
+    margin: 8px 0 18px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+
+.empty-back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 15px;
+    background: #2563eb;
+    border-radius: 9px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+
+    .empty-back-button:hover {
+        background: #1d4ed8;
+        color: #ffffff;
+    }
+
+
+
+/* =========================================================
+   PAGINATION
+   ========================================================= */
+
+.changes-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 13px;
+    margin-top: 28px;
+}
+
+
+.page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+
+.page-button,
+.page-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 39px;
+    padding: 0 13px;
+    background: #ffffff;
+    border: 1px solid #cfdbea;
+    border-radius: 9px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 750;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+
+.page-number {
+    width: 39px;
+    padding: 0;
+}
+
+
+    .page-number.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+    }
+
+
+    .page-number:not(.active):hover,
+    .page-button:not(.disabled):hover {
+        background: #f1f5f9;
+        border-color: #b9c8d9;
+        color: #0f172a;
+    }
+
+
+.page-button.disabled {
+    background: #f8fafc;
+    color: #b6c2d0;
+    cursor: default;
+}
+
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 800px) {
+
+    .changes-page {
+        padding: 24px 16px 45px;
+    }
+
+
+    .changes-header {
+        flex-direction: column;
+        padding: 25px 23px;
+    }
+
+
+        .changes-header h1 {
+            font-size: 28px;
+        }
+
+
+    .back-button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+
+    .change-card {
+        flex-direction: column;
+        gap: 13px;
+        padding: 18px;
+    }
+
+
+    .change-time {
+        align-items: flex-start;
+    }
+
+
+    .changes-pagination {
+        gap: 9px;
+    }
+}

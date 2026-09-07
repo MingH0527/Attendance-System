@@ -738,22 +738,45 @@ public class TeacherController : Controller
 
 
         // ==================================================
-        // NOTIFICATIONS
+        // RECENT TIMETABLE NOTIFICATIONS
+        // Timetable page:
+        // - only notifications from the last 7 days
+        // - only show latest 3
+        // - old records stay permanently in database
         // ==================================================
 
-        model.Notifications =
-            await db.TimetableNotifications
+        DateTime notificationCutOff =
+            DateTime.Now.AddDays(-7);
+
+
+        IQueryable<TimetableNotification> recentNotificationQuery =
+            db.TimetableNotifications
                 .AsNoTracking()
                 .Where(n =>
                     n.UserId ==
                         userId &&
-                    n.TermId ==
-                        activeTerm.TermId
-                )
+                    n.CreatedAt >=
+                        notificationCutOff &&
+                    (
+                        n.TermId ==
+                            activeTerm.TermId ||
+                        n.TermId ==
+                            null
+                    )
+                );
+
+
+        ViewBag.RecentNotificationCount =
+            await recentNotificationQuery
+                .CountAsync();
+
+
+        model.Notifications =
+            await recentNotificationQuery
                 .OrderByDescending(n =>
                     n.CreatedAt
                 )
-                .Take(10)
+                .Take(3)
                 .ToListAsync();
 
 
@@ -771,6 +794,101 @@ public class TeacherController : Controller
 
 
         return View(model);
+    }
+
+
+    // ==================================================
+    // VIEW ALL TIMETABLE CHANGES
+    // ==================================================
+
+    [HttpGet]
+    public async Task<IActionResult> TimetableChanges(
+        int page = 1)
+    {
+        string? userId =
+            GetCurrentUserId();
+
+
+        if (userId == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        const int pageSize =
+            10;
+
+
+        IQueryable<TimetableNotification> query =
+            db.TimetableNotifications
+                .AsNoTracking()
+                .Where(n =>
+                    n.UserId ==
+                        userId
+                );
+
+
+        int totalCount =
+            await query
+                .CountAsync();
+
+
+        int totalPages =
+            (int)Math.Ceiling(
+                totalCount /
+                (double)pageSize
+            );
+
+
+        if (totalPages < 1)
+        {
+            totalPages =
+                1;
+        }
+
+
+        page =
+            Math.Clamp(
+                page,
+                1,
+                totalPages
+            );
+
+
+        List<TimetableNotification> notifications =
+            await query
+                .OrderByDescending(n =>
+                    n.CreatedAt
+                )
+                .Skip(
+                    (page - 1) *
+                    pageSize
+                )
+                .Take(
+                    pageSize
+                )
+                .ToListAsync();
+
+
+        ViewBag.CurrentPage =
+            page;
+
+        ViewBag.TotalPages =
+            totalPages;
+
+        ViewBag.TotalCount =
+            totalCount;
+
+        ViewBag.PageSize =
+            pageSize;
+
+
+        return View(
+            notifications
+        );
     }
 
 

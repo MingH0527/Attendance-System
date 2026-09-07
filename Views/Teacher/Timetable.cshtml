@@ -1,63 +1,96 @@
 ﻿@model WebAndMobile.Models.TeacherTimetableViewModel
+@using WebAndMobile.Models
 
 @{
     ViewData["Title"] = "My Timetable";
 
-    var days = new List<DayOfWeek>
-    {
-        DayOfWeek.Monday,
-        DayOfWeek.Tuesday,
-        DayOfWeek.Wednesday,
-        DayOfWeek.Thursday,
-        DayOfWeek.Friday,
-        DayOfWeek.Saturday
-    };
+    List<DayOfWeek> days =
+        new()
+        {
+            DayOfWeek.Monday,
+            DayOfWeek.Tuesday,
+            DayOfWeek.Wednesday,
+            DayOfWeek.Thursday,
+            DayOfWeek.Friday,
+            DayOfWeek.Saturday
+        };
 
-    if (Model.Items.Any(i => i.DayOfWeek == DayOfWeek.Sunday))
+    if (
+        Model.Items.Any(i =>
+            i.DayOfWeek ==
+            DayOfWeek.Sunday
+        )
+    )
     {
-        days.Add(DayOfWeek.Sunday);
+        days.Add(
+            DayOfWeek.Sunday
+        );
     }
 
-    int startHour = 8;
-    int endHour = 18;
+
+    int startHour =
+        8;
+
+    int endHour =
+        18;
+
 
     if (Model.Items.Count > 0)
     {
-        startHour = Math.Min(
-            8,
-            Model.Items.Min(i => i.StartTime.Hours)
-        );
+        int earliestHour =
+            Model.Items
+                .Min(i =>
+                    i.StartTime.Hours
+                );
 
-        endHour = Math.Max(
-            18,
-            (int)Math.Ceiling(
-                Model.Items.Max(i => i.EndTime.TotalHours)
-            )
-        );
+        int latestHour =
+            Model.Items
+                .Max(i =>
+                    i.EndTime.Minutes > 0
+                        ? i.EndTime.Hours + 1
+                        : i.EndTime.Hours
+                );
+
+
+        if (
+            earliestHour <
+            startHour
+        )
+        {
+            startHour =
+                earliestHour;
+        }
+
+
+        if (
+            latestHour >
+            endHour
+        )
+        {
+            endHour =
+                latestHour;
+        }
     }
 
-    var courseIds = Model.Items
-        .Where(i =>
-            i.Status != "Replacement" &&
-            i.Status != "Cancelled"
-        )
-        .Select(i => i.CourseId)
-        .Distinct()
-        .ToList();
 
-    var subjectColours =
-        new Dictionary<string, int>();
+    int recentNotificationCount =
+        Model.Notifications
+            ?.Count
+        ?? 0;
 
-    for (int i = 0; i < courseIds.Count; i++)
+
+    if (
+        ViewBag.RecentNotificationCount !=
+        null
+    )
     {
-        subjectColours[courseIds[i]] =
-            (i % 10) + 1;
+        recentNotificationCount =
+            Convert.ToInt32(
+                ViewBag.RecentNotificationCount
+            );
     }
 }
 
-<link rel="stylesheet"
-      href="~/css/teacherhome.css"
-      asp-append-version="true" />
 
 <link rel="stylesheet"
       href="~/css/teacher-timetable.css"
@@ -66,33 +99,37 @@
 
 <div class="teacher-dashboard">
 
-    <!-- ==========================================
-         HEADER
-         ========================================== -->
 
-    <header class="teacher-header timetable-header">
+    <!-- ==================================================
+         HEADER
+         ================================================== -->
+
+    <section class="teacher-header timetable-header">
 
         <div class="timetable-header-content">
 
             <a asp-controller="Teacher"
                asp-action="Index"
                class="tt-back-link">
-
                 ← Back to Dashboard
-
             </a>
 
+
             <p class="teacher-role">
-                Teacher Portal
+                TEACHER PORTAL
             </p>
+
 
             <h1>
                 My Timetable
             </h1>
 
+
             <p class="teacher-header-description">
+
                 View your weekly teaching schedule,
-                cancelled classes and replacements.
+                replacement classes and cancelled lessons.
+
             </p>
 
         </div>
@@ -103,135 +140,149 @@
            class="attendance-page-button">
 
             <span class="attendance-button-icon">
-                🔢
+                #
             </span>
 
-            <span>
-                Generate Attendance Code
-            </span>
+            Generate Attendance Code
 
         </a>
 
-    </header>
+    </section>
 
 
-    <!-- ==========================================
+
+    <!-- ==================================================
          WEEK SELECTOR
-         ========================================== -->
-    @if (Model.Weeks.Count > 0)
-    {
-        <section class="teacher-week-bar">
+         ================================================== -->
 
-            <div class="week-information">
+    <section class="teacher-week-bar">
 
-                <span class="week-label">
-                    ACTIVE SEMESTER
-                </span>
 
+        <div class="week-information">
+
+            <span class="week-label">
+                CURRENT VIEW
+            </span>
+
+
+            @if (Model.IsTemplate)
+            {
                 <strong>
+                    Weekly Template
+                </strong>
+
+                <span class="week-date">
                     @Model.TermName
+                </span>
+            }
+            else
+            {
+                <strong>
+                    Week @Model.SelectedWeekNumber
                 </strong>
 
                 @if (
-                    !Model.IsTemplate &&
-                    Model.WeekStart != null &&
-                    Model.WeekEnd != null
+                    Model.WeekStart.HasValue &&
+                    Model.WeekEnd.HasValue
                 )
                 {
                     <span class="week-date">
-
-                        @(Model.WeekStart.Value.ToString("dd MMM yyyy"))
+                        @Model.WeekStart.Value.ToString("dd MMM yyyy")
                         -
-                        @(Model.WeekEnd.Value.ToString("dd MMM yyyy"))
-
+                        @Model.WeekEnd.Value.ToString("dd MMM yyyy")
                     </span>
+                }
+            }
+
+        </div>
+
+
+
+        <form asp-controller="Teacher"
+              asp-action="Timetable"
+              method="get"
+              class="week-selector-form">
+
+            <label for="weekNumber">
+                View:
+            </label>
+
+
+            <select id="weekNumber"
+                    name="weekNumber"
+                    onchange="this.form.submit()">
+
+
+                @if (Model.IsTemplate)
+                {
+                    <option value="0"
+                            selected>
+                        Weekly Template
+                    </option>
                 }
                 else
                 {
-                    <span class="week-date">
-                        Standard weekly timetable
-                    </span>
+                    <option value="0">
+                        Weekly Template
+                    </option>
                 }
 
-            </div>
 
-
-            <form asp-controller="Teacher"
-                  asp-action="Timetable"
-                  method="get"
-                  class="week-selector-form">
-
-                <label for="weekNumber">
-                    View
-                </label>
-
-                <select id="weekNumber"
-                        name="weekNumber"
-                        onchange="this.form.submit()">
-
-                    @if (Model.IsTemplate)
+                @foreach (
+                    AcademicWeek week
+                    in Model.Weeks
+                )
+                {
+                    if (
+                        Model.SelectedWeekNumber ==
+                        week.WeekNumber &&
+                        !Model.IsTemplate
+                    )
                     {
-                        <option value="0"
+                        <option value="@week.WeekNumber"
                                 selected>
-                            Weekly Template
+                            Week @week.WeekNumber
+                            (@week.StartDate.ToString("dd MMM")
+                            -
+                            @week.EndDate.ToString("dd MMM"))
                         </option>
                     }
                     else
                     {
-                        <option value="0">
-                            Weekly Template
+                        <option value="@week.WeekNumber">
+                            Week @week.WeekNumber
+                            (@week.StartDate.ToString("dd MMM")
+                            -
+                            @week.EndDate.ToString("dd MMM"))
                         </option>
                     }
+                }
+
+            </select>
+
+        </form>
+
+    </section>
 
 
-                    @foreach (var week in Model.Weeks)
-                    {
-                        if (
-                            !Model.IsTemplate &&
-                            Model.SelectedWeekNumber ==
-                                week.WeekNumber
-                        )
-                        {
-                            <option value="@week.WeekNumber"
-                                    selected>
 
-                                Week @week.WeekNumber
-
-                            </option>
-                        }
-                        else
-                        {
-                            <option value="@week.WeekNumber">
-
-                                Week @week.WeekNumber
-
-                            </option>
-                        }
-                    }
-
-                </select>
-
-            </form>
-
-        </section>
-    }
-
-
-    <!-- ==========================================
+    <!-- ==================================================
          LEGEND
-         ========================================== -->
+         ================================================== -->
 
     <div class="teacher-tt-legend">
 
         <span>
             <i class="legend-normal"></i>
-            Subjects
+            Subject
         </span>
+
 
         <span>
             <i class="legend-replacement"></i>
             Replacement
         </span>
+
 
         <span>
             <i class="legend-cancelled"></i>
@@ -241,50 +292,75 @@
     </div>
 
 
-    <!-- ==========================================
-         NOTIFICATIONS
-         ========================================== -->
-    @if (Model.Notifications.Count > 0)
-    {
-        <section class="teacher-notifications">
 
-            <div class="notification-heading">
+    <!-- ==================================================
+         RECENT TIMETABLE CHANGES
+         ================================================== -->
 
-                <div>
+    <section class="teacher-notifications">
 
-                    <span class="notification-icon">
-                        🔔
-                    </span>
 
-                    <strong>
-                        Recent Timetable Changes
-                    </strong>
+        <div class="notification-heading">
 
-                </div>
 
-                <span class="notification-count">
-                    @Model.Notifications.Count
+            <div>
+
+                <span class="notification-icon">
+                    🔔
                 </span>
+
+                <strong>
+                    Recent Timetable Changes
+                </strong>
 
             </div>
 
 
+
+            <div class="notification-heading-actions">
+
+
+                <span class="notification-count">
+                    @recentNotificationCount
+                </span>
+
+
+                <a asp-controller="Teacher"
+                   asp-action="TimetableChanges"
+                   class="notification-view-all">
+
+                    View all changes →
+
+                </a>
+
+            </div>
+
+        </div>
+
+
+
+        @if (
+            Model.Notifications != null &&
+            Model.Notifications.Count > 0
+        )
+        {
             <div class="notification-list">
 
+
                 @foreach (
-                    var notification
-                    in Model.Notifications.Take(3)
+                    TimetableNotification notification
+                    in Model.Notifications
                 )
                 {
                     <div class="teacher-notification">
 
+
                         <div class="notification-message">
 
                             <strong>
-                                @(notification.Type == "LessonCancelled"
-                                    ? "Class Cancelled"
-                                    : "Timetable Updated")
+                                @notification.Type
                             </strong>
+
 
                             <span>
                                 @notification.Message
@@ -293,83 +369,123 @@
                         </div>
 
 
+
                         <small>
-                            @(notification.CreatedAt.ToString("dd MMM yyyy HH:mm"))
+                            @notification.CreatedAt.ToString("dd MMM yyyy HH:mm")
                         </small>
+
 
                     </div>
                 }
 
             </div>
+        }
+        else
+        {
+            <div class="notification-list">
 
-        </section>
-    }
+                <div class="teacher-notification">
+
+                    <div class="notification-message">
+
+                        <span>
+                            No recent timetable changes.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+        }
+
+    </section>
 
 
-    <!-- ==========================================
-         TIMETABLE CARD
-         ========================================== -->
+
+    <!-- ==================================================
+         TIMETABLE
+         ================================================== -->
 
     <section class="teacher-grid-card">
 
-        @if (Model.Items.Count == 0)
-        {
-            <!-- ==================================
-                 EMPTY STATE
-                 ================================== -->
 
+        @if (
+            Model.Items ==
+            null ||
+            Model.Items.Count ==
+            0
+        )
+        {
             <div class="teacher-tt-empty">
+
 
                 <div class="empty-calendar-icon">
                     📅
                 </div>
 
+
                 <strong>
                     No timetable entries
                 </strong>
 
+
                 <span>
-                    Your scheduled classes will appear here
-                    once an active timetable has been assigned to you.
+
+                    There are currently no timetable
+                    entries available for this semester.
+
                 </span>
+
 
             </div>
         }
         else
         {
-            <!-- ==================================
-                 GRID
-                 ================================== -->
-
             <div class="teacher-grid-scroll">
 
+
                 <table class="teacher-tt-grid">
+
+
+                    <!-- ======================================
+                         TIME HEADER
+                         ====================================== -->
 
                     <thead>
 
                         <tr>
 
+
                             <th class="teacher-day-heading">
-                                Day / Time
+                                Day
                             </th>
 
 
                             @for (
-                                int hour = startHour;
-                                hour < endHour;
+                                int hour =
+                                    startHour;
+                                hour <
+                                    endHour;
                                 hour++
                             )
                             {
                                 DateTime start =
-                                    DateTime.Today.AddHours(hour);
+                                    DateTime.Today
+                                        .AddHours(
+                                            hour
+                                        );
 
                                 DateTime end =
-                                    start.AddHours(1);
+                                    start.AddHours(
+                                        1
+                                    );
+
 
                                 <th>
 
                                     <span class="time-start">
-                                        @start.ToString("h:mm tt")
+                                        @start.ToString("hh:mm tt")
                                     </span>
 
                                     <span class="time-separator">
@@ -377,22 +493,35 @@
                                     </span>
 
                                     <span class="time-end">
-                                        @end.ToString("h:mm tt")
+                                        @end.ToString("hh:mm tt")
                                     </span>
 
                                 </th>
                             }
+
 
                         </tr>
 
                     </thead>
 
 
+
+                    <!-- ======================================
+                         TIMETABLE BODY
+                         ====================================== -->
+
                     <tbody>
 
-                        @foreach (DayOfWeek day in days)
+
+                        @foreach (
+                            DayOfWeek day
+                            in days
+                        )
                         {
                             <tr>
+
+
+                                <!-- DAY -->
 
                                 <th class="teacher-day-label">
 
@@ -403,41 +532,59 @@
                                 </th>
 
 
+
+                                <!-- HOURS -->
                                 @for (
-                                    int hour = startHour;
-                                    hour < endHour;
-                                    hour++
-                                )
+                                                                    int hour =
+                                                                        startHour;
+                                                                    hour <
+                                                                        endHour;
+                                                                    hour++
+                                                                )
                                 {
-                                    var cellItems =
-                                        Model.Items
-                                            .Where(i =>
-                                                i.DayOfWeek == day &&
-                                                i.StartTime.Hours == hour
-                                            )
-                                            .OrderBy(i =>
-                                                i.StartTime
-                                            )
-                                            .ToList();
+                                    List<TeacherTimetableItemViewModel>
+                                        cellItems =
+                                            Model.Items
+                                                .Where(i =>
+                                                    i.DayOfWeek ==
+                                                        day &&
+                                                    i.StartTime.Hours ==
+                                                        hour
+                                                )
+                                                .OrderBy(i =>
+                                                    i.StartTime
+                                                )
+                                                .ToList();
 
 
                                     <td class="teacher-tt-cell">
 
-                                        @foreach (var item in cellItems)
+
+                                        @foreach (
+                                            TeacherTimetableItemViewModel item
+                                            in cellItems
+                                        )
                                         {
                                             string colourClass;
 
+
                                             if (
-                                                item.Status ==
-                                                "Replacement"
+                                                string.Equals(
+                                                    item.Status,
+                                                    "Replacement",
+                                                    StringComparison.OrdinalIgnoreCase
+                                                )
                                             )
                                             {
                                                 colourClass =
                                                     "replacement";
                                             }
                                             else if (
-                                                item.Status ==
-                                                "Cancelled"
+                                                string.Equals(
+                                                    item.Status,
+                                                    "Cancelled",
+                                                    StringComparison.OrdinalIgnoreCase
+                                                )
                                             )
                                             {
                                                 colourClass =
@@ -445,92 +592,103 @@
                                             }
                                             else
                                             {
-                                                int colour =
-                                                    subjectColours
-                                                        .GetValueOrDefault(
-                                                            item.CourseId,
-                                                            1
-                                                        );
-
+                                                // All normal subjects
+                                                // use the same colour.
                                                 colourClass =
-                                                    $"subject-color-{colour}";
+                                                    "subject-color-5 normal-subject";
                                             }
+
 
 
                                             <div class="teacher-class-block @colourClass">
 
-                                                <!-- STATUS -->
+
+                                                <!-- STATUS BADGE -->
                                                 @if (
-                                                                                                    item.Status ==
-                                                                                                    "Replacement"
+                                                                                                    string.Equals(
+                                                                                                        item.Status,
+                                                                                                        "Replacement",
+                                                                                                        StringComparison.OrdinalIgnoreCase
+                                                                                                    )
                                                                                                 )
                                                 {
                                                     <span class="teacher-status-badge replacement-badge">
-
                                                         Replacement
-
                                                     </span>
                                                 }
-
-
-                                                @if (
-                                                    item.Status ==
-                                                    "Cancelled"
+                                                else if (
+                                                    string.Equals(
+                                                        item.Status,
+                                                        "Cancelled",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    )
                                                 )
                                                 {
                                                     <span class="teacher-status-badge cancelled-badge">
-
                                                         Cancelled
-
                                                     </span>
                                                 }
 
 
-                                                <!-- SUBJECT -->
 
-                                                <strong class="class-course-name">
+                                                <!-- COURSE -->
 
+                                                <span class="class-course-name">
                                                     @item.CourseName
+                                                </span>
 
-                                                </strong>
 
 
                                                 <!-- TIME -->
 
                                                 <span class="class-time">
-
-                                                    @(item.StartTime.ToString(@"hh\:mm"))
+                                                    @item.StartTime.ToString(@"hh\:mm")
                                                     -
-                                                    @(item.EndTime.ToString(@"hh\:mm"))
-
+                                                    @item.EndTime.ToString(@"hh\:mm")
                                                 </span>
+
 
 
                                                 <!-- CLASS -->
 
                                                 <span class="class-group">
-
-                                                    👥 @item.ClassName
-
+                                                    @item.ClassName
                                                 </span>
+
 
 
                                                 <!-- ROOM -->
 
-                                                <small class="class-room">
+                                                <span class="class-room">
 
-                                                    📍 @item.RoomName
+                                                    Room:
+                                                    @item.RoomName
 
-                                                </small>
+                                                </span>
+
 
 
                                                 <!-- CLASS TYPE -->
 
-                                                <small class="class-type">
-
+                                                <span class="class-type">
                                                     @item.ClassType
+                                                </span>
 
-                                                </small>
+
+
+                                                <!-- DATE -->
+                                                @if (
+                                                                                                    item.OccurrenceDate
+                                                                                                        .HasValue
+                                                                                                )
+                                                {
+                                                    <span class="class-room">
+
+                                                        @item.OccurrenceDate.Value.ToString("dd MMM yyyy")
+
+                                                    </span>
+                                                }
+
 
 
                                                 <!-- REASON -->
@@ -540,29 +698,35 @@
                                                                                                     )
                                                                                                 )
                                                 {
-                                                    <small class="teacher-class-reason">
-
+                                                    <span class="teacher-class-reason">
                                                         @item.Reason
-
-                                                    </small>
+                                                    </span>
                                                 }
+
 
                                             </div>
                                         }
 
+
                                     </td>
                                 }
+
 
                             </tr>
                         }
 
+
                     </tbody>
 
+
                 </table>
+
 
             </div>
         }
 
+
     </section>
+
 
 </div>
