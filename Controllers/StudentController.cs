@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WebAndMobile.Models;
+using WebAndMobile.Filters;
 
 namespace WebAndMobile.Controllers;
 
@@ -28,17 +29,115 @@ public class StudentController : Controller
     // ==============================
 
     [HttpGet]
-    public IActionResult Index()
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> Index()
     {
+        string? studentId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
+
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        StudentClass? studentClass =
+            await db.StudentClasses
+                .AsNoTracking()
+                .Include(sc => sc.ClassGroup)
+                .Include(sc => sc.Program)
+                .FirstOrDefaultAsync(
+                    sc => sc.UserId == studentId
+                );
+
+        bool profileCompleted =
+            studentClass != null;
+
+        ViewBag.ProfileCompleted =
+            profileCompleted;
+
+        ViewBag.ProgramName =
+            studentClass?.Program?.ProgramName
+            ?? "Not Registered";
+
+        ViewBag.ClassName =
+            studentClass?.ClassGroup?.ClassName
+            ?? "Not Registered";
+
+
+        // ==========================================
+        // TODAY'S CLASSES
+        // ==========================================
+
+        List<Timetable> todayTimetable = new();
+
+        if (studentClass != null)
+        {
+            DayOfWeek today =
+                DateTime.Today.DayOfWeek;
+
+            todayTimetable =
+                await db.Timetables
+                    .AsNoTracking()
+                    .Where(t =>
+                        t.ClassId == studentClass.ClassId &&
+                        t.DayOfWeek == today &&
+                        t.Term != null &&
+                        t.Term.Status == "Active"
+                    )
+                    .Include(t => t.Course)
+                    .Include(t => t.Classroom)
+                    .Include(t => t.Teacher)
+                    .OrderBy(t => t.StartTime)
+                    .ToListAsync();
+        }
+
+        ViewBag.TodayTimetable =
+            todayTimetable;
+
+        ViewBag.TodayClassCount =
+            todayTimetable.Count;
+
+
+        // ==========================================
+        // PENDING LEAVE
+        // ==========================================
+
+        ViewBag.PendingLeaveCount =
+            await db.LeaveApplications
+                .AsNoTracking()
+                .CountAsync(l =>
+                    l.StudentId == studentId &&
+                    l.Status == "Pending"
+                );
+
+
+        // ==========================================
+        // UNREAD CHAT
+        // ==========================================
+
+        ViewBag.UnreadMessageCount =
+            await db.ChatMessages
+                .AsNoTracking()
+                .CountAsync(m =>
+                    m.ReceiverId == studentId &&
+                    !m.IsRead
+                );
+
+
         return View("Student");
     }
-
     // ==============================
     // STUDENT TIMETABLE
     // ==============================
 
     [HttpGet]
     [Authorize(Roles = "Student")]
+    [RequireStudentProfile]
     public async Task<IActionResult> Timetable()
     {
         string? studentId =
@@ -116,6 +215,13 @@ public class StudentController : Controller
                 .Name
             ?? "No Active Semester";
 
+        var activeTermIds = timetable.Where(t => t.TermId != null).Select(t => t.TermId!).Distinct().ToList();
+        ViewBag.TimetableNotifications = await db.TimetableNotifications
+            .AsNoTracking()
+            .Where(n => n.UserId == studentId && n.TermId != null && activeTermIds.Contains(n.TermId))
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(20)
+            .ToListAsync();
 
         return View(timetable);
     }
@@ -126,6 +232,7 @@ public class StudentController : Controller
     // ==============================
 
     [HttpGet]
+    [RequireStudentProfile]
     public async Task<IActionResult> ApplyLeave()
     {
         string? studentId =
@@ -157,6 +264,7 @@ public class StudentController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequireStudentProfile]
     public async Task<IActionResult> ApplyLeave(
         ApplyLeaveViewModel model)
     {

@@ -4,9 +4,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebAndMobile.Models;
 
-[Index(nameof(Username), IsUnique = true)]
-[Index(nameof(Email), IsUnique = true)]
-[Index(nameof(Phone), IsUnique = true)]
 public class User
 {
     [Key]
@@ -52,6 +49,10 @@ public class User
     [Required]
     [MaxLength(20)]
     public string Position { get; set; } = "Student";
+
+    public bool IsDeleted { get; set; } = false;
+
+    public DateTime? DeletedAt { get; set; }
 
     public AdminSecurity? AdminSecurity { get; set; }
 }

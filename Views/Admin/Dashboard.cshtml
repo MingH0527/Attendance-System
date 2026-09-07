@@ -1,0 +1,415 @@
+﻿@model WebAndMobile.ViewModels.AdminDashboardViewModel
+
+@{
+    Layout = "_Layout";
+
+    ViewData["Title"] = "Dashboard";
+}
+
+<link rel="stylesheet"
+      href="~/css/adminhome.css"
+      asp-append-version="true" />
+
+<link rel="stylesheet"
+      href="~/css/admin-dashboard.css"
+      asp-append-version="true" />
+
+<div class="dashboard-page">
+
+    <header class="dashboard-header">
+
+        <div>
+            <p class="dashboard-role">
+                Administrator Portal
+            </p>
+
+            <h1>Dashboard</h1>
+
+            <p class="dashboard-subtitle">
+                Overall payment activity across
+                every student account.
+            </p>
+        </div>
+
+        <a asp-controller="Admin"
+           asp-action="Index"
+           class="apd-back">
+            Back to Home
+        </a>
+
+    </header>
+
+    <!-- ========== Payment summary boxes ========== -->
+
+    <section class="apd-stats">
+
+        <div class="apd-stat">
+            <span class="apd-stat-label">
+                Total Collected
+            </span>
+
+            <strong class="apd-stat-value apd-value-positive">
+                RM @Model.TotalCollected.ToString("N2")
+            </strong>
+
+            <span class="apd-stat-note">
+                @Model.PaidCount paid transactions
+            </span>
+        </div>
+
+        <div class="apd-stat">
+            <span class="apd-stat-label">
+                Outstanding (Pending)
+            </span>
+
+            <strong class="apd-stat-value apd-value-warning">
+                RM @Model.PendingAmount.ToString("N2")
+            </strong>
+
+            <span class="apd-stat-note">
+                @Model.PendingCount awaiting payment
+            </span>
+        </div>
+
+        <div class="apd-stat">
+            <span class="apd-stat-label">
+                Collected This Month
+            </span>
+
+            <strong class="apd-stat-value">
+                RM @Model.CollectedThisMonth.ToString("N2")
+            </strong>
+
+            <span class="apd-stat-note">
+                Since @(new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1).ToString("dd MMM yyyy"))
+            </span>
+        </div>
+
+        <div class="apd-stat">
+            <span class="apd-stat-label">
+                Students Who Paid
+            </span>
+
+            <strong class="apd-stat-value">
+                @Model.PayingStudentCount / @Model.TotalStudentCount
+            </strong>
+
+            <span class="apd-stat-note">
+                @Model.TotalTransactions transactions in total
+            </span>
+        </div>
+
+    </section>
+
+    <!-- ========== Breakdown boxes ========== -->
+
+    <section class="apd-split">
+
+        <div class="apd-panel">
+
+            <h2 class="apd-panel-title">
+                Transaction Status
+            </h2>
+
+            <ul class="apd-status-list">
+
+                <li>
+                    <span class="apd-chip apd-chip--paid">
+                        Paid
+                    </span>
+
+                    <strong>@Model.PaidCount</strong>
+                </li>
+
+                <li>
+                    <span class="apd-chip apd-chip--pending">
+                        Pending
+                    </span>
+
+                    <strong>@Model.PendingCount</strong>
+                </li>
+
+                <li>
+                    <span class="apd-chip apd-chip--expired">
+                        Expired
+                    </span>
+
+                    <strong>@Model.ExpiredCount</strong>
+                </li>
+
+            </ul>
+
+        </div>
+
+        <div class="apd-panel">
+
+            <h2 class="apd-panel-title">
+                Collection by Fee Type
+            </h2>
+
+            @if (Model.FeeBreakdown.Count == 0)
+            {
+                <p class="apd-empty-note">
+                    No completed payments yet.
+                </p>
+            }
+            else
+            {
+                <table class="apd-mini-table">
+
+                    <thead>
+                        <tr>
+                            <th>Fee</th>
+                            <th>Paid</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var fee in Model.FeeBreakdown)
+                        {
+                            <tr>
+                                <td>@fee.FeeName</td>
+                                <td>@fee.PaidCount</td>
+                                <td>RM @fee.TotalCollected.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            }
+
+        </div>
+
+    </section>
+
+    <!-- ========== Overall payment table ========== -->
+
+    <section class="apd-panel apd-panel--wide">
+
+        <div class="apd-panel-head">
+
+            <h2 class="apd-panel-title">
+                Overall Student Payments
+            </h2>
+
+            <form asp-controller="Admin"
+                  asp-action="Dashboard"
+                  method="get"
+                  class="apd-filters">
+
+                <input type="text"
+                       name="search"
+                       value="@Model.Search"
+                       placeholder="Search student, ID or fee"
+                       class="apd-input" />
+
+                <select name="status"
+                        class="apd-select">
+
+                    @foreach (string option in
+                        new[] { "All", "Paid", "Pending", "Expired" })
+                    {
+                        string label =
+                            option == "All"
+                                ? "All statuses"
+                                : option;
+
+                        if (option == Model.StatusFilter)
+                        {
+                            <option value="@option" selected>@label</option>
+                        }
+                        else
+                        {
+                            <option value="@option">@label</option>
+                        }
+                    }
+
+                </select>
+
+                <button type="submit"
+                        class="apd-button">
+                    Filter
+                </button>
+
+                <a asp-controller="Admin"
+                   asp-action="Dashboard"
+                   class="apd-button apd-button--ghost">
+                    Reset
+                </a>
+
+            </form>
+
+        </div>
+
+        @if (Model.Payments.Count == 0)
+        {
+            <div class="apd-empty">
+                <div class="apd-empty-icon">💳</div>
+
+                <h3>No payments found</h3>
+
+                <p>
+                    No student payment records match
+                    the current filter.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="apd-table-wrapper">
+
+                <table class="apd-table">
+
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Student</th>
+                            <th>Fee</th>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var payment in Model.Payments)
+                        {
+                            <tr>
+                                <td>#@payment.PaymentTransactionId</td>
+
+                                <td>
+                                    <span class="apd-student-name">
+                                        @payment.Username
+                                    </span>
+
+                                    <span class="apd-student-id">
+                                        @payment.UserId
+                                    </span>
+                                </td>
+
+                                <td>@payment.FeeName</td>
+
+                                <td>@payment.PaymentMethod</td>
+
+                                <td>
+                                    @if (payment.PaidAt.HasValue)
+                                    {
+                                        @(payment.PaidAt.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
+                                    }
+                                    else
+                                    {
+                                        @(payment.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
+                                    }
+                                </td>
+
+                                <td>RM @payment.Amount.ToString("N2")</td>
+
+                                <td>
+                                    <span class="apd-chip apd-chip--@payment.Status.ToLowerInvariant()">
+                                        @payment.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <p class="apd-table-footer">
+                Showing @Model.Payments.Count record(s).
+            </p>
+        }
+
+    </section>
+
+    <!-- ========== Placeholder boxes for upcoming views ========== -->
+
+    <h2 class="apd-section-title">
+        More Overviews
+    </h2>
+
+    <section class="apd-placeholder-grid">
+
+        <div class="apd-placeholder">
+
+            <div class="apd-placeholder-icon">
+                🗓️
+            </div>
+
+            <div>
+                <h3>Attendance Overview</h3>
+
+                <p>
+                    Overall attendance rates by class,
+                    subject and student.
+                </p>
+
+                <span class="apd-soon">Coming soon</span>
+            </div>
+
+        </div>
+
+        <div class="apd-placeholder">
+
+            <div class="apd-placeholder-icon">
+                📝
+            </div>
+
+            <div>
+                <h3>Leave Overview</h3>
+
+                <p>
+                    Approved, rejected and pending
+                    leave applications at a glance.
+                </p>
+
+                <span class="apd-soon">Coming soon</span>
+            </div>
+
+        </div>
+
+        <div class="apd-placeholder">
+
+            <div class="apd-placeholder-icon">
+                👥
+            </div>
+
+            <div>
+                <h3>User Overview</h3>
+
+                <p>
+                    Account totals by role and
+                    registration activity.
+                </p>
+
+                <span class="apd-soon">Coming soon</span>
+            </div>
+
+        </div>
+
+        <div class="apd-placeholder">
+
+            <div class="apd-placeholder-icon">
+                📚
+            </div>
+
+            <div>
+                <h3>Program Overview</h3>
+
+                <p>
+                    Enrolment counts per program
+                    and subject.
+                </p>
+
+                <span class="apd-soon">Coming soon</span>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>

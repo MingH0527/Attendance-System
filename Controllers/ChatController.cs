@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
+using WebAndMobile.Filters;
 
 namespace WebAndMobile.Controllers;
 
 [Authorize(Roles = "Student,Teacher")]
+[RequireStudentProfile]
 public class ChatController : Controller
 {
     private readonly DB db;
@@ -239,12 +241,13 @@ public class ChatController : Controller
         }
 
         List<ChatMessage> messageEntities =
-            await messageQuery
-                .OrderByDescending(
-                    m => m.ChatMessageId
-                )
-                .Take(30)
-                .ToListAsync();
+     await messageQuery
+         .Include(m => m.Sender)
+         .OrderByDescending(
+             m => m.ChatMessageId
+         )
+         .Take(30)
+         .ToListAsync();
 
         messageEntities.Reverse();
 
@@ -264,6 +267,14 @@ public class ChatController : Controller
 
                         ReceiverId =
                             m.ReceiverId,
+
+                        SenderName =
+                        m.Sender.Username,
+
+                        SenderAvatar =
+                        string.IsNullOrWhiteSpace(m.Sender.Avatar)
+                            ? "default.png"
+                            : m.Sender.Avatar,
 
                         Content =
                             m.Content,
@@ -337,6 +348,13 @@ public class ChatController : Controller
     {
         string currentUserId =
             GetCurrentUserId();
+
+        User currentUser =
+              await db.Users
+                .AsNoTracking()
+                .SingleAsync(
+                   u => u.UserId == currentUserId
+           );
 
         return Json(
             await BuildConversationList(

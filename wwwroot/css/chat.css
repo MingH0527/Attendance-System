@@ -434,6 +434,8 @@
 
 .message-row {
     display: flex;
+    align-items: flex-end;
+    gap: 8px;
 }
 
 .message-mine {
@@ -442,6 +444,14 @@
 
 .message-other {
     justify-content: flex-start;
+}
+
+.message-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 .message-bubble {

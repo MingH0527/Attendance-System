@@ -70,6 +70,139 @@ public class AdminController : Controller
         return View(user);
     }
 
+    // ==================================================
+    // DASHBOARD - overall payment overview (all students)
+    // ==================================================
+
+    [HttpGet]
+    public async Task<IActionResult> Dashboard(
+        string? search,
+        string? status)
+    {
+        IQueryable<PaymentTransaction> allPayments =
+            _context.PaymentTransactions.AsNoTracking();
+
+        DateTime monthStart =
+            new DateTime(
+                DateTime.UtcNow.Year,
+                DateTime.UtcNow.Month,
+                1,
+                0, 0, 0,
+                DateTimeKind.Utc
+            );
+
+        AdminDashboardViewModel model = new()
+        {
+            Search = search,
+
+            StatusFilter =
+                string.IsNullOrWhiteSpace(status)
+                    ? "All"
+                    : status,
+
+            TotalCollected =
+                await allPayments
+                    .Where(p => p.Status == "Paid")
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m,
+
+            PendingAmount =
+                await allPayments
+                    .Where(p => p.Status == "Pending")
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m,
+
+            CollectedThisMonth =
+                await allPayments
+                    .Where(p =>
+                        p.Status == "Paid" &&
+                        p.PaidAt != null &&
+                        p.PaidAt >= monthStart)
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m,
+
+            TotalTransactions =
+                await allPayments.CountAsync(),
+
+            PaidCount =
+                await allPayments.CountAsync(
+                    p => p.Status == "Paid"),
+
+            PendingCount =
+                await allPayments.CountAsync(
+                    p => p.Status == "Pending"),
+
+            ExpiredCount =
+                await allPayments.CountAsync(
+                    p => p.Status == "Expired"),
+
+            PayingStudentCount =
+                await allPayments
+                    .Where(p => p.Status == "Paid")
+                    .Select(p => p.UserId)
+                    .Distinct()
+                    .CountAsync(),
+
+            TotalStudentCount =
+                await _context.Users.CountAsync(
+                    u => u.Position == "Student" &&
+                         !u.IsDeleted),
+
+            FeeBreakdown =
+                await allPayments
+                    .Where(p => p.Status == "Paid")
+                    .GroupBy(p => p.FeeName)
+                    .Select(g => new AdminFeeBreakdownRow
+                    {
+                        FeeName = g.Key,
+                        PaidCount = g.Count(),
+                        TotalCollected = g.Sum(x => x.Amount)
+                    })
+                    .OrderByDescending(r => r.TotalCollected)
+                    .ToListAsync()
+        };
+
+        // Filtered transaction list
+
+        IQueryable<PaymentTransaction> filtered = allPayments;
+
+        if (!string.Equals(
+                model.StatusFilter,
+                "All",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            filtered = filtered.Where(
+                p => p.Status == model.StatusFilter);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            string term = search.Trim();
+
+            filtered = filtered.Where(p =>
+                p.PaymentTransactionId.Contains(term) ||
+                p.UserId.Contains(term) ||
+                p.User.Username.Contains(term) ||
+                p.FeeName.Contains(term));
+        }
+
+        model.Payments =
+            await filtered
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new AdminPaymentRow
+                {
+                    PaymentTransactionId = p.PaymentTransactionId,
+                    UserId = p.UserId,
+                    Username = p.User.Username,
+                    FeeName = p.FeeName,
+                    PaymentMethod = p.PaymentMethod,
+                    Amount = p.Amount,
+                    Status = p.Status,
+                    CreatedAt = p.CreatedAt,
+                    PaidAt = p.PaidAt
+                })
+                .ToListAsync();
+
+        return View(model);
+    }
+
     //leave management
 
     [HttpGet]
@@ -631,7 +764,7 @@ public class AdminController : Controller
     public async Task<IActionResult>
         CreateTimetableEntry(
             [FromBody] TimetableRequest request)
-        {
+    {
 
         if (!ModelState.IsValid)
         {
@@ -858,7 +991,7 @@ public class AdminController : Controller
     public async Task<IActionResult> GetNonTeacherUsers()
     {
         var users = await _context.Users
-            .Where(u => u.Position == "Student")
+            .Where(u => u.Position == "Student" && !u.IsDeleted)
             .OrderBy(u => u.Username)
             .Select(u => new TeacherLookupDto
             {
@@ -881,7 +1014,7 @@ public class AdminController : Controller
     {
         var user = await _context.Users.FindAsync(id);
 
-        if (user == null)
+        if (user == null || user.IsDeleted)
         {
             return NotFound("User not found.");
         }
@@ -904,6 +1037,7 @@ public class AdminController : Controller
     public async Task<IActionResult> GetAllUsersWithRoles()
     {
         var users = await _context.Users
+            .Where(u => !u.IsDeleted)
             .OrderBy(u => u.Username)
             .Select(u => new UserRoleDto
             {
@@ -921,7 +1055,7 @@ public class AdminController : Controller
     {
         var user = await _context.Users.FindAsync(id);
 
-        if (user == null)
+        if (user == null || user.IsDeleted)
         {
             return NotFound("User not found.");
         }

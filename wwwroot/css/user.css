@@ -1369,3 +1369,29 @@
         min-width: 820px;
     }
 }
+
+/* Soft deleted user accounts */
+.status-deleted {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+.user-row[data-is-deleted="true"] {
+    background: #f8fafc;
+    opacity: .78;
+}
+.delete-account-button {
+    background: #fff1f2;
+    color: #b42318;
+    border-color: #fecdd3;
+}
+.delete-account-button:hover {
+    background: #ffe4e6;
+}
+.user-flash {
+    margin: 12px 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+.user-flash.success { background: #ecfdf3; color: #027a48; }
+.user-flash.error { background: #fef3f2; color: #b42318; }

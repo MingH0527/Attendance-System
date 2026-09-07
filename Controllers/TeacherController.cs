@@ -80,6 +80,14 @@ public class TeacherController : Controller
         // Pass attendance codes to the View
         ViewBag.AttendanceSessions = attendanceSessions;
 
+        var activeTermIds = entries.Where(t => t.TermId != null).Select(t => t.TermId!).Distinct().ToList();
+        ViewBag.TimetableNotifications = await db.TimetableNotifications
+            .AsNoTracking()
+            .Where(n => n.UserId == userId && n.TermId != null && activeTermIds.Contains(n.TermId))
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(20)
+            .ToListAsync();
+
         return View(entries);
     }
 

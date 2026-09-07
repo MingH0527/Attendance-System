@@ -9,10 +9,12 @@ using Stripe.Checkout;
 using WebAndMobile.Models;
 using WebAndMobile.Configuration;
 using WebAndMobile.Services;
+using WebAndMobile.Filters;
 
 namespace WebAndMobile.Controllers;
 
 [Authorize(Roles = "Student")]
+[RequireStudentProfile]
 public class PaymentController : Controller
 {
     private const string PendingFeeIdKey = "QrPayment.Pending.FeeId";

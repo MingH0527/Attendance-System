@@ -188,3 +188,526 @@ body {
         padding: 14px;
     }
 }
+/* =====================================
+   STUDENT DASHBOARD
+===================================== */
+
+.student-dashboard {
+    width: 100%;
+    max-width: 1220px;
+    margin: 0 auto;
+    padding: 42px 36px 60px;
+}
+
+
+/* =====================================
+   HERO
+===================================== */
+
+.dashboard-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 30px;
+    padding: 32px 36px;
+    background: white;
+    border: 1px solid #e4eaf2;
+    border-radius: 22px;
+    box-shadow: 0 12px 35px rgba(20, 48, 85, 0.06);
+    margin-bottom: 24px;
+}
+
+.dashboard-eyebrow,
+.card-eyebrow {
+    display: block;
+    color: #0b7896;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.3px;
+}
+
+.dashboard-hero h1 {
+    margin: 7px 0 8px;
+    color: #10213d;
+    font-size: 32px;
+    font-weight: 750;
+}
+
+.dashboard-hero p {
+    margin: 0;
+    color: #68778d;
+    font-size: 15px;
+}
+
+.hero-date {
+    min-width: 145px;
+    padding: 14px 18px;
+    background: #f3f8fc;
+    border-radius: 14px;
+    text-align: right;
+}
+
+    .hero-date span {
+        display: block;
+        color: #7b8799;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .hero-date strong {
+        color: #1c3555;
+        font-size: 14px;
+    }
+
+
+/* =====================================
+   PROFILE WARNING
+===================================== */
+
+.profile-warning-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+    background: #fff8e8;
+    border: 1px solid #f0cf83;
+    border-radius: 16px;
+}
+
+.warning-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: #f5c85b;
+    border-radius: 50%;
+    color: white;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.warning-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+    .warning-content strong {
+        color: #744e00;
+        font-size: 15px;
+    }
+
+    .warning-content span {
+        color: #8a6d30;
+        font-size: 13px;
+    }
+
+.complete-profile-button {
+    padding: 11px 17px;
+    background: #244d76;
+    border-radius: 10px;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    transition: 0.2s;
+}
+
+    .complete-profile-button:hover {
+        background: #183d64;
+        color: white;
+    }
+
+
+/* =====================================
+   STAT CARDS
+===================================== */
+
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    min-height: 115px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 22px;
+    background: white;
+    border: 1px solid #e4eaf2;
+    border-radius: 17px;
+    box-shadow: 0 8px 25px rgba(20, 48, 85, 0.04);
+}
+
+.stat-label {
+    color: #7c899c;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    color: #10213d;
+    font-size: 18px;
+    font-weight: 750;
+}
+
+.stat-text {
+    font-size: 15px;
+    line-height: 1.35;
+}
+
+.stat-number {
+    color: #10213d;
+    font-size: 28px;
+    font-weight: 750;
+}
+
+
+/* =====================================
+   CONTENT GRID
+===================================== */
+
+.dashboard-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+    gap: 22px;
+    margin-bottom: 30px;
+}
+
+.dashboard-card {
+    padding: 26px;
+    background: white;
+    border: 1px solid #e4eaf2;
+    border-radius: 20px;
+    box-shadow: 0 8px 28px rgba(20, 48, 85, 0.04);
+}
+
+.card-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 22px;
+}
+
+    .card-heading h2,
+    .section-heading h2 {
+        margin: 5px 0 0;
+        color: #10213d;
+        font-size: 20px;
+    }
+
+.card-link {
+    color: #087c9d;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+    .card-link:hover {
+        text-decoration: underline;
+    }
+
+
+/* =====================================
+   TODAY'S CLASSES
+===================================== */
+
+.today-class-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.today-class {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 15px;
+    background: #f7f9fc;
+    border: 1px solid #e7ebf2;
+    border-radius: 13px;
+}
+
+.class-time {
+    min-width: 76px;
+    padding-right: 16px;
+    border-right: 1px solid #dde3eb;
+    display: flex;
+    flex-direction: column;
+}
+
+    .class-time strong {
+        color: #163a62;
+    }
+
+    .class-time span {
+        margin-top: 3px;
+        color: #8a96a6;
+        font-size: 12px;
+    }
+
+.class-details {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+    .class-details strong {
+        color: #172940;
+        font-size: 14px;
+    }
+
+    .class-details span {
+        color: #8390a1;
+        font-size: 12px;
+    }
+
+
+/* =====================================
+   EMPTY
+===================================== */
+
+.dashboard-empty {
+    min-height: 170px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.empty-icon {
+    margin-bottom: 8px;
+    font-size: 30px;
+}
+
+.dashboard-empty strong {
+    color: #243650;
+    font-size: 14px;
+}
+
+.dashboard-empty span {
+    max-width: 300px;
+    margin-top: 5px;
+    color: #8995a6;
+    font-size: 12px;
+}
+
+
+/* =====================================
+   STATUS
+===================================== */
+
+.status-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 0;
+    border-bottom: 1px solid #edf0f4;
+}
+
+    .status-row:last-child {
+        border-bottom: 0;
+    }
+
+    .status-row > div {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+    }
+
+    .status-row div div {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .status-row strong {
+        color: #20344f;
+        font-size: 13px;
+    }
+
+    .status-row small {
+        color: #909bab;
+        font-size: 11px;
+    }
+
+.status-icon {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef7fa;
+    border-radius: 10px;
+}
+
+.status-number {
+    min-width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff5fb;
+    border-radius: 9px;
+    color: #24496f;
+    font-weight: 700;
+}
+
+.status-badge {
+    padding: 6px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+    .status-badge.complete {
+        color: #08775e;
+        background: #e4f8f1;
+    }
+
+    .status-badge.incomplete {
+        color: #9b6500;
+        background: #fff2cf;
+    }
+
+
+/* =====================================
+   QUICK ACCESS
+===================================== */
+
+.quick-section {
+    margin-top: 10px;
+}
+
+.section-heading {
+    margin-bottom: 16px;
+}
+
+.quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.quick-card {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: white;
+    border: 1px solid #e3e9f1;
+    border-radius: 16px;
+    text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+    .quick-card:hover {
+        transform: translateY(-2px);
+        border-color: #b8d6e4;
+        box-shadow: 0 9px 25px rgba(28, 72, 110, 0.08);
+    }
+
+.quick-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+    background: #edf8fb;
+    border-radius: 12px;
+    font-size: 20px;
+}
+
+.quick-card div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.quick-card strong {
+    color: #172b45;
+    font-size: 14px;
+}
+
+.quick-card div span {
+    color: #8894a5;
+    font-size: 12px;
+}
+
+.quick-arrow {
+    color: #7790a8;
+    font-size: 20px;
+}
+
+
+/* =====================================
+   RESPONSIVE
+===================================== */
+
+@media (max-width: 1050px) {
+
+    .dashboard-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (max-width: 650px) {
+
+    .student-dashboard {
+        padding: 25px 16px 45px;
+    }
+
+    .dashboard-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 24px;
+    }
+
+        .dashboard-hero h1 {
+            font-size: 25px;
+        }
+
+    .hero-date {
+        width: 100%;
+        text-align: left;
+    }
+
+    .profile-warning-card {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .complete-profile-button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .dashboard-stats,
+    .quick-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -16,13 +16,22 @@
             <button class="active" data-status="current">Current / Upcoming</button>
             <button data-status="completed">Completed / History</button>
             <button data-status="holiday">Holiday Calendar</button>
+            <button data-status="audit">Audit</button>
         </div>
         <div id="termCards"></div>
 
+        <section id="auditPanel" class="tt-history-panel" hidden>
+            <div class="tt-history-head">
+                <div><h3>Timetable Audit</h3><p>Pending items require Admin action. Resolved items keep the before/after change history.</p></div>
+                <select id="auditFilter"><option value="all">All</option><option value="pending">Pending</option><option value="resolved">Resolved</option></select>
+            </div>
+            <div id="auditSummary" class="tt-audit-summary"></div>
+            <div id="auditList" class="tt-audit-list"></div>
+        </section>
+
         <section id="holidayHistoryPanel" class="tt-history-panel" hidden>
             <div class="tt-history-head">
-                <div><h3>Holiday Calendar</h3><p>Review semester holidays here. You can also add or import holidays for a current semester.</p></div>
-                <select id="holidayTerm"></select>
+                <div><h3>Holiday Calendar</h3><p>Manage one central holiday calendar. Holidays automatically apply to any semester whose date range includes the holiday.</p></div>
             </div>
             <div id="holidayError" class="tt-error" hidden></div>
             <div class="tt-holiday-tools">
@@ -39,13 +48,13 @@
                 </form>
                 <div id="holidayDropZone" class="tt-drop-zone" tabindex="0">
                     <strong>Drop holiday .txt / .csv here</strong>
-                    <span>Format: YYYY-MM-DD | Holiday Name | PublicHoliday</span>
+                    <span>CSV: YYYY-MM-DD,Holiday Name,Type · TXT: YYYY-MM-DD | Holiday Name | Type</span>
                     <input id="holidayFile" type="file" accept=".txt,.csv,text/plain,text/csv" hidden>
                     <button type="button" class="tt-btn-secondary" id="chooseHolidayFile">Choose File</button>
                 </div>
             </div>
             <div id="holidayImportResult" class="tt-import-result" hidden></div>
-            <div class="tt-holiday-list-header"><strong>Date</strong><strong>Holiday</strong><strong>Type</strong><strong>Semester</strong><span></span></div>
+            <div class="tt-holiday-list-header"><strong>Date</strong><strong>Holiday</strong><strong>Type</strong><span></span></div>
             <div id="holidayList" class="tt-holiday-list"></div>
         </section>
     </section>
@@ -65,6 +74,10 @@
             </div>
         </div>
         <div id="weekNotice" class="tt-week-notice" hidden></div>
+        <section id="replacementPanel" class="tt-replacement-panel" hidden>
+            <div class="tt-replacement-head"><div><strong>Replacement Required</strong><span>Cancelled lessons from this Week are shown first. Schedule them into an available Tuition slot.</span></div></div>
+            <div id="replacementRequiredList" class="tt-replacement-list"></div>
+        </section>
         <div class="tt-legend"><span class="normal">● Normal</span><span class="attention">● Attention / Conflict / Holiday</span><span class="cancelled">● Cancelled</span></div>
         <div class="tt-layout">
             <aside id="assignmentPanel" class="tt-teacher-panel" hidden>
@@ -83,7 +96,7 @@
         <form id="lessonForm">
             <input type="hidden" id="fTimetableId"><input type="hidden" id="fTeacherId"><input type="hidden" id="fCourseId"><input type="hidden" id="fDayOfWeek">
             <label>Teacher · Subject</label><input id="fAssignment" disabled>
-            <label>Classroom</label><select id="fClassroomId"></select>
+            <label>Classroom</label><select id="fClassroomId"></select><div id="roomHint" class="tt-form-hint"></div>
             <label>Time</label><div class="tt-time-row"><input type="time" id="fStartTime" readonly><input type="time" id="fEndTime" readonly></div>
             <label>Status <small id="statusDateLabel"></small></label>
             <select id="fStatus"><option value="Normal">Normal</option><option value="Cancelled">Cancelled</option></select>
@@ -118,6 +131,21 @@
                 </div>
             </div>
             <div class="tt-modal-actions"><button type="button" id="cancelSemesterBtn" class="tt-btn-secondary">Cancel</button><button type="submit" id="semesterSubmitBtn" class="tt-btn-primary">Create</button></div>
+        </form>
+    </div>
+</div>
+
+<div id="replacementModal" class="tt-modal-overlay" hidden>
+    <div class="tt-modal">
+        <h3>Schedule replacement class</h3><div id="replacementError" class="tt-error" hidden></div>
+        <form id="replacementForm">
+            <input type="hidden" id="rTimetableId"><input type="hidden" id="rSourceDate"><input type="hidden" id="rTeacherId">
+            <label>Cancelled lesson</label><input id="rOriginal" disabled>
+            <label>Replacement date</label><input id="rDate" type="date" required>
+            <label>Time</label><div class="tt-time-row"><input type="time" id="rStart" required><input type="time" id="rEnd" required></div>
+            <label>Classroom</label><select id="rClassroom"></select><div id="replacementRoomHint" class="tt-form-hint"></div>
+            <div class="tt-form-hint">Replacement must be on or after the cancelled lesson date, within the same semester, and in the Tuition timetable (Saturday/Sunday). Daily/consecutive Tuition-hour limits are ignored, but teacher, class, classroom and time conflicts are still blocked.</div>
+            <div class="tt-modal-actions"><button type="button" id="closeReplacementBtn" class="tt-btn-secondary">Close</button><button type="submit" class="tt-btn-primary">Schedule Replacement</button></div>
         </form>
     </div>
 </div>

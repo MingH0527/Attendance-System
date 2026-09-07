@@ -4,10 +4,23 @@
     ViewData["Title"] = "Class / Course Registration";
 }
 
-<link rel="stylesheet" href="~/css/Program.css" />
+<link rel="stylesheet"
+      href="~/css/Program.css"
+      asp-append-version="true" />
 
 <div class="program-page">
     <div class="program-container">
+
+        @if (TempData["ProfileRequired"] != null)
+        {
+            <div class="profile-required-message">
+                <div class="profile-required-icon">⚠</div>
+
+                <div class="profile-required-content">
+                    <strong>Please Complete Your Profile</strong>
+                </div>
+            </div>
+        }
 
         <span class="eyebrow">My Profile</span>
         <h1>@(Model.Position == "Teacher" ? "Course Registration" : "Class Registration")</h1>
@@ -120,7 +133,7 @@
         if (!classSelect) return;
 
         Array.from(classSelect.options).forEach(function(opt) {
-            if (!opt.dataset.program) return; // 占位选项跳过
+            if (!opt.dataset.program) return;
             opt.hidden = programId !== '' && opt.dataset.program !== programId;
         });
         classSelect.value = '';

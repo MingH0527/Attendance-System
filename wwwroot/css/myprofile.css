@@ -6,13 +6,13 @@
 }
 
 .profile-container {
-    max-width: 780px;
+    width: 100%;
+    max-width: 1160px;
     margin: 0 auto;
-    padding: 34px;
-    background: #ffffff;
-    border: 1px solid #e3e9ef;
-    border-radius: 22px;
-    box-shadow: 0 14px 38px rgba(27, 47, 73, 0.09);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
 }
 
 .profile-header {
@@ -23,18 +23,61 @@
     border-bottom: 1px solid #e9edf2;
 }
 
-.profile-avatar {
-    width: 78px;
-    height: 78px;
-    display: grid;
-    place-items: center;
+/* =========================
+   PROFILE AVATAR
+========================= */
+
+.profile-avatar-wrapper {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    margin-bottom: 14px;
+}
+
+.profile-avatar-image,
+.profile-avatar-default {
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
-    color: #ffffff;
-    background: linear-gradient( 135deg, #008d99, #3b91c5 );
-    font-size: 31px;
+}
+
+.profile-avatar-image {
+    display: block;
+    object-fit: cover;
+}
+
+.profile-avatar-default {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1597b5;
+    color: white;
+    font-size: 40px;
     font-weight: 700;
 }
 
+.avatar-edit-button {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 3px solid white;
+    border-radius: 50%;
+    background: #0f7490;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    z-index: 2;
+}
+
+    .avatar-edit-button:hover {
+        background: #075c72;
+    }
 .profile-label {
     margin: 0 0 5px;
     color: #718092;
@@ -43,20 +86,29 @@
     text-transform: uppercase;
 }
 
-.profile-header h1 {
-    margin: 0 0 9px;
-    color: #182134;
-    font-size: 30px;
+.profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin-bottom: 30px;
+    padding-top: 25px;
 }
-
+.profile-username {
+    margin: 0 0 8px;
+    font-size: 30px;
+    font-weight: 700;
+    color: #0f172a;
+}
 .role-badge {
     display: inline-block;
-    padding: 6px 12px;
-    border-radius: 999px;
-    color: #086f77;
-    background: #e4f6f6;
-    font-size: 13px;
-    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    color:#087785;
+    background: #e0f7f7;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 .profile-information {

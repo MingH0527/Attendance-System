@@ -1,4 +1,4 @@
-﻿document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
     const PAGE_SIZE = 5;
 
     const searchInput = document.getElementById("userSearch");
@@ -109,8 +109,9 @@
                 role === activeRole;
 
             const matchesStatus =
-                activeStatus === "all" ||
-                status === activeStatus;
+                activeStatus === "all"
+                    ? status !== "Deleted"
+                    : status === activeStatus;
 
             return matchesSearch &&
                 matchesRole &&
@@ -588,6 +589,11 @@
             row.dataset.status || "-"
         );
 
+        const deletedAtItem = document.getElementById("detailDeletedAtItem");
+        const isDeleted = row.dataset.isDeleted === "true";
+        if (deletedAtItem) deletedAtItem.hidden = !isDeleted;
+        setText("detailDeletedAt", row.dataset.deletedAt || "-");
+
         showAvatar(
             row.dataset.avatar
         );
@@ -790,6 +796,19 @@
             );
         }
     }
+
+    document.querySelectorAll(".delete-account-form").forEach(form => {
+        form.addEventListener("submit", event => {
+            const username = form.dataset.username || "this user";
+            const userId = form.dataset.userId || "";
+            const confirmed = confirm(
+                `Delete ${username} (${userId})?\n\n` +
+                "The account will no longer be able to sign in. Username, email and phone may be reused by a new account.\n\n" +
+                "Attendance, payment, chat and other historical records will NOT be deleted. The old User ID will remain permanently reserved."
+            );
+            if (!confirmed) event.preventDefault();
+        });
+    });
 
     refreshUsers.addEventListener(
         "click",

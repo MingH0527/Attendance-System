@@ -28,5 +28,8 @@ public class UserListItemDto
     public string? ClassName { get; set; }
     public string? StudentId { get; set; }
 
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+
 }
 

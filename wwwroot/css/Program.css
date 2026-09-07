@@ -246,3 +246,37 @@ select {
         transition: none;
     }
 }
+.profile-required-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 22px;
+    padding: 14px 16px;
+    background: #fff7e6;
+    border: 1px solid #f3c96b;
+    border-radius: 10px;
+    color: #7a5200;
+}
+
+.profile-required-icon {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.profile-required-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .profile-required-content strong {
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .profile-required-content span {
+        font-size: 13px;
+        line-height: 1.45;
+        color: #8a6a24;
+    }
