@@ -2238,35 +2238,14 @@ public class AdminController : Controller
     public async Task<IActionResult> GetTimetableGrid(
         string classType)
     {
-        if (
-            !Enum.TryParse(
+        if (!Enum.TryParse(
                 classType,
                 true,
-                out ClassType parsedType
-            )
-        )
+                out ClassType parsedType))
         {
             return BadRequest(
-                "Invalid class type. Use School or Tuition."
-            );
-        }
-
-        AcademicTerm? activeTerm =
-            await _context
-                .AcademicTerms
-                .AsNoTracking()
-                .Where(t =>
-                    t.Status == "Active"
-                )
-                .OrderBy(t =>
-                    t.StartDate
-                )
-                .FirstOrDefaultAsync();
-
-        if (activeTerm == null)
-        {
-            return Json(
-                Array.Empty<object>()
+                "Invalid class type. " +
+                "Use School or Tuition."
             );
         }
 
@@ -2275,47 +2254,41 @@ public class AdminController : Controller
                 .Timetables
                 .AsNoTracking()
                 .Where(t =>
-                    t.ClassType == parsedType &&
-                    t.TermId == activeTerm.TermId
+                    t.ClassType ==
+                    parsedType
                 )
                 .Include(t =>
-                    t.Course
-                )
+                    t.Course)
                 .Include(t =>
-                    t.ClassGroup
-                )
+                    t.ClassGroup)
                 .Include(t =>
-                    t.Classroom
-                )
+                    t.Classroom)
                 .OrderBy(t =>
-                    t.DayOfWeek
-                )
+                    t.DayOfWeek)
                 .ThenBy(t =>
-                    t.StartTime
-                )
+                    t.StartTime)
                 .ToListAsync();
 
         List<string> teacherIds =
             entries
                 .Select(t =>
-                    t.TeacherId
-                )
+                    t.TeacherId)
                 .Distinct()
                 .ToList();
 
-        Dictionary<string, string> teacherNames =
-            await _context
-                .Users
-                .AsNoTracking()
-                .Where(u =>
-                    teacherIds.Contains(
-                        u.UserId
+        Dictionary<string, string>
+            teacherNames =
+                await _context
+                    .Users
+                    .Where(u =>
+                        teacherIds.Contains(
+                            u.UserId
+                        )
                     )
-                )
-                .ToDictionaryAsync(
-                    u => u.UserId,
-                    u => u.Username
-                );
+                    .ToDictionaryAsync(
+                        u => u.UserId,
+                        u => u.Username
+                    );
 
         var result =
             entries.Select(t =>
@@ -2374,8 +2347,7 @@ public class AdminController : Controller
 
                     ClassType =
                         t.ClassType
-                }
-            );
+                });
 
         return Json(result);
     }
@@ -2397,134 +2369,22 @@ public class AdminController : Controller
             );
         }
 
-        AcademicTerm? activeTerm =
-            await _context
-                .AcademicTerms
-                .Where(t =>
-                    t.Status == "Active"
-                )
-                .OrderBy(t =>
-                    t.StartDate
-                )
-                .FirstOrDefaultAsync();
-
-        if (activeTerm == null)
-        {
-            return BadRequest(
-                "There is no active semester. " +
-                "Please activate a semester before creating timetable entries."
-            );
-        }
-
-        User? teacher =
-            await _context
-                .Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u =>
-                    u.UserId == request.TeacherId &&
-                    u.Position == "Teacher" &&
-                    !u.IsDeleted
-                );
-
-        if (teacher == null)
-        {
-            return BadRequest(
-                "Teacher account was not found."
-            );
-        }
-
+        // Teacher must be registered
+        // to teach this subject
         bool teacherCanTeachCourse =
             await _context
                 .TeacherCourses
                 .AnyAsync(tc =>
-                    tc.UserId == request.TeacherId &&
-                    tc.CourseId == request.CourseId
+                    tc.UserId ==
+                        request.TeacherId &&
+                    tc.CourseId ==
+                        request.CourseId
                 );
 
         if (!teacherCanTeachCourse)
         {
             return BadRequest(
                 "This teacher is not registered to teach this course."
-            );
-        }
-
-        bool courseExists =
-            await _context
-                .Courses
-                .AnyAsync(c =>
-                    c.CourseId == request.CourseId
-                );
-
-        if (!courseExists)
-        {
-            return BadRequest(
-                "Course was not found."
-            );
-        }
-
-        bool classExists =
-            await _context
-                .ClassGroups
-                .AnyAsync(c =>
-                    c.ClassId == request.ClassId
-                );
-
-        if (!classExists)
-        {
-            return BadRequest(
-                "Class was not found."
-            );
-        }
-
-        if (
-            !string.IsNullOrWhiteSpace(
-                request.ClassroomId
-            )
-        )
-        {
-            bool classroomExists =
-                await _context
-                    .Classrooms
-                    .AnyAsync(c =>
-                        c.ClassroomId == request.ClassroomId
-                    );
-
-            if (!classroomExists)
-            {
-                return BadRequest(
-                    "Classroom was not found."
-                );
-            }
-        }
-
-        if (
-            !TimeSpan.TryParse(
-                request.StartTime,
-                out TimeSpan startTime
-            )
-        )
-        {
-            return BadRequest(
-                "Invalid start time."
-            );
-        }
-
-        if (
-            !TimeSpan.TryParse(
-                request.EndTime,
-                out TimeSpan endTime
-            )
-        )
-        {
-            return BadRequest(
-                "Invalid end time."
-            );
-        }
-
-        if (endTime <= startTime)
-        {
-            return BadRequest(
-                "End time must be later than start time."
             );
         }
 
@@ -2552,9 +2412,6 @@ public class AdminController : Controller
                             "TTB"
                         ),
 
-                TermId =
-                    activeTerm.TermId,
-
                 TeacherId =
                     request.TeacherId,
 
@@ -2571,10 +2428,14 @@ public class AdminController : Controller
                     request.DayOfWeek,
 
                 StartTime =
-                    startTime,
+                    TimeSpan.Parse(
+                        request.StartTime
+                    ),
 
                 EndTime =
-                    endTime,
+                    TimeSpan.Parse(
+                        request.EndTime
+                    ),
 
                 ClassType =
                     request.ClassType
@@ -2582,26 +2443,19 @@ public class AdminController : Controller
 
         _context
             .Timetables
-            .Add(
-                entry
-            );
+            .Add(entry);
 
         await _context
             .SaveChangesAsync();
 
-        return Ok(
-            new
-            {
-                message =
-                    "Timetable entry created.",
+        return Ok(new
+        {
+            message =
+                "Timetable entry created.",
 
-                timetableId =
-                    entry.TimetableId,
-
-                termId =
-                    entry.TermId
-            }
-        );
+            timetableId =
+                entry.TimetableId
+        });
     }
 
     // ==================================================
@@ -2614,11 +2468,8 @@ public class AdminController : Controller
             [FromBody]
             TimetableRequest request)
     {
-        if (
-            string.IsNullOrWhiteSpace(
-                request.TimetableId
-            )
-        )
+        if (string.IsNullOrWhiteSpace(
+            request.TimetableId))
         {
             return BadRequest(
                 "TimetableId is required for updates."
@@ -2632,61 +2483,14 @@ public class AdminController : Controller
             );
         }
 
-        Timetable? entry =
-            await _context
-                .Timetables
-                .FirstOrDefaultAsync(t =>
-                    t.TimetableId == request.TimetableId
-                );
-
-        if (entry == null)
-        {
-            return NotFound(
-                "Timetable entry not found."
-            );
-        }
-
-        AcademicTerm? activeTerm =
-            await _context
-                .AcademicTerms
-                .Where(t =>
-                    t.Status == "Active"
-                )
-                .OrderBy(t =>
-                    t.StartDate
-                )
-                .FirstOrDefaultAsync();
-
-        if (activeTerm == null)
-        {
-            return BadRequest(
-                "There is no active semester."
-            );
-        }
-
-        User? teacher =
-            await _context
-                .Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u =>
-                    u.UserId == request.TeacherId &&
-                    u.Position == "Teacher" &&
-                    !u.IsDeleted
-                );
-
-        if (teacher == null)
-        {
-            return BadRequest(
-                "Teacher account was not found."
-            );
-        }
-
         bool teacherCanTeachCourse =
             await _context
                 .TeacherCourses
                 .AnyAsync(tc =>
-                    tc.UserId == request.TeacherId &&
-                    tc.CourseId == request.CourseId
+                    tc.UserId ==
+                        request.TeacherId &&
+                    tc.CourseId ==
+                        request.CourseId
                 );
 
         if (!teacherCanTeachCourse)
@@ -2696,83 +2500,17 @@ public class AdminController : Controller
             );
         }
 
-        bool courseExists =
+        Timetable? entry =
             await _context
-                .Courses
-                .AnyAsync(c =>
-                    c.CourseId == request.CourseId
+                .Timetables
+                .FindAsync(
+                    request.TimetableId
                 );
 
-        if (!courseExists)
+        if (entry == null)
         {
-            return BadRequest(
-                "Course was not found."
-            );
-        }
-
-        bool classExists =
-            await _context
-                .ClassGroups
-                .AnyAsync(c =>
-                    c.ClassId == request.ClassId
-                );
-
-        if (!classExists)
-        {
-            return BadRequest(
-                "Class was not found."
-            );
-        }
-
-        if (
-            !string.IsNullOrWhiteSpace(
-                request.ClassroomId
-            )
-        )
-        {
-            bool classroomExists =
-                await _context
-                    .Classrooms
-                    .AnyAsync(c =>
-                        c.ClassroomId == request.ClassroomId
-                    );
-
-            if (!classroomExists)
-            {
-                return BadRequest(
-                    "Classroom was not found."
-                );
-            }
-        }
-
-        if (
-            !TimeSpan.TryParse(
-                request.StartTime,
-                out TimeSpan startTime
-            )
-        )
-        {
-            return BadRequest(
-                "Invalid start time."
-            );
-        }
-
-        if (
-            !TimeSpan.TryParse(
-                request.EndTime,
-                out TimeSpan endTime
-            )
-        )
-        {
-            return BadRequest(
-                "Invalid end time."
-            );
-        }
-
-        if (endTime <= startTime)
-        {
-            return BadRequest(
-                "End time must be later than start time."
+            return NotFound(
+                "Timetable entry not found."
             );
         }
 
@@ -2788,9 +2526,6 @@ public class AdminController : Controller
                 validation.ErrorMessage
             );
         }
-
-        entry.TermId =
-            activeTerm.TermId;
 
         entry.TeacherId =
             request.TeacherId;
@@ -2808,10 +2543,14 @@ public class AdminController : Controller
             request.DayOfWeek;
 
         entry.StartTime =
-            startTime;
+            TimeSpan.Parse(
+                request.StartTime
+            );
 
         entry.EndTime =
-            endTime;
+            TimeSpan.Parse(
+                request.EndTime
+            );
 
         entry.ClassType =
             request.ClassType;
@@ -2819,19 +2558,11 @@ public class AdminController : Controller
         await _context
             .SaveChangesAsync();
 
-        return Ok(
-            new
-            {
-                message =
-                    "Timetable entry updated.",
-
-                timetableId =
-                    entry.TimetableId,
-
-                termId =
-                    entry.TermId
-            }
-        );
+        return Ok(new
+        {
+            message =
+                "Timetable entry updated."
+        });
     }
 
     // ==================================================
@@ -2843,23 +2574,10 @@ public class AdminController : Controller
         DeleteTimetableEntry(
             string id)
     {
-        if (
-            string.IsNullOrWhiteSpace(
-                id
-            )
-        )
-        {
-            return BadRequest(
-                "Timetable ID is required."
-            );
-        }
-
         Timetable? entry =
             await _context
                 .Timetables
-                .FirstOrDefaultAsync(t =>
-                    t.TimetableId == id
-                );
+                .FindAsync(id);
 
         if (entry == null)
         {
@@ -2868,67 +2586,167 @@ public class AdminController : Controller
             );
         }
 
-        bool hasAttendanceSession =
-            await _context
-                .AttendanceSessions
-                .AnyAsync(s =>
-                    s.TimetableId == id
-                );
-
-        if (hasAttendanceSession)
-        {
-            return BadRequest(
-                "This timetable cannot be deleted because attendance records already exist."
-            );
-        }
-
-        bool hasReplacement =
-            await _context
-                .ReplacementSessions
-                .AnyAsync(r =>
-                    r.SourceTimetableId == id
-                );
-
-        if (hasReplacement)
-        {
-            return BadRequest(
-                "This timetable cannot be deleted because replacement classes exist."
-            );
-        }
-
-        List<TimetableException> exceptions =
-            await _context
-                .TimetableExceptions
-                .Where(e =>
-                    e.TimetableId == id
-                )
-                .ToListAsync();
-
-        if (exceptions.Count > 0)
-        {
-            _context
-                .TimetableExceptions
-                .RemoveRange(
-                    exceptions
-                );
-        }
-
         _context
             .Timetables
-            .Remove(
-                entry
-            );
+            .Remove(entry);
 
         await _context
             .SaveChangesAsync();
 
-        return Ok(
-            new
+        return Ok(new
+        {
+            message =
+                "Timetable entry deleted."
+        });
+    }
+
+    // ==================================================
+    // CREATE TIMETABLE NOTIFICATION
+    // ==================================================
+
+    private async Task CreateTimetableNotificationAsync(
+        Timetable timetable,
+        string type,
+        string message,
+        DateTime? occurrenceDate = null)
+    {
+        string? termId =
+            timetable.TermId;
+
+        // Old timetable records may not have TermId.
+        // If a specific lesson date is available,
+        // try to determine the term from that date.
+        if (string.IsNullOrWhiteSpace(termId))
+        {
+            if (occurrenceDate.HasValue)
             {
-                message =
-                    "Timetable entry deleted."
+                DateTime date =
+                    occurrenceDate.Value.Date;
+
+                termId =
+                    await _context
+                        .AcademicTerms
+                        .AsNoTracking()
+                        .Where(t =>
+                            date >= t.StartDate.Date &&
+                            date <= t.EndDate.Date
+                        )
+                        .OrderBy(t =>
+                            t.StartDate
+                        )
+                        .Select(t =>
+                            t.TermId
+                        )
+                        .FirstOrDefaultAsync();
             }
-        );
+
+            // If the date does not resolve a term,
+            // use Active first, then Incoming.
+            if (string.IsNullOrWhiteSpace(termId))
+            {
+                termId =
+                    await _context
+                        .AcademicTerms
+                        .AsNoTracking()
+                        .Where(t =>
+                            t.Status == "Active" ||
+                            t.Status == "Incoming"
+                        )
+                        .OrderBy(t =>
+                            t.Status == "Active"
+                                ? 0
+                                : 1
+                        )
+                        .ThenBy(t =>
+                            t.StartDate
+                        )
+                        .Select(t =>
+                            t.TermId
+                        )
+                        .FirstOrDefaultAsync();
+            }
+        }
+
+        // Get every student currently registered
+        // in the class affected by this timetable.
+        List<string> receiverIds =
+            await _context
+                .StudentClasses
+                .AsNoTracking()
+                .Where(sc =>
+                    sc.ClassId == timetable.ClassId
+                )
+                .Select(sc =>
+                    sc.UserId
+                )
+                .ToListAsync();
+
+        // Teacher also receives the notification.
+        if (!string.IsNullOrWhiteSpace(timetable.TeacherId))
+        {
+            receiverIds.Add(
+                timetable.TeacherId
+            );
+        }
+
+        // Remove empty and duplicate receiver IDs.
+        receiverIds =
+            receiverIds
+                .Where(id =>
+                    !string.IsNullOrWhiteSpace(id)
+                )
+                .Distinct()
+                .ToList();
+
+        foreach (string userId in receiverIds)
+        {
+            TimetableNotification notification =
+                new()
+                {
+                    NotificationId =
+                        await FormattedIdGenerator
+                            .NextAsync(
+                                _context.TimetableNotifications,
+                                n => n.NotificationId,
+                                "NTF"
+                            ),
+
+                    Type =
+                        type,
+
+                    Message =
+                        message.Length > 250
+                            ? message[..250]
+                            : message,
+
+                    TermId =
+                        termId,
+
+                    TimetableId =
+                        timetable.TimetableId,
+
+                    UserId =
+                        userId,
+
+                    OccurrenceDate =
+                        occurrenceDate?.Date,
+
+                    IsRead =
+                        false,
+
+                    CreatedAt =
+                        DateTime.Now
+                };
+
+            _context
+                .TimetableNotifications
+                .Add(notification);
+
+            // Save each notification so that the next call
+            // to FormattedIdGenerator sees the previous ID.
+            await _context
+                .SaveChangesAsync();
+        }
     }
 
     // ==================================================
