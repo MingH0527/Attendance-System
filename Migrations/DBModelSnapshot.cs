@@ -262,6 +262,40 @@ namespace WebAndMobile.Migrations
                     b.ToTable("AttendanceSessions");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.BarredStudent", b =>
+                {
+                    b.Property<string>("BarredStudentId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("BarredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CourseId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("BarredStudentId");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("UserId", "CourseId")
+                        .IsUnique();
+
+                    b.ToTable("BarredStudents");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>
                 {
                     b.Property<string>("ChatMessageId")
@@ -1367,6 +1401,25 @@ namespace WebAndMobile.Migrations
                         .IsRequired();
 
                     b.Navigation("Timetable");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.BarredStudent", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.ChatMessage", b =>

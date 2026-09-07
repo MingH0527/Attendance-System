@@ -37,15 +37,24 @@ public class DB : DbContext
     public DbSet<ClassSession> ClassSessions => Set<ClassSession>();
     public DbSet<TimetableNotification> TimetableNotifications => Set<TimetableNotification>();
     public DbSet<TimetableAudit> TimetableAudits => Set<TimetableAudit>();
-    public DbSet<AttendanceSession> AttendanceSessions=> Set<AttendanceSession>();
-
+    public DbSet<AttendanceSession> AttendanceSessions => Set<AttendanceSession>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<LeaveApplication> LeaveApplications => Set<LeaveApplication>();
 
+    // ==============================
+    // BARRED LIST
+    // ==============================
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public DbSet<BarredStudent> BarredStudents =>
+        Set<BarredStudent>();
+
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(
+            modelBuilder
+        );
 
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Username)
@@ -63,17 +72,39 @@ public class DB : DbContext
             .HasFilter("[IsDeleted] = 0");
 
         modelBuilder.Entity<AcademicCalendarEvent>()
-            .HasIndex(e => new { e.EventDate, e.Name })
+            .HasIndex(e =>
+                new
+                {
+                    e.EventDate,
+                    e.Name
+                })
             .IsUnique();
 
         modelBuilder.Entity<TimetableAudit>()
-            .HasIndex(a => new { a.TimetableId, a.OccurrenceDate, a.Status });
+            .HasIndex(a =>
+                new
+                {
+                    a.TimetableId,
+                    a.OccurrenceDate,
+                    a.Status
+                });
 
         modelBuilder.Entity<TimetableNotification>()
-            .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedAt });
+            .HasIndex(n =>
+                new
+                {
+                    n.UserId,
+                    n.IsRead,
+                    n.CreatedAt
+                });
 
         modelBuilder.Entity<ReplacementSession>()
-            .HasIndex(r => new { r.SourceTimetableId, r.SourceOccurrenceDate, r.Status });
+            .HasIndex(r =>
+                new
+                {
+                    r.SourceTimetableId,
+                    r.SourceOccurrenceDate,
+                    r.Status
+                });
     }
-
 }

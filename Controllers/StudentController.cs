@@ -312,8 +312,6 @@ public class StudentController : Controller
         // REGISTRATION TIME VALIDATION
         // ==============================
 
-        // Student only starts attendance calculation
-        // from classes that begin after registration.
         todayTimetables =
             todayTimetables
                 .Where(t =>
@@ -530,8 +528,6 @@ public class StudentController : Controller
                             sessionTimetable.StartTime
                         );
 
-                // Class started before student registered.
-                // Do not count Present, Absent or Leave.
                 if (
                     studentClass.RegisteredDate >
                     classStart
@@ -599,16 +595,18 @@ public class StudentController : Controller
                             sessionTimetable.EndTime
                         );
 
-                // Class not ended yet
-                // Do not count absent
                 if (
-                    now < classEnd
+                    now <
+                    classEnd
                 )
                 {
                     continue;
                 }
 
-                // Class already ended
+                // ==============================
+                // ABSENT
+                // ==============================
+
                 absent++;
             }
 
@@ -616,9 +614,12 @@ public class StudentController : Controller
             // ATTENDANCE PERCENTAGE
             // ==============================
 
-            // Each absent deducts 2%
+            // Formula:
+            // Attendance % =
+            // 100 - (Absent × 6.6667)
+
             const double AbsentPenalty =
-                2.0;
+                6.6667;
 
             double percentage =
                 100 -
@@ -628,7 +629,8 @@ public class StudentController : Controller
                 );
 
             if (
-                percentage < 0
+                percentage <
+                0
             )
             {
                 percentage =
@@ -723,8 +725,11 @@ public class StudentController : Controller
             code.Trim();
 
         if (
-            code.Length != 6 ||
-            !code.All(char.IsDigit)
+            code.Length !=
+                6 ||
+            !code.All(
+                char.IsDigit
+            )
         )
         {
             TempData["AttendanceError"] =
@@ -1026,8 +1031,6 @@ public class StudentController : Controller
                         timetable.StartTime
                     );
 
-            // Do not include classes that started
-            // before student registration.
             if (
                 studentClass.RegisteredDate >
                 classStart
@@ -1106,10 +1109,9 @@ public class StudentController : Controller
                                 timetable.EndTime
                             );
 
-                    // Class not finished
-                    // Do not show absent yet
                     if (
-                        now < classEnd
+                        now <
+                        classEnd
                     )
                     {
                         continue;
@@ -1188,9 +1190,12 @@ public class StudentController : Controller
         // ATTENDANCE PERCENTAGE
         // ==============================
 
-        // Each absent deducts 2%
+        // Formula:
+        // Attendance % =
+        // 100 - (Absent × 6.6667)
+
         const double AbsentPenalty =
-            2.0;
+            6.6667;
 
         model.Percentage =
             100 -
@@ -1200,7 +1205,8 @@ public class StudentController : Controller
             );
 
         if (
-            model.Percentage < 0
+            model.Percentage <
+            0
         )
         {
             model.Percentage =
@@ -1217,7 +1223,8 @@ public class StudentController : Controller
             model.LeaveCount;
 
         if (
-            total > 0
+            total >
+            0
         )
         {
             model.PresentPercent =
