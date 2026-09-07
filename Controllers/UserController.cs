@@ -41,42 +41,185 @@ public class UserController : Controller
                 })
                 .ToListAsync();
 
-        //program registration info for Students
+
+        // ==================================================
+        // STUDENT PROGRAM REGISTRATION
+        // ==================================================
+
         Dictionary<string, StudentClass> studentClasses =
             await db.StudentClasses
                 .AsNoTracking()
                 .Include(sc => sc.Program)
                 .Include(sc => sc.ClassGroup)
-                .ToDictionaryAsync(sc => sc.UserId);
+                .ToDictionaryAsync(
+                    sc => sc.UserId
+                );
+
+
+        // ==================================================
+        // TEACHER PROGRAM REGISTRATION
+        // ==================================================
+
+        List<TeacherProgram> teacherPrograms =
+            await db.TeacherPrograms
+                .AsNoTracking()
+                .Include(tp => tp.Program)
+                .ToListAsync();
+
 
         foreach (UserListItemDto user in users)
         {
-            if (user.Position == "Student" &&
-                studentClasses.TryGetValue(user.UserId, out StudentClass? sc))
+            // ==============================================
+            // STUDENT
+            // ==============================================
+
+            if (
+                user.Position == "Student" &&
+                studentClasses.TryGetValue(
+                    user.UserId,
+                    out StudentClass? sc
+                )
+            )
             {
-                user.HasProgram = true;
-                user.ProgramId = sc.ProgramId;
-                user.ProgramName = sc.Program?.ProgramName;
-                user.ClassId = sc.ClassId;
-                user.ClassName = sc.ClassGroup?.ClassName;
-                user.StudentId = sc.StudentId;
+                user.HasProgram =
+                    true;
+
+                user.ProgramId =
+                    sc.ProgramId;
+
+                user.ProgramName =
+                    sc.Program?.ProgramName
+                    ?? sc.ProgramId;
+
+                user.ClassId =
+                    sc.ClassId;
+
+                user.ClassName =
+                    sc.ClassGroup?.ClassName
+                    ?? sc.ClassId;
+
+                user.StudentId =
+                    sc.StudentId;
+            }
+
+
+            // ==============================================
+            // TEACHER
+            // ==============================================
+
+            else if (
+                user.Position == "Teacher"
+            )
+            {
+                List<TeacherProgram> registeredPrograms =
+                    teacherPrograms
+                        .Where(tp =>
+                            tp.UserId ==
+                            user.UserId
+                        )
+                        .ToList();
+
+
+                // Teacher has registered program
+                if (
+                    registeredPrograms.Count > 0
+                )
+                {
+                    user.HasProgram =
+                        true;
+
+
+                    // First ProgramId
+                    // Mainly used by HTML data attribute
+                    user.ProgramId =
+                        registeredPrograms
+                            .First()
+                            .ProgramId;
+
+
+                    // Show all programs registered by teacher
+                    user.ProgramName =
+                        string.Join(
+                            "\n",
+                            registeredPrograms
+                                .Where(tp =>
+                                    tp.Program != null
+                                )
+                                .Select(tp =>
+                                    tp.Program!
+                                        .ProgramName
+                                )
+                                .Distinct()
+                        );
+
+
+                    // Fallback if Program relationship
+                    // cannot be loaded
+                    if (
+                        string.IsNullOrWhiteSpace(
+                            user.ProgramName
+                        )
+                    )
+                    {
+                        user.ProgramName =
+                            string.Join(
+                                ", ",
+                                registeredPrograms
+                                    .Select(tp =>
+                                        tp.ProgramId
+                                    )
+                                    .Distinct()
+                            );
+                    }
+                }
+                else
+                {
+                    // Teacher has not registered any program
+                    user.HasProgram =
+                        false;
+
+                    user.ProgramId =
+                        null;
+
+                    user.ProgramName =
+                        null;
+                }
             }
         }
 
-        // NEW: data for the "Register Program" modal dropdowns
+
+        // ==================================================
+        // REGISTER PROGRAM MODAL DATA
+        // ==================================================
+
         ViewBag.AvailablePrograms =
             await db.AcademicPrograms
                 .AsNoTracking()
-                .OrderBy(p => p.ProgramName)
-                .Select(p => new { p.ProgramId, p.ProgramName })
+                .OrderBy(p =>
+                    p.ProgramName
+                )
+                .Select(p => new
+                {
+                    p.ProgramId,
+                    p.ProgramName
+                })
                 .ToListAsync();
+
 
         ViewBag.AvailableClasses =
             await db.ClassGroups
                 .AsNoTracking()
-                .OrderBy(c => c.ClassName)
-                .Select(c => new { c.ClassId, c.ClassName, c.ProgramId })
+                .OrderBy(c =>
+                    c.ClassName
+                )
+                .Select(c => new
+                {
+                    c.ClassId,
+                    c.ClassName,
+                    c.ProgramId
+                })
                 .ToListAsync();
+
 
         return View(users);
     }

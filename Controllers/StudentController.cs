@@ -4,8 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using WebAndMobile.Models;
 using WebAndMobile.Filters;
+using WebAndMobile.Models;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -22,7 +23,6 @@ public class StudentController : Controller
         this.db = db;
         this.environment = environment;
     }
-
 
     // ==============================
     // STUDENT HOME
@@ -68,7 +68,6 @@ public class StudentController : Controller
             studentClass?.ClassGroup?.ClassName
             ?? "Not Registered";
 
-
         // ==========================================
         // TODAY'S CLASSES
         // ==========================================
@@ -102,7 +101,6 @@ public class StudentController : Controller
         ViewBag.TodayClassCount =
             todayTimetable.Count;
 
-
         // ==========================================
         // PENDING LEAVE
         // ==========================================
@@ -114,7 +112,6 @@ public class StudentController : Controller
                     l.StudentId == studentId &&
                     l.Status == "Pending"
                 );
-
 
         // ==========================================
         // UNREAD CHAT
@@ -128,9 +125,9 @@ public class StudentController : Controller
                     !m.IsRead
                 );
 
-
         return View("Student");
     }
+
     // ==============================
     // STUDENT TIMETABLE
     // ==============================
@@ -141,7 +138,9 @@ public class StudentController : Controller
     public async Task<IActionResult> Timetable()
     {
         string? studentId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
 
         if (string.IsNullOrWhiteSpace(studentId))
         {
@@ -151,8 +150,6 @@ public class StudentController : Controller
             );
         }
 
-
-        // Find which class this student belongs to
         StudentClass? studentClass =
             await db.StudentClasses
                 .AsNoTracking()
@@ -162,8 +159,6 @@ public class StudentController : Controller
                     sc => sc.UserId == studentId
                 );
 
-
-        // Student has not been assigned to a class
         if (studentClass == null)
         {
             ViewBag.ClassName =
@@ -180,9 +175,6 @@ public class StudentController : Controller
             );
         }
 
-
-        // Get timetable belonging to this student's class
-        // Only show the Active semester
         List<Timetable> timetable =
             await db.Timetables
                 .AsNoTracking()
@@ -199,7 +191,6 @@ public class StudentController : Controller
                 .ThenBy(t => t.StartTime)
                 .ToListAsync();
 
-
         ViewBag.ClassName =
             studentClass.ClassGroup?.ClassName
             ?? studentClass.ClassId;
@@ -215,17 +206,937 @@ public class StudentController : Controller
                 .Name
             ?? "No Active Semester";
 
-        var activeTermIds = timetable.Where(t => t.TermId != null).Select(t => t.TermId!).Distinct().ToList();
-        ViewBag.TimetableNotifications = await db.TimetableNotifications
-            .AsNoTracking()
-            .Where(n => n.UserId == studentId && n.TermId != null && activeTermIds.Contains(n.TermId))
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(20)
-            .ToListAsync();
+        var activeTermIds =
+            timetable
+                .Where(t => t.TermId != null)
+                .Select(t => t.TermId!)
+                .Distinct()
+                .ToList();
+
+        ViewBag.TimetableNotifications =
+            await db.TimetableNotifications
+                .AsNoTracking()
+                .Where(n =>
+                    n.UserId == studentId &&
+                    n.TermId != null &&
+                    activeTermIds.Contains(n.TermId)
+                )
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(20)
+                .ToListAsync();
 
         return View(timetable);
     }
 
+    // ==============================
+    // STUDENT ATTENDANCE
+    // ==============================
+
+    [HttpGet]
+    [Authorize(Roles = "Student")]
+    [RequireStudentProfile]
+    public async Task<IActionResult> Attendance()
+    {
+        string? studentId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
+
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        StudentClass? studentClass =
+            await db.StudentClasses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    sc => sc.UserId == studentId
+                );
+
+        if (studentClass == null)
+        {
+            return RedirectToAction(
+                nameof(Index)
+            );
+        }
+
+        DateTime now =
+            DateTime.Now;
+
+        DateTime today =
+            DateTime.Today;
+
+        StudentAttendanceViewModel model =
+            new();
+
+        // ==============================
+        // TODAY'S TIMETABLE
+        // ==============================
+
+        List<Timetable> todayTimetables =
+            await db.Timetables
+                .AsNoTracking()
+                .Where(t =>
+                    t.ClassId == studentClass.ClassId &&
+                    t.DayOfWeek == today.DayOfWeek &&
+                    t.Term != null &&
+                    t.Term.Status == "Active"
+                )
+                .Include(t => t.Course)
+                .OrderBy(t => t.StartTime)
+                .ToListAsync();
+
+        bool approvedLeaveToday =
+            await db.LeaveApplications
+                .AsNoTracking()
+                .AnyAsync(l =>
+                    l.StudentId == studentId &&
+                    l.Status == "Approved" &&
+                    today >= l.StartDate.Date &&
+                    today <= l.EndDate.Date
+                );
+
+        foreach (
+            Timetable timetable
+            in todayTimetables)
+        {
+            AttendanceSession? session =
+                await db.AttendanceSessions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s =>
+                        s.TimetableId ==
+                            timetable.TimetableId &&
+                        s.SessionDate ==
+                            today
+                    );
+
+            string status =
+                "Not Open";
+
+            if (session != null)
+            {
+                AttendanceRecord? record =
+                    await db.AttendanceRecords
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(r =>
+                            r.AttendanceSessionId ==
+                                session.AttendanceSessionId &&
+                            r.StudentClassId ==
+                                studentClass.StudentClassId
+                        );
+
+                if (
+                    record != null &&
+                    !record.IsRemoved
+                )
+                {
+                    status =
+                        "Present";
+                }
+                else if (
+                    approvedLeaveToday
+                )
+                {
+                    status =
+                        "Leave";
+                }
+                else
+                {
+                    DateTime classEnd =
+                        today.Add(
+                            timetable.EndTime
+                        );
+
+                    if (
+                        now < classEnd
+                    )
+                    {
+                        status =
+                            "Not Marked";
+                    }
+                    else
+                    {
+                        status =
+                            "Absent";
+                    }
+                }
+            }
+
+            model.TodayAttendance.Add(
+                new TodayAttendanceItemViewModel
+                {
+                    CourseId =
+                        timetable.CourseId,
+
+                    CourseCode =
+                        timetable.Course?.CourseCode
+                        ?? "",
+
+                    CourseName =
+                        timetable.Course?.CourseName
+                        ?? timetable.CourseId,
+
+                    StartTime =
+                        timetable.StartTime,
+
+                    EndTime =
+                        timetable.EndTime,
+
+                    Status =
+                        status
+                }
+            );
+        }
+
+        // ==============================
+        // OVERALL ATTENDANCE
+        // ==============================
+
+        var programCourses =
+            await db.ProgramCourses
+                .AsNoTracking()
+                .Where(pc =>
+                    pc.ProgramId ==
+                        studentClass.ProgramId
+                )
+                .Include(pc => pc.Course)
+                .ToListAsync();
+
+        foreach (
+            var programCourse
+            in programCourses)
+        {
+            if (
+                programCourse.Course ==
+                null
+            )
+            {
+                continue;
+            }
+
+            string courseId =
+                programCourse
+                    .Course
+                    .CourseId;
+
+            List<Timetable> subjectTimetables =
+                await db.Timetables
+                    .AsNoTracking()
+                    .Where(t =>
+                        t.ClassId ==
+                            studentClass.ClassId &&
+                        t.CourseId ==
+                            courseId &&
+                        t.Term != null &&
+                        t.Term.Status ==
+                            "Active"
+                    )
+                    .ToListAsync();
+
+            List<string> timetableIds =
+                subjectTimetables
+                    .Select(t =>
+                        t.TimetableId
+                    )
+                    .ToList();
+
+            List<AttendanceSession> sessions =
+                await db.AttendanceSessions
+                    .AsNoTracking()
+                    .Where(s =>
+                        timetableIds.Contains(
+                            s.TimetableId
+                        ) &&
+                        s.SessionDate <=
+                            today
+                    )
+                    .OrderBy(s =>
+                        s.SessionDate
+                    )
+                    .ToListAsync();
+
+            int present = 0;
+            int absent = 0;
+            int leave = 0;
+
+            foreach (
+                AttendanceSession session
+                in sessions)
+            {
+                AttendanceRecord? record =
+                    await db.AttendanceRecords
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(r =>
+                            r.AttendanceSessionId ==
+                                session.AttendanceSessionId &&
+                            r.StudentClassId ==
+                                studentClass.StudentClassId
+                        );
+
+                // ==============================
+                // PRESENT
+                // ==============================
+
+                if (
+                    record != null &&
+                    !record.IsRemoved
+                )
+                {
+                    present++;
+                    continue;
+                }
+
+                Timetable? sessionTimetable =
+                    subjectTimetables
+                        .FirstOrDefault(t =>
+                            t.TimetableId ==
+                                session.TimetableId
+                        );
+
+                if (
+                    sessionTimetable ==
+                    null
+                )
+                {
+                    continue;
+                }
+
+                // ==============================
+                // LEAVE
+                // ==============================
+
+                bool approvedLeave =
+                    await db.LeaveApplications
+                        .AsNoTracking()
+                        .AnyAsync(l =>
+                            l.StudentId ==
+                                studentId &&
+                            l.Status ==
+                                "Approved" &&
+                            session.SessionDate.Date >=
+                                l.StartDate.Date &&
+                            session.SessionDate.Date <=
+                                l.EndDate.Date
+                        );
+
+                if (
+                    approvedLeave
+                )
+                {
+                    leave++;
+                    continue;
+                }
+
+                // ==============================
+                // CLASS END TIME
+                // ==============================
+
+                DateTime classEnd =
+                    session.SessionDate.Date
+                        .Add(
+                            sessionTimetable.EndTime
+                        );
+
+                // Class not ended yet
+                // Do not count absent
+                if (
+                    now < classEnd
+                )
+                {
+                    continue;
+                }
+
+                // Class already ended
+                absent++;
+            }
+
+            // ==============================
+            // ATTENDANCE PERCENTAGE
+            // ==============================
+
+            // Each absent deducts 2%
+            const double AbsentPenalty =
+                2.0;
+
+            double percentage =
+                100 -
+                (
+                    absent *
+                    AbsentPenalty
+                );
+
+            if (
+                percentage < 0
+            )
+            {
+                percentage =
+                    0;
+            }
+
+            model.Subjects.Add(
+                new SubjectAttendanceViewModel
+                {
+                    CourseId =
+                        programCourse
+                            .Course
+                            .CourseId,
+
+                    CourseCode =
+                        programCourse
+                            .Course
+                            .CourseCode
+                        ?? "",
+
+                    CourseName =
+                        programCourse
+                            .Course
+                            .CourseName,
+
+                    PresentCount =
+                        present,
+
+                    AbsentCount =
+                        absent,
+
+                    LeaveCount =
+                        leave,
+
+                    Percentage =
+                        percentage
+                }
+            );
+        }
+
+        model.Subjects =
+            model.Subjects
+                .OrderBy(s =>
+                    s.CourseName
+                )
+                .ToList();
+
+        return View(model);
+    }
+
+    // ==============================
+    // SUBMIT ATTENDANCE CODE
+    // ==============================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Student")]
+    [RequireStudentProfile]
+    public async Task<IActionResult>
+        SubmitAttendanceCode(
+            string code)
+    {
+        string? studentId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
+
+        if (
+            string.IsNullOrWhiteSpace(
+                studentId
+            )
+        )
+        {
+            return Unauthorized();
+        }
+
+        if (
+            string.IsNullOrWhiteSpace(
+                code
+            )
+        )
+        {
+            TempData["AttendanceError"] =
+                "Please enter the attendance code.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
+        code =
+            code.Trim();
+
+        if (
+            code.Length != 6 ||
+            !code.All(char.IsDigit)
+        )
+        {
+            TempData["AttendanceError"] =
+                "Attendance code must contain 6 digits.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
+        StudentClass? studentClass =
+            await db.StudentClasses
+                .FirstOrDefaultAsync(
+                    sc =>
+                        sc.UserId ==
+                        studentId
+                );
+
+        if (
+            studentClass ==
+            null
+        )
+        {
+            TempData["AttendanceError"] =
+                "Student class was not found.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
+        DateTime now =
+            DateTime.Now;
+
+        AttendanceSession? session =
+            await db.AttendanceSessions
+                .Include(s =>
+                    s.Timetable
+                )
+                .ThenInclude(t =>
+                    t!.Course
+                )
+                .FirstOrDefaultAsync(s =>
+                    s.Code ==
+                        code &&
+                    s.SessionDate ==
+                        now.Date &&
+                    s.IsActive &&
+                    s.ExpiresAt >
+                        now &&
+                    s.Timetable !=
+                        null &&
+                    s.Timetable.ClassId ==
+                        studentClass.ClassId
+                );
+
+        if (
+            session ==
+            null
+        )
+        {
+            TempData["AttendanceError"] =
+                "Invalid or expired attendance code.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
+        bool alreadySubmitted =
+            await db.AttendanceRecords
+                .AnyAsync(r =>
+                    r.AttendanceSessionId ==
+                        session.AttendanceSessionId &&
+                    r.StudentClassId ==
+                        studentClass.StudentClassId
+                );
+
+        if (
+            alreadySubmitted
+        )
+        {
+            TempData["AttendanceError"] =
+                "Attendance has already been submitted.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
+        AttendanceRecord record =
+            new()
+            {
+                AttendanceRecordId =
+                    await FormattedIdGenerator
+                        .NextAsync(
+                            db.AttendanceRecords,
+                            r =>
+                                r.AttendanceRecordId,
+                            "ATR"
+                        ),
+
+                AttendanceSessionId =
+                    session
+                        .AttendanceSessionId,
+
+                StudentClassId =
+                    studentClass
+                        .StudentClassId,
+
+                Status =
+                    "Present",
+
+                SubmittedAt =
+                    now,
+
+                IsRemoved =
+                    false
+            };
+
+        db.AttendanceRecords.Add(
+            record
+        );
+
+        await db.SaveChangesAsync();
+
+        TempData["AttendanceSuccess"] =
+            "Attendance submitted successfully.";
+
+        return RedirectToAction(
+            nameof(Attendance)
+        );
+    }
+
+    // ==============================
+    // ATTENDANCE DETAILS
+    // ==============================
+
+    [HttpGet]
+    [Authorize(Roles = "Student")]
+    [RequireStudentProfile]
+    public async Task<IActionResult>
+        AttendanceDetails(
+            string courseId)
+    {
+        string? studentId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
+
+        if (
+            string.IsNullOrWhiteSpace(
+                studentId
+            )
+        )
+        {
+            return Unauthorized();
+        }
+
+        StudentClass? studentClass =
+            await db.StudentClasses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    sc =>
+                        sc.UserId ==
+                        studentId
+                );
+
+        if (
+            studentClass ==
+            null
+        )
+        {
+            return NotFound();
+        }
+
+        Course? course =
+            await db.Courses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    c =>
+                        c.CourseId ==
+                        courseId
+                );
+
+        if (
+            course ==
+            null
+        )
+        {
+            return NotFound();
+        }
+
+        List<Timetable> timetables =
+            await db.Timetables
+                .AsNoTracking()
+                .Where(t =>
+                    t.ClassId ==
+                        studentClass.ClassId &&
+                    t.CourseId ==
+                        courseId &&
+                    t.Term != null &&
+                    t.Term.Status ==
+                        "Active"
+                )
+                .ToListAsync();
+
+        List<string> timetableIds =
+            timetables
+                .Select(t =>
+                    t.TimetableId
+                )
+                .ToList();
+
+        DateTime now =
+            DateTime.Now;
+
+        DateTime today =
+            DateTime.Today;
+
+        List<AttendanceSession> sessions =
+            await db.AttendanceSessions
+                .AsNoTracking()
+                .Where(s =>
+                    timetableIds.Contains(
+                        s.TimetableId
+                    ) &&
+                    s.SessionDate <=
+                        today
+                )
+                .OrderBy(s =>
+                    s.SessionDate
+                )
+                .ToListAsync();
+
+        AttendanceDetailsViewModel model =
+            new()
+            {
+                CourseId =
+                    course.CourseId,
+
+                CourseCode =
+                    course.CourseCode
+                    ?? "",
+
+                CourseName =
+                    course.CourseName
+            };
+
+        foreach (
+            AttendanceSession session
+            in sessions)
+        {
+            Timetable? timetable =
+                timetables
+                    .FirstOrDefault(t =>
+                        t.TimetableId ==
+                            session.TimetableId
+                    );
+
+            if (
+                timetable ==
+                null
+            )
+            {
+                continue;
+            }
+
+            AttendanceRecord? record =
+                await db.AttendanceRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r =>
+                        r.AttendanceSessionId ==
+                            session.AttendanceSessionId &&
+                        r.StudentClassId ==
+                            studentClass.StudentClassId
+                    );
+
+            string status;
+            string? description =
+                null;
+
+            // ==============================
+            // PRESENT
+            // ==============================
+
+            if (
+                record != null &&
+                !record.IsRemoved
+            )
+            {
+                status =
+                    "Present";
+            }
+            else
+            {
+                // ==============================
+                // LEAVE
+                // ==============================
+
+                LeaveApplication? approvedLeave =
+                    await db.LeaveApplications
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(l =>
+                            l.StudentId ==
+                                studentId &&
+                            l.Status ==
+                                "Approved" &&
+                            session.SessionDate.Date >=
+                                l.StartDate.Date &&
+                            session.SessionDate.Date <=
+                                l.EndDate.Date
+                        );
+
+                if (
+                    approvedLeave !=
+                    null
+                )
+                {
+                    status =
+                        "Leave";
+
+                    description =
+                        approvedLeave
+                            .LeaveType;
+                }
+                else
+                {
+                    // ==============================
+                    // CLASS END TIME
+                    // ==============================
+
+                    DateTime classEnd =
+                        session.SessionDate.Date
+                            .Add(
+                                timetable.EndTime
+                            );
+
+                    // Class not finished
+                    // Do not show absent yet
+                    if (
+                        now < classEnd
+                    )
+                    {
+                        continue;
+                    }
+
+                    // ==============================
+                    // ABSENT
+                    // ==============================
+
+                    status =
+                        "Absent";
+
+                    if (
+                        record != null &&
+                        record.IsRemoved
+                    )
+                    {
+                        description =
+                            record.Description;
+                    }
+                }
+            }
+
+            // ==============================
+            // COUNTS
+            // ==============================
+
+            if (
+                status ==
+                "Present"
+            )
+            {
+                model.PresentCount++;
+            }
+            else if (
+                status ==
+                "Absent"
+            )
+            {
+                model.AbsentCount++;
+            }
+            else if (
+                status ==
+                "Leave"
+            )
+            {
+                model.LeaveCount++;
+            }
+
+            // ==============================
+            // HISTORY
+            // ==============================
+
+            model.History.Add(
+                new AttendanceHistoryItemViewModel
+                {
+                    Date =
+                        session.SessionDate,
+
+                    StartTime =
+                        timetable.StartTime,
+
+                    EndTime =
+                        timetable.EndTime,
+
+                    Status =
+                        status,
+
+                    Description =
+                        description
+                }
+            );
+        }
+
+        // ==============================
+        // ATTENDANCE PERCENTAGE
+        // ==============================
+
+        // Each absent deducts 2%
+        const double AbsentPenalty =
+            2.0;
+
+        model.Percentage =
+            100 -
+            (
+                model.AbsentCount *
+                AbsentPenalty
+            );
+
+        if (
+            model.Percentage < 0
+        )
+        {
+            model.Percentage =
+                0;
+        }
+
+        // ==============================
+        // DONUT CHART
+        // ==============================
+
+        int total =
+            model.PresentCount +
+            model.AbsentCount +
+            model.LeaveCount;
+
+        if (
+            total > 0
+        )
+        {
+            model.PresentPercent =
+                model.PresentCount *
+                100.0 /
+                total;
+
+            model.AbsentPercent =
+                model.AbsentCount *
+                100.0 /
+                total;
+
+            model.LeavePercent =
+                model.LeaveCount *
+                100.0 /
+                total;
+        }
+
+        return View(model);
+    }
 
     // ==============================
     // APPLY LEAVE - GET
@@ -236,27 +1147,42 @@ public class StudentController : Controller
     public async Task<IActionResult> ApplyLeave()
     {
         string? studentId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
 
-        if (string.IsNullOrWhiteSpace(studentId))
+        if (
+            string.IsNullOrWhiteSpace(
+                studentId
+            )
+        )
         {
             return Unauthorized();
         }
 
-        ApplyLeaveViewModel model = new()
-        {
-            StartDate = DateTime.Today,
-            EndDate = DateTime.Today,
+        ApplyLeaveViewModel model =
+            new()
+            {
+                StartDate =
+                    DateTime.Today,
 
-            LeaveHistory = await db.LeaveApplications
-                .Where(l => l.StudentId == studentId)
-                .OrderByDescending(l => l.AppliedAt)
-                .ToListAsync()
-        };
+                EndDate =
+                    DateTime.Today,
+
+                LeaveHistory =
+                    await db.LeaveApplications
+                        .Where(l =>
+                            l.StudentId ==
+                                studentId
+                        )
+                        .OrderByDescending(
+                            l => l.AppliedAt
+                        )
+                        .ToListAsync()
+            };
 
         return View(model);
     }
-
 
     // ==============================
     // APPLY LEAVE - POST
@@ -269,20 +1195,27 @@ public class StudentController : Controller
         ApplyLeaveViewModel model)
     {
         string? studentId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
 
-        if (string.IsNullOrWhiteSpace(studentId))
+        if (
+            string.IsNullOrWhiteSpace(
+                studentId
+            )
+        )
         {
             return Unauthorized();
         }
-
 
         // ==============================
         // DATE VALIDATION
         // ==============================
 
-        // Cannot select a past Start Date
-        if (model.StartDate.Date < DateTime.Today)
+        if (
+            model.StartDate.Date <
+            DateTime.Today
+        )
         {
             ModelState.AddModelError(
                 nameof(model.StartDate),
@@ -290,9 +1223,10 @@ public class StudentController : Controller
             );
         }
 
-
-        // End Date cannot be earlier than Start Date
-        if (model.EndDate.Date < model.StartDate.Date)
+        if (
+            model.EndDate.Date <
+            model.StartDate.Date
+        )
         {
             ModelState.AddModelError(
                 nameof(model.EndDate),
@@ -300,11 +1234,11 @@ public class StudentController : Controller
             );
         }
 
-
-        // Maximum 7 days
-        // Start Date itself counts as Day 1
-        if (model.EndDate.Date >
-            model.StartDate.Date.AddDays(6))
+        if (
+            model.EndDate.Date >
+            model.StartDate.Date
+                .AddDays(6)
+        )
         {
             ModelState.AddModelError(
                 nameof(model.EndDate),
@@ -312,19 +1246,24 @@ public class StudentController : Controller
             );
         }
 
-
         // ==============================
         // FILE VALIDATION
         // ==============================
 
-        string? documentName = null;
+        string? documentName =
+            null;
 
-        if (model.SupportingDocument != null &&
-            model.SupportingDocument.Length > 0)
+        if (
+            model.SupportingDocument != null &&
+            model.SupportingDocument.Length >
+            0
+        )
         {
             string extension =
                 Path.GetExtension(
-                    model.SupportingDocument.FileName)
+                    model.SupportingDocument
+                        .FileName
+                )
                 .ToLowerInvariant();
 
             string[] allowedExtensions =
@@ -335,8 +1274,11 @@ public class StudentController : Controller
                 ".png"
             };
 
-
-            if (!allowedExtensions.Contains(extension))
+            if (
+                !allowedExtensions.Contains(
+                    extension
+                )
+            )
             {
                 ModelState.AddModelError(
                     nameof(model.SupportingDocument),
@@ -344,10 +1286,10 @@ public class StudentController : Controller
                 );
             }
 
-
-            // Maximum 5MB
-            if (model.SupportingDocument.Length >
-                5 * 1024 * 1024)
+            if (
+                model.SupportingDocument.Length >
+                5 * 1024 * 1024
+            )
             {
                 ModelState.AddModelError(
                     nameof(model.SupportingDocument),
@@ -356,33 +1298,43 @@ public class StudentController : Controller
             }
         }
 
-
         // ==============================
         // VALIDATION FAILED
         // ==============================
 
-        if (!ModelState.IsValid)
+        if (
+            !ModelState.IsValid
+        )
         {
             model.LeaveHistory =
                 await db.LeaveApplications
-                    .Where(l => l.StudentId == studentId)
-                    .OrderByDescending(l => l.AppliedAt)
+                    .Where(l =>
+                        l.StudentId ==
+                            studentId
+                    )
+                    .OrderByDescending(
+                        l => l.AppliedAt
+                    )
                     .ToListAsync();
 
             return View(model);
         }
 
-
         // ==============================
         // SAVE DOCUMENT
         // ==============================
 
-        if (model.SupportingDocument != null &&
-            model.SupportingDocument.Length > 0)
+        if (
+            model.SupportingDocument != null &&
+            model.SupportingDocument.Length >
+            0
+        )
         {
             string extension =
                 Path.GetExtension(
-                    model.SupportingDocument.FileName)
+                    model.SupportingDocument
+                        .FileName
+                )
                 .ToLowerInvariant();
 
             string folder =
@@ -392,12 +1344,14 @@ public class StudentController : Controller
                     "leave"
                 );
 
-            Directory.CreateDirectory(folder);
-
+            Directory.CreateDirectory(
+                folder
+            );
 
             documentName =
-                Guid.NewGuid().ToString() + extension;
-
+                Guid.NewGuid()
+                    .ToString() +
+                extension;
 
             string filePath =
                 Path.Combine(
@@ -405,55 +1359,64 @@ public class StudentController : Controller
                     documentName
                 );
 
-
             using FileStream stream =
                 new(
                     filePath,
                     FileMode.Create
                 );
 
-
-            await model.SupportingDocument
-                .CopyToAsync(stream);
+            await model
+                .SupportingDocument
+                .CopyToAsync(
+                    stream
+                );
         }
-
 
         // ==============================
         // CREATE LEAVE APPLICATION
         // ==============================
 
-        LeaveApplication leave = new()
-        {
-            StudentId = studentId,
+        LeaveApplication leave =
+            new()
+            {
+                StudentId =
+                    studentId,
 
-            LeaveType = model.LeaveType,
+                LeaveType =
+                    model.LeaveType,
 
-            StartDate = model.StartDate.Date,
+                StartDate =
+                    model.StartDate.Date,
 
-            EndDate = model.EndDate.Date,
+                EndDate =
+                    model.EndDate.Date,
 
-            Reason = model.Reason,
+                Reason =
+                    model.Reason,
 
-            SupportingDocument = documentName,
+                SupportingDocument =
+                    documentName,
 
-            Status = "Pending",
+                Status =
+                    "Pending",
 
-            AppliedAt = DateTime.Now
-        };
+                AppliedAt =
+                    DateTime.Now
+            };
 
-
-        db.LeaveApplications.Add(leave);
+        db.LeaveApplications.Add(
+            leave
+        );
 
         await db.SaveChangesAsync();
-
 
         TempData["SuccessMessage"] =
             "Leave application submitted successfully.";
 
-
-        return RedirectToAction(nameof(ApplyLeave));
+        return RedirectToAction(
+            nameof(ApplyLeave)
+        );
     }
-
 
     // ==============================
     // CANCEL LEAVE
@@ -461,50 +1424,65 @@ public class StudentController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CancelLeave(int id)
+    public async Task<IActionResult> CancelLeave(
+        int id)
     {
         string? studentId =
-            User.FindFirstValue(ClaimTypes.NameIdentifier);
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
 
-        if (string.IsNullOrWhiteSpace(studentId))
+        if (
+            string.IsNullOrWhiteSpace(
+                studentId
+            )
+        )
         {
             return Unauthorized();
         }
 
-
         LeaveApplication? leave =
             await db.LeaveApplications
                 .FirstOrDefaultAsync(l =>
-                    l.LeaveId == id &&
-                    l.StudentId == studentId
+                    l.LeaveId ==
+                        id &&
+                    l.StudentId ==
+                        studentId
                 );
 
-
-        if (leave == null)
+        if (
+            leave ==
+            null
+        )
         {
             return NotFound();
         }
 
-
-        // Student can only cancel Pending leave
-        if (!string.Equals(
+        if (
+            !string.Equals(
                 leave.Status,
                 "Pending",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             TempData["ErrorMessage"] =
                 "Only pending leave applications can be cancelled.";
 
-            return RedirectToAction(nameof(ApplyLeave));
+            return RedirectToAction(
+                nameof(ApplyLeave)
+            );
         }
-
 
         // ==============================
         // DELETE UPLOADED DOCUMENT
         // ==============================
 
-        if (!string.IsNullOrWhiteSpace(
-                leave.SupportingDocument))
+        if (
+            !string.IsNullOrWhiteSpace(
+                leave.SupportingDocument
+            )
+        )
         {
             string filePath =
                 Path.Combine(
@@ -514,26 +1492,31 @@ public class StudentController : Controller
                     leave.SupportingDocument
                 );
 
-
-            if (System.IO.File.Exists(filePath))
+            if (
+                System.IO.File.Exists(
+                    filePath
+                )
+            )
             {
-                System.IO.File.Delete(filePath);
+                System.IO.File.Delete(
+                    filePath
+                );
             }
         }
 
-
-        db.LeaveApplications.Remove(leave);
+        db.LeaveApplications.Remove(
+            leave
+        );
 
         await db.SaveChangesAsync();
-
 
         TempData["SuccessMessage"] =
             "Leave application cancelled successfully.";
 
-
-        return RedirectToAction(nameof(ApplyLeave));
+        return RedirectToAction(
+            nameof(ApplyLeave)
+        );
     }
-
 
     // ==============================
     // LOGOUT
@@ -546,7 +1529,8 @@ public class StudentController : Controller
         HttpContext.Session.Clear();
 
         await HttpContext.SignOutAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme
+            CookieAuthenticationDefaults
+                .AuthenticationScheme
         );
 
         return RedirectToAction(

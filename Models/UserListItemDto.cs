@@ -20,16 +20,22 @@ public class UserListItemDto
 
     public string? Avatar { get; set; }
 
-    // NEW: program registration info (Student only)
+    // Program registration info
+    // Used by both Student and Teacher
     public bool HasProgram { get; set; }
+
     public string? ProgramId { get; set; }
+
     public string? ProgramName { get; set; }
+
+    // Student only
     public string? ClassId { get; set; }
+
     public string? ClassName { get; set; }
+
     public string? StudentId { get; set; }
 
     public bool IsDeleted { get; set; }
+
     public DateTime? DeletedAt { get; set; }
-
 }
-

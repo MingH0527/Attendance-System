@@ -1393,5 +1393,53 @@
     border-radius: 10px;
     font-size: 14px;
 }
-.user-flash.success { background: #ecfdf3; color: #027a48; }
-.user-flash.error { background: #fef3f2; color: #b42318; }
+.user-flash.success { 
+    background: #ecfdf3;
+    color: #027a48;
+}
+.user-flash.error { 
+    background: #fef3f2;
+    color: #b42318; 
+}
+.teacher-subject-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.teacher-subject-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+    .teacher-subject-item:hover {
+        background: #f8fafc;
+    }
+
+    .teacher-subject-item input {
+        width: 18px;
+        height: 18px;
+        margin-top: 3px;
+    }
+
+    .teacher-subject-item div {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .teacher-subject-item strong {
+        color: #10254a;
+    }
+
+    .teacher-subject-item span {
+        color: #7b8aa5;
+        font-size: 12px;
+    }

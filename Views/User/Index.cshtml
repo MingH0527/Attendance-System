@@ -276,18 +276,32 @@
                                     </td>
 
                                     <td>
-                                        @if (user.Position == "Student")
+                                        @if (
+                                            user.Position == "Student" ||
+                                            user.Position == "Teacher"
+                                        )
                                         {
                                             if (user.HasProgram)
                                             {
-                                                <span class="status status-active">Registered</span>
-                                                <div style="font-size:12px;color:#667085;margin-top:4px;">
-                                                    @user.ProgramName
+                                                <span class="status status-active">
+                                                    Registered
+                                                </span>
+
+                                                <div style="font-size:12px;color:#667085;margin-top:4px;line-height:1.6;">
+                                                    @foreach (var program in (user.ProgramName ?? "")
+                                                        .Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                                                    {
+                                                        <div>
+                                                            @program.Trim()
+                                                        </div>
+                                                    }
                                                 </div>
                                             }
                                             else
                                             {
-                                                <span class="status status-inactive">Not Registered</span>
+                                                <span class="status status-inactive">
+                                                    Not Registered
+                                                </span>
                                             }
                                         }
                                         else
@@ -361,6 +375,15 @@
 
                                                 @if (user.Position == "Teacher")
                                                 {
+
+                                                    <button type="button"
+                                                            class="action-button teacher-subject-button"
+                                                            data-action="teacher-subject"
+                                                            data-user-id="@user.UserId"
+                                                            data-username="@user.Username">
+                                                        Manage Subjects
+                                                    </button>
+
                                                     <button type="button"
                                                             class="action-button cancel-teacher-button"
                                                             data-action="cancel-teacher">
@@ -513,52 +536,89 @@
     @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.AvailableClasses))
 </script>
 
-<div class="detail-overlay" id="registerOverlay" hidden>
-    <aside class="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+<div class="detail-overlay"
+     id="teacherSubjectOverlay"
+     hidden>
+
+    <aside class="detail-drawer"
+           role="dialog"
+           aria-modal="true">
 
         <div class="detail-header">
+
             <div>
-                <span class="detail-eyebrow">Program registration</span>
-                <h2 id="registerTitle">Register Student to Program</h2>
+                <span class="detail-eyebrow">
+                    Subject Registration
+                </span>
+
+                <h2>
+                    Manage Teacher Subjects
+                </h2>
             </div>
 
-            <button type="button" class="detail-close" id="registerClose" aria-label="Close">
+            <button type="button"
+                    class="detail-close"
+                    id="teacherSubjectClose">
                 ×
             </button>
+
         </div>
 
-        <form id="registerForm"
+        <form asp-controller="Admin"
+              asp-action="SaveTeacherSubjects"
               method="post"
-              asp-controller="User"
-              asp-action="RegisterProgram">
+              id="teacherSubjectForm">
 
             @Html.AntiForgeryToken()
 
-            <input type="hidden" name="userId" id="registerUserId" />
+            <input type="hidden"
+                   name="teacherId"
+                   id="teacherSubjectTeacherId" />
 
-            <div class="detail-list" style="grid-template-columns: 1fr;">
-                <div class="detail-item detail-item-wide">
-                    <span class="detail-label">Student</span>
-                    <strong id="registerUsername">-</strong>
-                </div>
+            <div class="detail-item detail-item-wide">
+                <span class="detail-label">
+                    Teacher
+                </span>
 
-                <div class="detail-item detail-item-wide">
-                    <label class="detail-label" for="registerProgramSelect">Program</label>
-                    <select id="registerProgramSelect" name="programId" required style="width:100%;padding:8px;"></select>
-                </div>
-
-                <div class="detail-item detail-item-wide">
-                    <label class="detail-label" for="registerClassSelect">Class</label>
-                    <select id="registerClassSelect" name="classId" required style="width:100%;padding:8px;"></select>
-                </div>
+                <strong id="teacherSubjectTeacherName">
+                    -
+                </strong>
             </div>
 
-            <div class="filter-actions" style="margin-top:16px;">
-                <button type="button" class="filter-reset" id="registerCancel">Cancel</button>
-                <button type="submit" class="filter-apply">Save Registration</button>
+            <div id="teacherSubjectNoProgram"
+                 class="user-flash error"
+                 style="margin-top:20px;"
+                 hidden>
+
+                This teacher has not registered any program.
+
             </div>
+
+            <div id="teacherSubjectList"
+                 class="teacher-subject-list">
+            </div>
+
+            <div class="filter-actions"
+                 id="teacherSubjectActions"
+                 style="margin-top:20px;">
+
+                <button type="button"
+                        class="filter-reset"
+                        id="teacherSubjectCancel">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        class="filter-apply">
+                    Save Changes
+                </button>
+
+            </div>
+
         </form>
+
     </aside>
+
 </div>
 
 <script src="~/js/usermanagement.js"></script>

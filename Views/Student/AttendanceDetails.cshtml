@@ -1,0 +1,233 @@
+﻿@model WebAndMobile.Models.AttendanceDetailsViewModel
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Attendance Details";
+
+    int totalRecords =
+        Model.PresentCount +
+        Model.AbsentCount +
+        Model.LeaveCount;
+
+    double presentEnd =
+        Model.PresentPercent;
+
+    double absentEnd =
+        Model.PresentPercent +
+        Model.AbsentPercent;
+
+    string chartStyle;
+
+    if (totalRecords == 0)
+    {
+        chartStyle = "background:#22c55e;";
+    }
+    else
+    {
+        chartStyle =
+            $"background: conic-gradient(" +
+            $"#22c55e 0 {presentEnd:F1}%, " +
+            $"#ef4444 {presentEnd:F1}% {absentEnd:F1}%, " +
+            $"#facc15 {absentEnd:F1}% 100%);";
+    }
+}
+
+<link rel="stylesheet"
+      href="~/css/student.css"
+      asp-append-version="true" />
+
+<link rel="stylesheet"
+      href="~/css/student-attendance.css"
+      asp-append-version="true" />
+
+<div class="attendance-page">
+
+    <a asp-controller="Student"
+       asp-action="Attendance"
+       class="attendance-back">
+        ← Back to Attendance
+    </a>
+
+    <div class="attendance-heading">
+
+        <span>
+            @Model.CourseCode
+        </span>
+
+        <h1>
+            @Model.CourseName
+        </h1>
+
+        <p>
+            Detailed attendance history for this subject.
+        </p>
+
+    </div>
+
+    <section class="attendance-detail-summary">
+
+        <!-- CHART -->
+        <div class="attendance-card attendance-chart-card">
+
+            <div>
+                <span class="section-label">
+                    OVERVIEW
+                </span>
+
+                <h2>
+                    Attendance Summary
+                </h2>
+            </div>
+
+            <div class="chart-area">
+
+                <div class="attendance-donut"
+                     style="@chartStyle">
+
+                    <div class="donut-center">
+
+                        <strong>
+                            @Model.Percentage.ToString("0.#")%
+                        </strong>
+
+                        <span>
+                            Attendance
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="attendance-legend">
+
+                    <div>
+                        <span class="legend-dot present-dot"></span>
+                        Present
+                        <strong>@Model.PresentCount</strong>
+                    </div>
+
+                    <div>
+                        <span class="legend-dot absent-dot"></span>
+                        Absent
+                        <strong>@Model.AbsentCount</strong>
+                    </div>
+
+                    <div>
+                        <span class="legend-dot leave-dot"></span>
+                        Leave
+                        <strong>@Model.LeaveCount</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- RATE -->
+        <div class="attendance-card overall-rate-card">
+
+            <span class="section-label">
+                ATTENDANCE RATE
+            </span>
+
+            <div class="large-rate @(Model.Percentage < 80 ? "low" : "good")">
+                @Model.Percentage.ToString("0.#")%
+            </div>
+
+            @if (Model.Percentage < 80)
+            {
+                <p class="rate-warning">
+                    Your attendance is below 80%.
+                </p>
+            }
+            else
+            {
+                <p>
+                    Your attendance is currently 80% or above.
+                </p>
+            }
+
+        </div>
+
+    </section>
+
+    <!-- HISTORY -->
+    <section class="attendance-card">
+
+        <div class="section-heading">
+
+            <div>
+                <span class="section-label">
+                    HISTORY
+                </span>
+
+                <h2>
+                    Attendance Records
+                </h2>
+            </div>
+
+        </div>
+
+        @if (Model.History.Count == 0)
+        {
+            <div class="attendance-empty">
+                No attendance records available.
+            </div>
+        }
+        else
+        {
+            <div class="attendance-table-wrapper">
+
+                <table class="attendance-table">
+
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var item in Model.History)
+                        {
+                            <tr>
+
+                                <td>
+                                    @item.Date.ToString("d/M/yyyy")
+                                </td>
+
+                                <td>
+                                    @item.StartTime.ToString(@"hh\:mm")
+                                    -
+                                    @item.EndTime.ToString(@"hh\:mm")
+                                </td>
+
+                                <td>
+                                    <span class="attendance-status @item.Status.ToLower()">
+                                        @item.Status
+                                    </span>
+                                </td>
+
+                                <td>
+                                    @(string.IsNullOrWhiteSpace(item.Description)
+                                        ? "-"
+                                        : item.Description)
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </section>
+
+</div>
