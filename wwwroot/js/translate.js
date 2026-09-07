@@ -291,7 +291,13 @@
 
                             if (typeof value === 'string' && value.length) {
                                 map[chunk[j]] = value;
-                                cacheSet(chunk[j], value);
+
+                                // Only cache real translations. An untranslated
+                                // string comes back unchanged, and caching that
+                                // would hide it after the dictionary is updated.
+                                if (value !== chunk[j]) {
+                                    cacheSet(chunk[j], value);
+                                }
                             }
                         }
                     });
@@ -421,7 +427,7 @@
                 }
 
                 alert('Sorry, the language could not be changed. ' +
-                      'Please try again.');
+                    'Please try again.');
             });
         });
     }

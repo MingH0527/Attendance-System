@@ -1,6 +1,4 @@
-﻿using System.Text;
-using System.Text.Json;
-using Microsoft.Extensions.Caching.Memory;
+﻿using System.Text.Json;
 
 namespace WebAndMobile.Services;
 
@@ -17,54 +15,37 @@ public interface ITranslationService
 }
 
 /// <summary>
-/// Wraps the Azure AI Translator REST API (v3.0).
+/// Translates from a local dictionary file instead of a paid API.
 ///
-/// The site is authored in English, so "en" never calls the API.
-/// Every translated string is cached in memory so the same label is
-/// only ever paid for once per language until the cache expires.
+/// The site is authored in English, so "en" is never looked up.
+/// Anything missing from the dictionary is returned unchanged, which
+/// means the page simply keeps that phrase in English - nothing breaks
+/// and the file can be filled in gradually.
+///
+/// Dictionary lives at wwwroot/data/translations.json and is reloaded
+/// automatically whenever the file is saved, so you can edit it while
+/// the app is running.
 /// </summary>
-public class AzureTranslationService : ITranslationService
+public class DictionaryTranslationService : ITranslationService
 {
-    private const string DefaultEndpoint =
-        "https://api.cognitive.microsofttranslator.com";
-
     private const string SourceLanguage = "en";
 
-    // Azure allows 1,000 array elements and 50,000 characters per
-    // request; stay well under both.
-    private const int MaxSegmentsPerRequest = 80;
-
-    // Codes stored in the database / used by the dropdown.
     private static readonly string[] Supported = ["en", "ms", "zh"];
 
-    private static readonly TimeSpan CacheLifetime = TimeSpan.FromHours(12);
+    private readonly IWebHostEnvironment environment;
+    private readonly ILogger<DictionaryTranslationService> logger;
+    private readonly object gate = new();
 
-    private readonly IHttpClientFactory httpClientFactory;
-    private readonly IMemoryCache cache;
-    private readonly ILogger<AzureTranslationService> logger;
-    private readonly string? subscriptionKey;
-    private readonly string? region;
-    private readonly string endpoint;
+    private Dictionary<string, Dictionary<string, string>> dictionary = [];
+    private DateTime lastLoadedUtc = DateTime.MinValue;
+    private DateTime lastFileWriteUtc = DateTime.MinValue;
 
-    public AzureTranslationService(
-        IHttpClientFactory httpClientFactory,
-        IMemoryCache cache,
-        IConfiguration configuration,
-        ILogger<AzureTranslationService> logger)
+    public DictionaryTranslationService(
+        IWebHostEnvironment environment,
+        ILogger<DictionaryTranslationService> logger)
     {
-        this.httpClientFactory = httpClientFactory;
-        this.cache = cache;
+        this.environment = environment;
         this.logger = logger;
-
-        subscriptionKey = configuration["AzureTranslator:Key"];
-        region = configuration["AzureTranslator:Region"];
-
-        string? configured = configuration["AzureTranslator:Endpoint"];
-
-        endpoint =
-            string.IsNullOrWhiteSpace(configured)
-                ? DefaultEndpoint
-                : configured.TrimEnd('/');
     }
 
     public IReadOnlyList<string> SupportedLanguages => Supported;
@@ -80,198 +61,158 @@ public class AzureTranslationService : ITranslationService
             language.Trim().ToLowerInvariant());
     }
 
-    /// <summary>
-    /// Maps our short codes onto the codes Azure expects.
-    /// Azure needs the script variant for Chinese.
-    /// </summary>
-    private static string ToAzureCode(string language) =>
-        language switch
-        {
-            "zh" => "zh-Hans",
-            _ => language
-        };
-
-    public async Task<List<string>> TranslateAsync(
+    public Task<List<string>> TranslateAsync(
         IReadOnlyList<string> texts,
         string targetLanguage,
         CancellationToken cancellationToken = default)
     {
-        // Default result is the original text, so a misconfigured or
-        // failing API degrades to plain English instead of a blank page.
+        // Default result is the original text, so an incomplete
+        // dictionary degrades to English instead of blank labels.
         List<string> results = [.. texts];
 
         if (texts.Count == 0)
         {
-            return results;
+            return Task.FromResult(results);
         }
 
         string target = (targetLanguage ?? "").Trim().ToLowerInvariant();
 
         if (!IsSupported(target) || target == SourceLanguage)
         {
-            return results;
+            return Task.FromResult(results);
         }
 
-        if (string.IsNullOrWhiteSpace(subscriptionKey))
+        Dictionary<string, string>? table = GetTable(target);
+
+        if (table is null || table.Count == 0)
         {
-            logger.LogWarning(
-                "AzureTranslator:Key is not configured - " +
-                "returning untranslated text.");
-
-            return results;
-        }
-
-        Dictionary<string, string> resolved = new(StringComparer.Ordinal);
-        List<string> pending = [];
-
-        foreach (string text in texts)
-        {
-            if (resolved.ContainsKey(text) || pending.Contains(text))
-            {
-                continue;
-            }
-
-            if (cache.TryGetValue(
-                    CacheKey(target, text),
-                    out string? cached) &&
-                cached is not null)
-            {
-                resolved[text] = cached;
-            }
-            else
-            {
-                pending.Add(text);
-            }
-        }
-
-        for (int offset = 0;
-             offset < pending.Count;
-             offset += MaxSegmentsPerRequest)
-        {
-            List<string> chunk =
-                pending
-                    .Skip(offset)
-                    .Take(MaxSegmentsPerRequest)
-                    .ToList();
-
-            List<string>? translated =
-                await CallApiAsync(chunk, target, cancellationToken);
-
-            if (translated is null)
-            {
-                // API failed - keep English for this chunk.
-                break;
-            }
-
-            for (int i = 0; i < chunk.Count && i < translated.Count; i++)
-            {
-                resolved[chunk[i]] = translated[i];
-
-                cache.Set(
-                    CacheKey(target, chunk[i]),
-                    translated[i],
-                    CacheLifetime);
-            }
+            return Task.FromResult(results);
         }
 
         for (int i = 0; i < results.Count; i++)
         {
-            if (resolved.TryGetValue(texts[i], out string? value))
+            string key = (texts[i] ?? "").Trim();
+
+            if (key.Length == 0)
+            {
+                continue;
+            }
+
+            if (table.TryGetValue(key, out string? value) &&
+                !string.IsNullOrWhiteSpace(value))
             {
                 results[i] = value;
             }
         }
 
-        return results;
+        return Task.FromResult(results);
     }
 
-    private async Task<List<string>?> CallApiAsync(
-        List<string> chunk,
-        string target,
-        CancellationToken cancellationToken)
+    private Dictionary<string, string>? GetTable(string language)
     {
+        EnsureLoaded();
+
+        lock (gate)
+        {
+            return dictionary.TryGetValue(language, out var table)
+                ? table
+                : null;
+        }
+    }
+
+    private void EnsureLoaded()
+    {
+        string path = Path.Combine(
+            environment.WebRootPath,
+            "data",
+            "translations.json");
+
+        DateTime writeTimeUtc;
+
         try
         {
-            HttpClient client = httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromSeconds(15);
-
-            string url =
-                $"{endpoint}/translate" +
-                $"?api-version=3.0" +
-                $"&from={SourceLanguage}" +
-                $"&to={ToAzureCode(target)}" +
-                $"&textType=plain";
-
-            // Azure expects [{ "Text": "..." }, ...]
-            var payload =
-                chunk
-                    .Select(text => new { Text = text })
-                    .ToList();
-
-            using HttpRequestMessage request =
-                new(HttpMethod.Post, url)
-                {
-                    Content = new StringContent(
-                        JsonSerializer.Serialize(payload),
-                        Encoding.UTF8,
-                        "application/json")
-                };
-
-            request.Headers.Add(
-                "Ocp-Apim-Subscription-Key",
-                subscriptionKey);
-
-            // Required for a resource created in a specific region.
-            if (!string.IsNullOrWhiteSpace(region))
+            if (!File.Exists(path))
             {
-                request.Headers.Add(
-                    "Ocp-Apim-Subscription-Region",
-                    region);
+                logger.LogWarning(
+                    "Translation dictionary not found at {Path} - " +
+                    "everything stays in English.",
+                    path);
+
+                return;
             }
 
-            using HttpResponseMessage response =
-                await client.SendAsync(request, cancellationToken);
-
-            string raw = await response.Content
-                .ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogError(
-                    "Azure Translator returned {Status}: {Body}",
-                    (int)response.StatusCode,
-                    raw);
-
-                return null;
-            }
-
-            using JsonDocument document = JsonDocument.Parse(raw);
-
-            List<string> output = [];
-
-            // [{ "translations": [ { "text": "...", "to": "ms" } ] }]
-            foreach (JsonElement item in document.RootElement.EnumerateArray())
-            {
-                if (!item.TryGetProperty("translations", out JsonElement list) ||
-                    list.GetArrayLength() == 0)
-                {
-                    output.Add("");
-                    continue;
-                }
-
-                output.Add(
-                    list[0].GetProperty("text").GetString() ?? "");
-            }
-
-            return output;
+            writeTimeUtc = File.GetLastWriteTimeUtc(path);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Azure Translator call failed.");
-            return null;
+            logger.LogError(ex, "Could not inspect the translation file.");
+            return;
+        }
+
+        lock (gate)
+        {
+            bool loadedAlready = lastLoadedUtc != DateTime.MinValue;
+            bool unchanged = writeTimeUtc == lastFileWriteUtc;
+
+            if (loadedAlready && unchanged)
+            {
+                return;
+            }
+
+            try
+            {
+                string json = File.ReadAllText(path);
+
+                var parsed = JsonSerializer
+                    .Deserialize<Dictionary<string, JsonElement>>(json);
+
+                Dictionary<string, Dictionary<string, string>> loaded =
+                    new(StringComparer.OrdinalIgnoreCase);
+
+                if (parsed is not null)
+                {
+                    foreach ((string key, JsonElement value) in parsed)
+                    {
+                        // Skip "_comment" and anything that is not an object.
+                        if (value.ValueKind != JsonValueKind.Object)
+                        {
+                            continue;
+                        }
+
+                        Dictionary<string, string> table =
+                            new(StringComparer.Ordinal);
+
+                        foreach (JsonProperty entry in value.EnumerateObject())
+                        {
+                            if (entry.Value.ValueKind == JsonValueKind.String)
+                            {
+                                table[entry.Name] =
+                                    entry.Value.GetString() ?? "";
+                            }
+                        }
+
+                        loaded[key] = table;
+                    }
+                }
+
+                dictionary = loaded;
+                lastFileWriteUtc = writeTimeUtc;
+                lastLoadedUtc = DateTime.UtcNow;
+
+                logger.LogInformation(
+                    "Loaded translation dictionary ({Languages} languages).",
+                    loaded.Count);
+            }
+            catch (Exception ex)
+            {
+                // Keep whatever was loaded before rather than wiping it.
+                logger.LogError(
+                    ex,
+                    "Translation dictionary is not valid JSON - " +
+                    "keeping the previous version.");
+
+                lastFileWriteUtc = writeTimeUtc;
+            }
         }
     }
-
-    private static string CacheKey(string target, string text) =>
-        $"translate::{target}::{text}";
 }
