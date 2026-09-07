@@ -2,22 +2,46 @@
 
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "Barred List";
+
+    ViewData["Title"] =
+        "Barred List";
+
+    int barredPage =
+        ViewBag.BarredPage ?? 1;
+
+    int barredTotalPages =
+        ViewBag.BarredTotalPages ?? 1;
+
+    int barredTotalCount =
+        ViewBag.BarredTotalCount ?? 0;
+
+
+    int eligiblePage =
+        ViewBag.EligiblePage ?? 1;
+
+    int eligibleTotalPages =
+        ViewBag.EligibleTotalPages ?? 1;
+
+    int eligibleTotalCount =
+        ViewBag.EligibleTotalCount ?? 0;
 }
 
 <link rel="stylesheet"
       href="~/css/barredlist.css"
       asp-append-version="true" />
 
+
 <div class="barred-page">
 
-    <!-- ==============================
+
+    <!-- ==========================================
          HEADER
-         ============================== -->
+         ========================================== -->
 
     <div class="barred-header">
 
         <div>
+
             <p class="barred-eyebrow">
                 ADMIN MANAGEMENT
             </p>
@@ -30,6 +54,7 @@
                 Manage students whose attendance
                 has reached 80% or below.
             </p>
+
         </div>
 
 
@@ -44,9 +69,9 @@
     </div>
 
 
-    <!-- ==============================
-         MESSAGE
-         ============================== -->
+    <!-- ==========================================
+         SUCCESS / ERROR
+         ========================================== -->
     @if (
             TempData["BarredSuccess"]
             is string success
@@ -69,15 +94,16 @@
     }
 
 
-    <!-- ==============================
+    <!-- ==========================================
          CURRENT BARRED STUDENTS
-         ============================== -->
+         ========================================== -->
 
     <section class="barred-card">
 
         <div class="section-title">
 
             <div>
+
                 <h2>
                     Current Barred Students
                 </h2>
@@ -86,18 +112,20 @@
                     Students currently restricted
                     because of attendance issues.
                 </p>
+
             </div>
 
 
             <span class="count-badge">
-                @Model.BarredStudents.Count
+                @barredTotalCount
             </span>
 
         </div>
 
 
         @if (
-            !Model.BarredStudents.Any()
+            barredTotalCount ==
+            0
         )
         {
             <div class="empty-state">
@@ -124,17 +152,47 @@
                 <table class="barred-table">
 
                     <thead>
+
                         <tr>
-                            <th>Student ID</th>
-                            <th>Student</th>
-                            <th>Program</th>
-                            <th>Subject</th>
-                            <th>Absent</th>
-                            <th>Attendance</th>
-                            <th>Reason</th>
-                            <th>Barred Date</th>
-                            <th>Actions</th>
+
+                            <th>
+                                Student ID
+                            </th>
+
+                            <th>
+                                Student
+                            </th>
+
+                            <th>
+                                Program
+                            </th>
+
+                            <th>
+                                Subject
+                            </th>
+
+                            <th>
+                                Absent
+                            </th>
+
+                            <th>
+                                Attendance
+                            </th>
+
+                            <th>
+                                Reason
+                            </th>
+
+                            <th>
+                                Barred Date
+                            </th>
+
+                            <th>
+                                Actions
+                            </th>
+
                         </tr>
+
                     </thead>
 
 
@@ -147,16 +205,19 @@
                         {
                             double percentage =
                                 Math.Round(
-                                    student.AttendancePercentage,
+                                    student
+                                        .AttendancePercentage,
                                     1
                                 );
 
                             <tr>
 
                                 <td>
+
                                     <strong>
                                         @student.StudentId
                                     </strong>
+
                                 </td>
 
 
@@ -171,6 +232,7 @@
 
 
                                 <td>
+
                                     <div class="subject-cell">
 
                                         @if (
@@ -189,20 +251,25 @@
                                         </span>
 
                                     </div>
+
                                 </td>
 
 
                                 <td>
+
                                     <span class="absent-badge">
                                         @student.AbsentCount
                                     </span>
+
                                 </td>
 
 
                                 <td>
 
                                     <span class="attendance-badge danger">
+
                                         @percentage.ToString("0.#")%
+
                                     </span>
 
                                 </td>
@@ -217,9 +284,11 @@
 
                                         @Html.AntiForgeryToken()
 
+
                                         <input type="hidden"
                                                name="id"
                                                value="@student.BarredStudentId" />
+
 
                                         <input type="text"
                                                name="reason"
@@ -227,9 +296,12 @@
                                                maxlength="300"
                                                required />
 
+
                                         <button type="submit"
                                                 class="edit-button">
+
                                             Save
+
                                         </button>
 
                                     </form>
@@ -238,10 +310,12 @@
 
 
                                 <td>
+
                                     @student.BarredAt
                                     .ToString(
                                     "dd/MM/yyyy"
                                     )
+
                                 </td>
 
 
@@ -253,9 +327,11 @@
 
                                         @Html.AntiForgeryToken()
 
+
                                         <input type="hidden"
                                                name="id"
                                                value="@student.BarredStudentId" />
+
 
                                         <button type="submit"
                                                 class="remove-button"
@@ -277,20 +353,114 @@
                 </table>
 
             </div>
+
+
+            <!-- ==================================
+                 BARRED PAGINATION
+                 ================================== -->
+            @if (
+                            barredTotalPages >
+                            1
+                        )
+            {
+                <div class="pagination-wrapper">
+
+                    <span class="page-info">
+
+                        Page
+                        @barredPage
+                        of
+                        @barredTotalPages
+
+                    </span>
+
+
+                    <div class="pagination">
+
+
+                        @if (
+                            barredPage >
+                            1
+                        )
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="BarredList"
+                               asp-route-barredPage="@(barredPage - 1)"
+                               asp-route-eligiblePage="@eligiblePage"
+                               class="page-button">
+
+                                ← Previous
+
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="page-button disabled">
+                                ← Previous
+                            </span>
+                        }
+
+
+                        @for (
+                            int i = 1;
+                            i <= barredTotalPages;
+                            i++
+                        )
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="BarredList"
+                               asp-route-barredPage="@i"
+                               asp-route-eligiblePage="@eligiblePage"
+                               class="page-number @(i == barredPage ? "active" : "")">
+
+                                @i
+
+                            </a>
+                        }
+
+
+                        @if (
+                            barredPage <
+                            barredTotalPages
+                        )
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="BarredList"
+                               asp-route-barredPage="@(barredPage + 1)"
+                               asp-route-eligiblePage="@eligiblePage"
+                               class="page-button">
+
+                                Next →
+
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="page-button disabled">
+                                Next →
+                            </span>
+                        }
+
+                    </div>
+
+                </div>
+            }
+
         }
 
     </section>
 
 
-    <!-- ==============================
-         ELIGIBLE STUDENTS
-         ============================== -->
+    <!-- ==========================================
+         ELIGIBLE FOR BARRED LIST
+         ========================================== -->
 
     <section class="barred-card">
 
         <div class="section-title">
 
             <div>
+
                 <h2>
                     Eligible for Barred List
                 </h2>
@@ -299,17 +469,20 @@
                     Students with subject attendance
                     of 80% or below.
                 </p>
+
             </div>
 
 
             <span class="count-badge warning">
-                @Model.EligibleStudents.Count
+                @eligibleTotalCount
             </span>
 
         </div>
 
+
         @if (
-            !Model.EligibleStudents.Any()
+            eligibleTotalCount ==
+            0
         )
         {
             <div class="empty-state">
@@ -336,16 +509,43 @@
                 <table class="barred-table">
 
                     <thead>
+
                         <tr>
-                            <th>Student ID</th>
-                            <th>Student</th>
-                            <th>Program</th>
-                            <th>Subject</th>
-                            <th>Absent</th>
-                            <th>Attendance</th>
-                            <th>Reason</th>
-                            <th>Action</th>
+
+                            <th>
+                                Student ID
+                            </th>
+
+                            <th>
+                                Student
+                            </th>
+
+                            <th>
+                                Program
+                            </th>
+
+                            <th>
+                                Subject
+                            </th>
+
+                            <th>
+                                Absent
+                            </th>
+
+                            <th>
+                                Attendance
+                            </th>
+
+                            <th>
+                                Reason
+                            </th>
+
+                            <th>
+                                Action
+                            </th>
+
                         </tr>
+
                     </thead>
 
 
@@ -358,19 +558,24 @@
                         {
                             double percentage =
                                 Math.Round(
-                                    student.AttendancePercentage,
+                                    student
+                                        .AttendancePercentage,
                                     1
                                 );
+
 
                             string formId =
                                 $"barForm_{student.UserId}_{student.CourseId}";
 
+
                             <tr>
 
                                 <td>
+
                                     <strong>
                                         @student.StudentId
                                     </strong>
+
                                 </td>
 
 
@@ -409,16 +614,22 @@
 
 
                                 <td>
+
                                     <span class="absent-badge">
                                         @student.AbsentCount
                                     </span>
+
                                 </td>
 
 
                                 <td>
+
                                     <span class="attendance-badge danger">
+
                                         @percentage.ToString("0.#")%
+
                                     </span>
+
                                 </td>
 
 
@@ -428,7 +639,7 @@
                                            name="reason"
                                            form="@formId"
                                            maxlength="300"
-                                           placeholder="e.g. Low attendance"
+                                           placeholder="Enter reason"
                                            required />
 
                                 </td>
@@ -443,13 +654,16 @@
 
                                         @Html.AntiForgeryToken()
 
+
                                         <input type="hidden"
                                                name="userId"
                                                value="@student.UserId" />
 
+
                                         <input type="hidden"
                                                name="courseId"
                                                value="@student.CourseId" />
+
 
                                         <button type="submit"
                                                 class="add-button"
@@ -471,6 +685,99 @@
                 </table>
 
             </div>
+
+
+            <!-- ==================================
+                 ELIGIBLE PAGINATION
+                 ================================== -->
+            @if (
+                            eligibleTotalPages >
+                            1
+                        )
+            {
+                <div class="pagination-wrapper">
+
+                    <span class="page-info">
+
+                        Page
+                        @eligiblePage
+                        of
+                        @eligibleTotalPages
+
+                    </span>
+
+
+                    <div class="pagination">
+
+
+                        @if (
+                            eligiblePage >
+                            1
+                        )
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="BarredList"
+                               asp-route-barredPage="@barredPage"
+                               asp-route-eligiblePage="@(eligiblePage - 1)"
+                               class="page-button">
+
+                                ← Previous
+
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="page-button disabled">
+                                ← Previous
+                            </span>
+                        }
+
+
+                        @for (
+                            int i = 1;
+                            i <= eligibleTotalPages;
+                            i++
+                        )
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="BarredList"
+                               asp-route-barredPage="@barredPage"
+                               asp-route-eligiblePage="@i"
+                               class="page-number @(i == eligiblePage ? "active" : "")">
+
+                                @i
+
+                            </a>
+                        }
+
+
+                        @if (
+                            eligiblePage <
+                            eligibleTotalPages
+                        )
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="BarredList"
+                               asp-route-barredPage="@barredPage"
+                               asp-route-eligiblePage="@(eligiblePage + 1)"
+                               class="page-button">
+
+                                Next →
+
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="page-button disabled">
+                                Next →
+                            </span>
+                        }
+
+                    </div>
+
+                </div>
+            }
+
         }
 
     </section>

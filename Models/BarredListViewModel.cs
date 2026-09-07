@@ -2,11 +2,15 @@
 
 public class BarredListViewModel
 {
-    public List<BarredStudentRowViewModel> BarredStudents { get; set; }
-        = new();
+    public List<BarredStudentRowViewModel>
+        BarredStudents
+    { get; set; } =
+            new();
 
-    public List<BarredCandidateViewModel> EligibleStudents { get; set; }
-        = new();
+    public List<BarredCandidateViewModel>
+        EligibleStudents
+    { get; set; } =
+            new();
 }
 
 

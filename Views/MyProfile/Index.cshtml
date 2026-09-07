@@ -57,8 +57,7 @@
                     !string.IsNullOrWhiteSpace(
                         ViewBag.Avatar as string
                     ) &&
-                    ViewBag.Avatar !=
-                    "default.png"
+                    ViewBag.Avatar != "default.png"
                 )
                 {
                     <img src="@ViewBag.Avatar"
@@ -80,7 +79,9 @@
                         class="avatar-edit-button"
                         title="Change profile picture"
                         onclick="document.getElementById('avatarInput').click()">
+
                     ✎
+
                 </button>
 
 
@@ -122,6 +123,7 @@
 
         <div class="profile-information">
 
+            <!-- Username -->
 
             <div class="information-row">
 
@@ -136,6 +138,8 @@
             </div>
 
 
+            <!-- Email -->
+
             <div class="information-row">
 
                 <span>
@@ -148,6 +152,8 @@
 
             </div>
 
+
+            <!-- Role -->
 
             <div class="information-row">
 
@@ -218,18 +224,20 @@
                             "Teacher"
                         )
             {
+                <!-- Program -->
+
                 <div class="information-row">
 
                     <span>
                         Program
                     </span>
 
-                    <strong>
+
+                    <div class="information-value">
 
                         @if (
                             !string.IsNullOrWhiteSpace(
-                                ViewBag.ProgramName
-                                as string
+                                ViewBag.ProgramName as string
                             )
                         )
                         {
@@ -242,27 +250,28 @@
                                 )
                                 .Split(
                                     '\n',
-                                    StringSplitOptions
-                                        .RemoveEmptyEntries
+                                    StringSplitOptions.RemoveEmptyEntries
                                 )
                             )
                             {
-                                <div>
+                                <strong class="information-line">
                                     @program.Trim()
-                                </div>
+                                </strong>
                             }
                         }
                         else
                         {
-                            <span>
+                            <strong>
                                 Not registered
-                            </span>
+                            </strong>
                         }
 
-                    </strong>
+                    </div>
 
                 </div>
 
+
+                <!-- Subject -->
 
                 <div class="information-row">
 
@@ -270,12 +279,12 @@
                         Subject
                     </span>
 
-                    <strong>
+
+                    <div class="information-value">
 
                         @if (
                             !string.IsNullOrWhiteSpace(
-                                ViewBag.SubjectName
-                                as string
+                                ViewBag.SubjectName as string
                             )
                         )
                         {
@@ -288,24 +297,23 @@
                                 )
                                 .Split(
                                     '\n',
-                                    StringSplitOptions
-                                        .RemoveEmptyEntries
+                                    StringSplitOptions.RemoveEmptyEntries
                                 )
                             )
                             {
-                                <div>
+                                <strong class="information-line">
                                     @subject.Trim()
-                                </div>
+                                </strong>
                             }
                         }
                         else
                         {
-                            <span>
+                            <strong>
                                 Not registered
-                            </span>
+                            </strong>
                         }
 
-                    </strong>
+                    </div>
 
                 </div>
             }

@@ -403,10 +403,11 @@ public class AdminController : Controller
     // ==================================================
 
     [HttpGet]
-    public async Task<IActionResult> BarredList()
+    public async Task<IActionResult> BarredList(
+        int barredPage = 1,
+        int eligiblePage = 1)
     {
-        BarredListViewModel model =
-            new();
+        const int pageSize = 5;
 
         // ==========================================
         // GET ALL REGISTERED STUDENTS
@@ -428,8 +429,9 @@ public class AdminController : Controller
                 )
                 .ToListAsync();
 
+
         // ==========================================
-        // CURRENT BARRED RECORDS
+        // GET CURRENT BARRED RECORDS
         // ==========================================
 
         List<BarredStudent> barredRecords =
@@ -443,9 +445,14 @@ public class AdminController : Controller
                 )
                 .ToListAsync();
 
+
         // ==========================================
-        // BUILD CURRENT BARRED LIST
+        // BUILD FULL CURRENT BARRED LIST
         // ==========================================
+
+        List<BarredStudentRowViewModel> allBarredStudents =
+            new();
+
 
         foreach (
             BarredStudent barred
@@ -467,13 +474,15 @@ public class AdminController : Controller
                 continue;
             }
 
+
             AttendanceCalculationResult result =
                 await CalculateAttendanceAsync(
                     studentClass,
                     barred.CourseId
                 );
 
-            model.BarredStudents.Add(
+
+            allBarredStudents.Add(
                 new BarredStudentRowViewModel
                 {
                     BarredStudentId =
@@ -518,9 +527,14 @@ public class AdminController : Controller
             );
         }
 
+
         // ==========================================
-        // FIND STUDENTS WITH ATTENDANCE <= 80%
+        // BUILD FULL ELIGIBLE LIST
         // ==========================================
+
+        List<BarredCandidateViewModel> allEligibleStudents =
+            new();
+
 
         foreach (
             StudentClass studentClass
@@ -539,6 +553,7 @@ public class AdminController : Controller
                     )
                     .ToListAsync();
 
+
             foreach (
                 ProgramCourse programCourse
                 in programCourses)
@@ -551,11 +566,13 @@ public class AdminController : Controller
                     continue;
                 }
 
+
                 AttendanceCalculationResult result =
                     await CalculateAttendanceAsync(
                         studentClass,
                         programCourse.CourseId
                     );
+
 
                 double displayPercentage =
                     Math.Round(
@@ -563,6 +580,9 @@ public class AdminController : Controller
                         1
                     );
 
+
+                // Only students with 80% or below
+                // are eligible for the barred list.
                 if (
                     displayPercentage >
                     80
@@ -570,6 +590,7 @@ public class AdminController : Controller
                 {
                     continue;
                 }
+
 
                 bool alreadyBarred =
                     barredRecords.Any(b =>
@@ -579,6 +600,7 @@ public class AdminController : Controller
                             programCourse.CourseId
                     );
 
+
                 if (
                     alreadyBarred
                 )
@@ -586,7 +608,8 @@ public class AdminController : Controller
                     continue;
                 }
 
-                model.EligibleStudents.Add(
+
+                allEligibleStudents.Add(
                     new BarredCandidateViewModel
                     {
                         UserId =
@@ -627,8 +650,9 @@ public class AdminController : Controller
             }
         }
 
-        model.EligibleStudents =
-            model.EligibleStudents
+
+        allEligibleStudents =
+            allEligibleStudents
                 .OrderBy(x =>
                     x.AttendancePercentage
                 )
@@ -637,8 +661,123 @@ public class AdminController : Controller
                 )
                 .ToList();
 
+
+        // ==========================================
+        // CURRENT BARRED PAGINATION
+        // ==========================================
+
+        int barredTotalCount =
+            allBarredStudents.Count;
+
+        int barredTotalPages =
+            (int)Math.Ceiling(
+                barredTotalCount /
+                (double)pageSize
+            );
+
+        if (
+            barredTotalPages <
+            1
+        )
+        {
+            barredTotalPages =
+                1;
+        }
+
+        barredPage =
+            Math.Clamp(
+                barredPage,
+                1,
+                barredTotalPages
+            );
+
+
+        // ==========================================
+        // ELIGIBLE PAGINATION
+        // ==========================================
+
+        int eligibleTotalCount =
+            allEligibleStudents.Count;
+
+        int eligibleTotalPages =
+            (int)Math.Ceiling(
+                eligibleTotalCount /
+                (double)pageSize
+            );
+
+        if (
+            eligibleTotalPages <
+            1
+        )
+        {
+            eligibleTotalPages =
+                1;
+        }
+
+        eligiblePage =
+            Math.Clamp(
+                eligiblePage,
+                1,
+                eligibleTotalPages
+            );
+
+
+        // ==========================================
+        // BUILD PAGE MODEL
+        // ==========================================
+
+        BarredListViewModel model =
+            new()
+            {
+                BarredStudents =
+                    allBarredStudents
+                        .Skip(
+                            (barredPage - 1) *
+                            pageSize
+                        )
+                        .Take(pageSize)
+                        .ToList(),
+
+                EligibleStudents =
+                    allEligibleStudents
+                        .Skip(
+                            (eligiblePage - 1) *
+                            pageSize
+                        )
+                        .Take(pageSize)
+                        .ToList()
+            };
+
+
+        // ==========================================
+        // SEND PAGINATION DATA TO VIEW
+        // ==========================================
+
+        ViewBag.BarredPage =
+            barredPage;
+
+        ViewBag.BarredTotalPages =
+            barredTotalPages;
+
+        ViewBag.BarredTotalCount =
+            barredTotalCount;
+
+        ViewBag.EligiblePage =
+            eligiblePage;
+
+        ViewBag.EligibleTotalPages =
+            eligibleTotalPages;
+
+        ViewBag.EligibleTotalCount =
+            eligibleTotalCount;
+
+        ViewBag.PageSize =
+            pageSize;
+
+
         return View(model);
     }
+
 
     // ==================================================
     // ADD STUDENT TO BARRED LIST
