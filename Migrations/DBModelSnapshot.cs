@@ -1192,6 +1192,11 @@ namespace WebAndMobile.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("PreferredLanguage")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
