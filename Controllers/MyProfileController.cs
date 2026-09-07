@@ -326,11 +326,10 @@ public class MyProfileController : Controller
         User? user =
             await db.Users
                 .FirstOrDefaultAsync(
-                    u =>
-                        u.UserId ==
-                        userId
+                    u => u.UserId == userId
                 );
 
+      
 
         if (
             user ==
@@ -341,12 +340,12 @@ public class MyProfileController : Controller
         }
 
 
-        if (
-            avatar ==
-            null ||
-            avatar.Length ==
-            0
-        )
+        // ==========================================
+        // NO FILE
+        // ==========================================
+
+        if (avatar == null ||
+            avatar.Length == 0)
         {
             TempData["AvatarError"] =
                 "Please select a profile picture.";
@@ -357,12 +356,12 @@ public class MyProfileController : Controller
         }
 
 
-        // Maximum 2MB
+        // ==========================================
+        // MAXIMUM 2MB
+        // ==========================================
 
-        if (
-            avatar.Length >
-            2 * 1024 * 1024
-        )
+        if (avatar.Length >
+            2 * 1024 * 1024)
         {
             TempData["AvatarError"] =
                 "Profile picture must be smaller than 2MB.";
@@ -373,11 +372,14 @@ public class MyProfileController : Controller
         }
 
 
+        // ==========================================
+        // FILE EXTENSION VALIDATION
+        // ==========================================
+
         string extension =
             Path.GetExtension(
                 avatar.FileName
-            )
-            .ToLowerInvariant();
+            ).ToLowerInvariant();
 
 
         string[] allowedExtensions =
@@ -389,20 +391,45 @@ public class MyProfileController : Controller
         };
 
 
-        if (
-            !allowedExtensions.Contains(
-                extension
-            )
-        )
+        if (!allowedExtensions.Contains(extension))
         {
             TempData["AvatarError"] =
-                "Only JPG, JPEG, PNG and WEBP images are allowed.";
+                "Invalid image format. Only JPG, JPEG, PNG and WEBP files are allowed.";
 
             return RedirectToAction(
                 nameof(Index)
             );
         }
 
+
+        // ==========================================
+        // CONTENT TYPE VALIDATION
+        // ==========================================
+
+        string[] allowedContentTypes =
+        {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
+
+
+        if (!allowedContentTypes.Contains(
+                avatar.ContentType.ToLowerInvariant()
+            ))
+        {
+            TempData["AvatarError"] =
+                "Invalid image format. Only JPG, JPEG, PNG and WEBP files are allowed.";
+
+            return RedirectToAction(
+                nameof(Index)
+            );
+        }
+
+
+        // ==========================================
+        // CREATE AVATAR FOLDER
+        // ==========================================
 
         string uploadFolder =
             Path.Combine(
@@ -417,6 +444,10 @@ public class MyProfileController : Controller
         );
 
 
+        // ==========================================
+        // GENERATE NEW FILE NAME
+        // ==========================================
+
         string fileName =
             $"{user.UserId}_{Guid.NewGuid():N}{extension}";
 
@@ -427,6 +458,10 @@ public class MyProfileController : Controller
                 fileName
             );
 
+
+        // ==========================================
+        // SAVE NEW AVATAR
+        // ==========================================
 
         await using (
             FileStream stream =
@@ -442,7 +477,9 @@ public class MyProfileController : Controller
         }
 
 
-        // Delete previous uploaded avatar
+        // ==========================================
+        // DELETE OLD AVATAR
+        // ==========================================
 
         if (
             !string.IsNullOrWhiteSpace(
@@ -478,6 +515,10 @@ public class MyProfileController : Controller
         }
 
 
+        // ==========================================
+        // UPDATE DATABASE
+        // ==========================================
+
         user.Avatar =
             $"/uploads/avatars/{fileName}";
 
@@ -485,8 +526,12 @@ public class MyProfileController : Controller
         await db.SaveChangesAsync();
 
 
+        // ==========================================
+        // SUCCESS MESSAGE
+        // ==========================================
+
         TempData["AvatarSuccess"] =
-            "Profile picture updated successfully.";
+            "Profile picture uploaded successfully.";
 
 
         return RedirectToAction(

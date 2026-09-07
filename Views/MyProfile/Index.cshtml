@@ -45,36 +45,53 @@
 
     <div class="profile-container">
 
-        <!-- ==============================
-             PROFILE HEADER
-             ============================== -->
+        <!-- ==========================================
+     PROFILE HEADER
+=========================================== -->
 
         <div class="profile-header">
 
+            <!-- Avatar -->
             <div class="profile-avatar-wrapper">
 
-                @if (
-                    !string.IsNullOrWhiteSpace(
-                        ViewBag.Avatar as string
-                    ) &&
-                    ViewBag.Avatar != "default.png"
-                )
+                @{
+                    string? storedAvatar =
+                        ViewBag.Avatar as string;
+
+                    bool hasCustomAvatar =
+                        !string.IsNullOrWhiteSpace(storedAvatar) &&
+                        storedAvatar != "default.png" &&
+                        storedAvatar != "default-avatar.png";
+
+                    string firstLetter =
+                        !string.IsNullOrWhiteSpace(username)
+                            ? username.Substring(0, 1).ToUpper()
+                            : "U";
+                }
+
+
+                <!-- Default letter -->
+                <div class="profile-avatar-default">
+                    @firstLetter
+                </div>
+
+
+                <!-- Uploaded avatar -->
+                @if (hasCustomAvatar)
                 {
-                    <img src="@ViewBag.Avatar"
+                    string avatarUrl =
+                        storedAvatar!.StartsWith("/")
+                            ? storedAvatar
+                            : $"/image/{storedAvatar}";
+
+                    <img src="@avatarUrl"
                          class="profile-avatar-image"
-                         alt="Profile Picture" />
-                }
-                else
-                {
-                    <div class="profile-avatar-default">
-                        @username.Substring(
-                            0,
-                            1
-                        ).ToUpper()
-                    </div>
+                         alt="@username"
+                         onerror="this.style.display='none';" />
                 }
 
 
+                <!-- Edit button -->
                 <button type="button"
                         class="avatar-edit-button"
                         title="Change profile picture"
@@ -85,6 +102,7 @@
                 </button>
 
 
+                <!-- Upload form -->
                 <form asp-controller="MyProfile"
                       asp-action="UploadAvatar"
                       method="post"
@@ -105,12 +123,14 @@
             </div>
 
 
+            <!-- Username -->
             <h1 class="profile-username">
                 @username
             </h1>
 
 
-            <span class="role-badge">
+            <!-- Role -->
+            <span class="profile-role-badge">
                 @role
             </span>
 
@@ -254,9 +274,9 @@
                                 )
                             )
                             {
-                                <strong class="information-line">
+                                <span class="profile-value-line">
                                     @program.Trim()
-                                </strong>
+                                </span>
                             }
                         }
                         else
@@ -301,9 +321,9 @@
                                 )
                             )
                             {
-                                <strong class="information-line">
+                                <span class="profile-value-line">
                                     @subject.Trim()
-                                </strong>
+                                </span>
                             }
                         }
                         else
@@ -520,3 +540,82 @@
     </div>
 
 </div>
+
+@if (TempData["AvatarSuccess"] != null)
+{
+    <div id="avatarToast"
+         class="avatar-toast avatar-toast-success">
+
+        <span class="avatar-toast-icon">✓</span>
+
+        <div>
+            <strong>Success</strong>
+            <p>@TempData["AvatarSuccess"]</p>
+        </div>
+
+        <button type="button"
+                onclick="closeAvatarToast()">
+            ×
+        </button>
+
+    </div>
+}
+
+@if (TempData["AvatarError"] != null)
+{
+    <div id="avatarToast"
+         class="avatar-toast avatar-toast-error">
+
+        <span class="avatar-toast-icon">!</span>
+
+        <div>
+            <strong>Upload Failed</strong>
+            <p>@TempData["AvatarError"]</p>
+        </div>
+
+        <button type="button"
+                onclick="closeAvatarToast()">
+            ×
+        </button>
+
+    </div>
+}
+
+<script>
+    function closeAvatarToast() {
+
+        const toast =
+            document.getElementById("avatarToast");
+
+        if (toast) {
+
+            toast.classList.add(
+                "avatar-toast-hide"
+            );
+
+            setTimeout(
+                () => toast.remove(),
+                300
+            );
+        }
+    }
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+
+            const toast =
+                document.getElementById(
+                    "avatarToast"
+                );
+
+            if (toast) {
+
+                setTimeout(
+                    closeAvatarToast,
+                    3500
+                );
+            }
+        }
+    );
+</script>

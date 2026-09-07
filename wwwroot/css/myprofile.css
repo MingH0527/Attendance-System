@@ -1,83 +1,130 @@
-﻿.profile-page {
+﻿/* ==================================================
+   MY PROFILE PAGE
+================================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+.profile-page {
     min-height: calc(100vh - 80px);
     padding: 40px 20px;
     background: linear-gradient( 135deg, #f5f8fb, #edf3f8 );
     font-family: Arial, Helvetica, sans-serif;
 }
 
+
+/* ==================================================
+   PROFILE CONTAINER
+================================================== */
+
 .profile-container {
     width: 100%;
     max-width: 1160px;
     margin: 0 auto;
+    padding: 0;
     background: transparent;
     border: none;
     box-shadow: none;
-    padding: 0;
 }
+
+
+/* ==================================================
+   PROFILE HEADER
+================================================== */
 
 .profile-header {
-    display: flex;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
     align-items: center;
-    gap: 20px;
-    padding-bottom: 28px;
-    border-bottom: 1px solid #e9edf2;
+    text-align: center;
+    padding: 30px 0 26px;
 }
 
-/* =========================
+
+/* ==================================================
    PROFILE AVATAR
-========================= */
+================================================== */
 
 .profile-avatar-wrapper {
     position: relative;
     width: 110px;
     height: 110px;
-    margin-bottom: 14px;
+    margin: 0 0 18px;
 }
+
 
 .profile-avatar-image,
 .profile-avatar-default {
+    position: absolute;
+    inset: 0;
     width: 110px;
     height: 110px;
     border-radius: 50%;
 }
 
+
+/* Uploaded avatar */
+
 .profile-avatar-image {
     display: block;
     object-fit: cover;
+    object-position: center;
+    background: #eef1f5;
+    z-index: 2;
 }
+
+
+/* Default letter avatar */
 
 .profile-avatar-default {
     display: flex;
     align-items: center;
     justify-content: center;
     background: #1597b5;
-    color: white;
+    color: #ffffff;
     font-size: 40px;
     font-weight: 700;
+    line-height: 1;
+    z-index: 1;
 }
+
+
+/* Edit avatar button */
 
 .avatar-edit-button {
     position: absolute;
-    right: 0;
-    bottom: 0;
+    right: -1px;
+    bottom: -1px;
     width: 32px;
     height: 32px;
     padding: 0;
-    border: 3px solid white;
-    border-radius: 50%;
-    background: #0f7490;
-    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    background: #0f7490;
+    color: #ffffff;
     cursor: pointer;
     font-size: 13px;
-    z-index: 2;
+    z-index: 3;
+    transition: background 0.18s ease, transform 0.18s ease;
 }
+
 
     .avatar-edit-button:hover {
         background: #075c72;
+        transform: scale(1.05);
     }
+
+
+/* ==================================================
+   PROFILE NAME
+================================================== */
+
 .profile-label {
     margin: 0 0 5px;
     color: #718092;
@@ -86,65 +133,107 @@
     text-transform: uppercase;
 }
 
-.profile-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    margin-bottom: 30px;
-    padding-top: 25px;
-}
+
 .profile-username {
-    margin: 0 0 8px;
+    width: auto;
+    margin: 0 0 10px;
+    padding: 0;
+    text-align: center;
+    color: #101827;
     font-size: 30px;
     font-weight: 700;
-    color: #0f172a;
-}
-.role-badge {
-    display: inline-block;
-    padding: 6px 14px;
-    border-radius: 20px;
-    color:#087785;
-    background: #e0f7f7;
-    font-size: 14px;
-    font-weight: 600;
+    line-height: 1.2;
 }
 
+
+/* ==================================================
+   ROLE BADGE
+================================================== */
+
+.profile-role-badge {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    justify-self: center !important;
+    width: max-content !important;
+    margin: 0 !important;
+    padding: 6px 14px !important;
+    background: #e2f7f7;
+    color: #087b86;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center !important;
+    position: static !important;
+    float: none !important;
+    transform: none !important;
+}
+
+
+/* ==================================================
+   PROFILE INFORMATION
+================================================== */
+
 .profile-information {
+    width: 100%;
     margin: 28px 0;
     border: 1px solid #e7ebf0;
     border-radius: 16px;
     overflow: hidden;
+    background: rgba(255, 255, 255, 0.18);
 }
 
+
 .information-row {
+    width: 100%;
     padding: 17px 20px;
     display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: 20px;
     border-bottom: 1px solid #edf0f4;
 }
 
+
     .information-row:last-child {
         border-bottom: none;
     }
 
+
+    /* Left label */
+
     .information-row span {
+        flex: 0 0 auto;
         color: #7a8494;
     }
 
+
+    /* Right value */
+
     .information-row strong {
+        flex: 1;
+        min-width: 0;
         color: #1d2637;
         text-align: right;
+        overflow-wrap: anywhere;
+        word-break: normal;
     }
 
+
+/* ==================================================
+   PROFILE ACTIONS
+================================================== */
+
 .profile-actions {
+    width: 100%;
     display: grid;
     gap: 15px;
 }
 
+
 .profile-button {
+    width: 100%;
     padding: 18px 20px;
     display: flex;
     align-items: center;
@@ -155,14 +244,18 @@
     transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
+
     .profile-button:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 25px rgba(28, 47, 73, 0.1);
     }
 
+
     .profile-button > span {
+        flex-shrink: 0;
         font-size: 26px;
     }
+
 
     .profile-button strong {
         display: block;
@@ -170,40 +263,220 @@
         color: #182134;
     }
 
+
     .profile-button small {
+        display: block;
         color: #737e8f;
         line-height: 1.4;
     }
+
+
+    /* Primary */
 
     .profile-button.primary {
         background: #edfbfb;
         border-color: #bce5e7;
     }
 
+
+    /* Security */
+
     .profile-button.security {
         background: #fff8e9;
         border-color: #eed79e;
     }
 
+
+    /* Secondary */
+
     .profile-button.secondary {
         background: #f7f8fa;
     }
 
+
+/* ==================================================
+   PROFILE REQUIRED ALERT
+================================================== */
+
+.profile-required-alert {
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto 20px;
+    padding: 14px 18px;
+    border: 1px solid #f3cf78;
+    border-radius: 12px;
+    background: #fff8e6;
+    color: #765310;
+    font-weight: 600;
+}
+
+
+/* ==================================================
+   MOBILE
+================================================== */
+
 @media (max-width: 600px) {
-    .profile-container {
-        padding: 24px;
+
+    .profile-page {
+        padding: 24px 16px;
     }
 
+
     .profile-header {
-        align-items: flex-start;
+        padding: 20px 0;
     }
+
+
+    .profile-avatar-wrapper {
+        width: 92px;
+        height: 92px;
+    }
+
+
+    .profile-avatar-image,
+    .profile-avatar-default {
+        width: 92px;
+        height: 92px;
+    }
+
+
+    .profile-avatar-default {
+        font-size: 34px;
+    }
+
+
+    .profile-username {
+        font-size: 26px;
+    }
+
 
     .information-row {
         flex-direction: column;
+        align-items: flex-start;
         gap: 6px;
     }
 
+
         .information-row strong {
+            width: 100%;
             text-align: left;
         }
+
+
+    .profile-button {
+        padding: 16px;
+    }
+}
+
+/* ==================================================
+   AVATAR TOAST MESSAGE
+================================================== */
+
+.avatar-toast {
+    position: fixed;
+    top: 105px;
+    right: 30px;
+    width: 340px;
+    max-width: calc(100vw - 40px);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 12px 35px rgba(20, 35, 60, 0.18);
+    z-index: 9999;
+    animation: avatarToastIn 0.3s ease;
+}
+
+
+.avatar-toast-success {
+    border-left: 5px solid #22a06b;
+}
+
+
+.avatar-toast-error {
+    border-left: 5px solid #dc3545;
+}
+
+
+.avatar-toast-icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+
+.avatar-toast-success
+.avatar-toast-icon {
+    background: #e5f7ef;
+    color: #16875d;
+}
+
+
+.avatar-toast-error
+.avatar-toast-icon {
+    background: #fdeaea;
+    color: #c92a2a;
+}
+
+
+.avatar-toast div {
+    flex: 1;
+}
+
+
+.avatar-toast strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #182134;
+}
+
+
+.avatar-toast p {
+    margin: 0;
+    color: #6f7a89;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+
+.avatar-toast button {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #8b95a5;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.profile-value-line {
+    display: block;
+}
+
+
+.avatar-toast-hide {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+
+@keyframes avatarToastIn {
+
+    from {
+        opacity: 0;
+        transform: translateX(25px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
