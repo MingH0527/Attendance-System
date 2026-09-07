@@ -93,6 +93,17 @@ builder.Services.AddFido2(options =>
 });
 builder.Services.AddSingleton<PasskeyFido2Factory>();
 
+// TRANSLATION (Azure AI Translator)
+builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ITranslationService, AzureTranslationService>();
+
+// Let the language fetch() calls send the token as a header.
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+});
+
 // OTHER SERVICES
 builder.Services.AddScoped<GmailServiceHelper>();
 builder.Services.AddScoped<ReceiptPdfService>();
