@@ -399,6 +399,790 @@ public class AdminController : Controller
     }
 
     // ==================================================
+    // BARRED LIST
+    // ==================================================
+
+    [HttpGet]
+    public async Task<IActionResult> BarredList()
+    {
+        BarredListViewModel model =
+            new();
+
+        // ==========================================
+        // GET ALL REGISTERED STUDENTS
+        // ==========================================
+
+        List<StudentClass> studentClasses =
+            await _context
+                .StudentClasses
+                .AsNoTracking()
+                .Include(sc => sc.User)
+                .Include(sc => sc.Program)
+                .Where(sc =>
+                    sc.User != null &&
+                    sc.User.Position == "Student" &&
+                    !sc.User.IsDeleted
+                )
+                .OrderBy(sc =>
+                    sc.User!.Username
+                )
+                .ToListAsync();
+
+        // ==========================================
+        // CURRENT BARRED RECORDS
+        // ==========================================
+
+        List<BarredStudent> barredRecords =
+            await _context
+                .BarredStudents
+                .AsNoTracking()
+                .Include(b => b.Student)
+                .Include(b => b.Course)
+                .OrderByDescending(b =>
+                    b.BarredAt
+                )
+                .ToListAsync();
+
+        // ==========================================
+        // BUILD CURRENT BARRED LIST
+        // ==========================================
+
+        foreach (
+            BarredStudent barred
+            in barredRecords)
+        {
+            StudentClass? studentClass =
+                studentClasses
+                    .FirstOrDefault(sc =>
+                        sc.UserId ==
+                        barred.UserId
+                    );
+
+            if (
+                studentClass == null ||
+                barred.Student == null ||
+                barred.Course == null
+            )
+            {
+                continue;
+            }
+
+            AttendanceCalculationResult result =
+                await CalculateAttendanceAsync(
+                    studentClass,
+                    barred.CourseId
+                );
+
+            model.BarredStudents.Add(
+                new BarredStudentRowViewModel
+                {
+                    BarredStudentId =
+                        barred.BarredStudentId,
+
+                    UserId =
+                        barred.UserId,
+
+                    StudentId =
+                        studentClass.StudentId,
+
+                    Username =
+                        barred.Student.Username,
+
+                    ProgramName =
+                        studentClass.Program
+                            ?.ProgramName
+                        ?? studentClass.ProgramId,
+
+                    CourseId =
+                        barred.CourseId,
+
+                    CourseCode =
+                        barred.Course.CourseCode
+                        ?? "",
+
+                    CourseName =
+                        barred.Course.CourseName,
+
+                    AbsentCount =
+                        result.AbsentCount,
+
+                    AttendancePercentage =
+                        result.Percentage,
+
+                    Reason =
+                        barred.Reason,
+
+                    BarredAt =
+                        barred.BarredAt
+                }
+            );
+        }
+
+        // ==========================================
+        // FIND STUDENTS WITH ATTENDANCE <= 80%
+        // ==========================================
+
+        foreach (
+            StudentClass studentClass
+            in studentClasses)
+        {
+            List<ProgramCourse> programCourses =
+                await _context
+                    .ProgramCourses
+                    .AsNoTracking()
+                    .Where(pc =>
+                        pc.ProgramId ==
+                        studentClass.ProgramId
+                    )
+                    .Include(pc =>
+                        pc.Course
+                    )
+                    .ToListAsync();
+
+            foreach (
+                ProgramCourse programCourse
+                in programCourses)
+            {
+                if (
+                    programCourse.Course ==
+                    null
+                )
+                {
+                    continue;
+                }
+
+                AttendanceCalculationResult result =
+                    await CalculateAttendanceAsync(
+                        studentClass,
+                        programCourse.CourseId
+                    );
+
+                double displayPercentage =
+                    Math.Round(
+                        result.Percentage,
+                        1
+                    );
+
+                if (
+                    displayPercentage >
+                    80
+                )
+                {
+                    continue;
+                }
+
+                bool alreadyBarred =
+                    barredRecords.Any(b =>
+                        b.UserId ==
+                            studentClass.UserId &&
+                        b.CourseId ==
+                            programCourse.CourseId
+                    );
+
+                if (
+                    alreadyBarred
+                )
+                {
+                    continue;
+                }
+
+                model.EligibleStudents.Add(
+                    new BarredCandidateViewModel
+                    {
+                        UserId =
+                            studentClass.UserId,
+
+                        StudentId =
+                            studentClass.StudentId,
+
+                        Username =
+                            studentClass.User
+                                ?.Username
+                            ?? studentClass.UserId,
+
+                        ProgramName =
+                            studentClass.Program
+                                ?.ProgramName
+                            ?? studentClass.ProgramId,
+
+                        CourseId =
+                            programCourse.CourseId,
+
+                        CourseCode =
+                            programCourse.Course
+                                .CourseCode
+                            ?? "",
+
+                        CourseName =
+                            programCourse.Course
+                                .CourseName,
+
+                        AbsentCount =
+                            result.AbsentCount,
+
+                        AttendancePercentage =
+                            result.Percentage
+                    }
+                );
+            }
+        }
+
+        model.EligibleStudents =
+            model.EligibleStudents
+                .OrderBy(x =>
+                    x.AttendancePercentage
+                )
+                .ThenBy(x =>
+                    x.Username
+                )
+                .ToList();
+
+        return View(model);
+    }
+
+    // ==================================================
+    // ADD STUDENT TO BARRED LIST
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddBarredStudent(
+        string userId,
+        string courseId,
+        string? reason)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                userId
+            ) ||
+            string.IsNullOrWhiteSpace(
+                courseId
+            )
+        )
+        {
+            TempData["BarredError"] =
+                "Student and subject are required.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        StudentClass? studentClass =
+            await _context
+                .StudentClasses
+                .Include(sc =>
+                    sc.User
+                )
+                .Include(sc =>
+                    sc.Program
+                )
+                .FirstOrDefaultAsync(sc =>
+                    sc.UserId ==
+                        userId &&
+                    sc.User != null &&
+                    sc.User.Position ==
+                        "Student" &&
+                    !sc.User.IsDeleted
+                );
+
+        if (
+            studentClass ==
+            null
+        )
+        {
+            TempData["BarredError"] =
+                "Student registration could not be found.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        ProgramCourse? mapping =
+            await _context
+                .ProgramCourses
+                .AsNoTracking()
+                .Include(pc =>
+                    pc.Course
+                )
+                .FirstOrDefaultAsync(pc =>
+                    pc.ProgramId ==
+                        studentClass.ProgramId &&
+                    pc.CourseId ==
+                        courseId
+                );
+
+        if (
+            mapping == null ||
+            mapping.Course == null
+        )
+        {
+            TempData["BarredError"] =
+                "This subject does not belong to the student's program.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        bool alreadyBarred =
+            await _context
+                .BarredStudents
+                .AnyAsync(b =>
+                    b.UserId ==
+                        userId &&
+                    b.CourseId ==
+                        courseId
+                );
+
+        if (
+            alreadyBarred
+        )
+        {
+            TempData["BarredError"] =
+                "This student is already barred for this subject.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        AttendanceCalculationResult result =
+            await CalculateAttendanceAsync(
+                studentClass,
+                courseId
+            );
+
+        double displayPercentage =
+            Math.Round(
+                result.Percentage,
+                1
+            );
+
+        if (
+            displayPercentage >
+            80
+        )
+        {
+            TempData["BarredError"] =
+                "This student cannot be barred because attendance is above 80%.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        string finalReason =
+            string.IsNullOrWhiteSpace(
+                reason
+            )
+                ? $"Low attendance ({displayPercentage:0.#}%)."
+                : reason.Trim();
+
+        if (
+            finalReason.Length >
+            300
+        )
+        {
+            TempData["BarredError"] =
+                "Reason cannot exceed 300 characters.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        BarredStudent barredStudent =
+            new()
+            {
+                BarredStudentId =
+                    await FormattedIdGenerator
+                        .NextAsync(
+                            _context.BarredStudents,
+                            b =>
+                                b.BarredStudentId,
+                            "BRD"
+                        ),
+
+                UserId =
+                    userId,
+
+                CourseId =
+                    courseId,
+
+                Reason =
+                    finalReason,
+
+                BarredAt =
+                    DateTime.Now
+            };
+
+        _context
+            .BarredStudents
+            .Add(
+                barredStudent
+            );
+
+        await _context
+            .SaveChangesAsync();
+
+        TempData["BarredSuccess"] =
+            $"{studentClass.User?.Username ?? studentClass.StudentId} " +
+            $"was added to the barred list for " +
+            $"{mapping.Course.CourseName}.";
+
+        return RedirectToAction(
+            nameof(BarredList)
+        );
+    }
+
+    // ==================================================
+    // EDIT BARRED REASON
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditBarredStudent(
+        string id,
+        string reason)
+    {
+        BarredStudent? barredStudent =
+            await _context
+                .BarredStudents
+                .FirstOrDefaultAsync(b =>
+                    b.BarredStudentId ==
+                    id
+                );
+
+        if (
+            barredStudent ==
+            null
+        )
+        {
+            TempData["BarredError"] =
+                "Barred record could not be found.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        reason =
+            (
+                reason ??
+                ""
+            )
+            .Trim();
+
+        if (
+            string.IsNullOrWhiteSpace(
+                reason
+            )
+        )
+        {
+            TempData["BarredError"] =
+                "Reason is required.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        if (
+            reason.Length >
+            300
+        )
+        {
+            TempData["BarredError"] =
+                "Reason cannot exceed 300 characters.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        barredStudent.Reason =
+            reason;
+
+        await _context
+            .SaveChangesAsync();
+
+        TempData["BarredSuccess"] =
+            "Barred record updated successfully.";
+
+        return RedirectToAction(
+            nameof(BarredList)
+        );
+    }
+
+    // ==================================================
+    // REMOVE FROM BARRED LIST
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveBarredStudent(
+        string id)
+    {
+        BarredStudent? barredStudent =
+            await _context
+                .BarredStudents
+                .FirstOrDefaultAsync(b =>
+                    b.BarredStudentId ==
+                    id
+                );
+
+        if (
+            barredStudent ==
+            null
+        )
+        {
+            TempData["BarredError"] =
+                "Barred record could not be found.";
+
+            return RedirectToAction(
+                nameof(BarredList)
+            );
+        }
+
+        _context
+            .BarredStudents
+            .Remove(
+                barredStudent
+            );
+
+        await _context
+            .SaveChangesAsync();
+
+        TempData["BarredSuccess"] =
+            "Student removed from barred list successfully.";
+
+        return RedirectToAction(
+            nameof(BarredList)
+        );
+    }
+
+    // ==================================================
+    // CALCULATE ATTENDANCE FOR BARRED LIST
+    // ==================================================
+
+    private async Task<AttendanceCalculationResult>
+        CalculateAttendanceAsync(
+            StudentClass studentClass,
+            string courseId)
+    {
+        DateTime now =
+            DateTime.Now;
+
+        DateTime today =
+            DateTime.Today;
+
+        List<Timetable> timetables =
+            await _context
+                .Timetables
+                .AsNoTracking()
+                .Where(t =>
+                    t.ClassId ==
+                        studentClass.ClassId &&
+                    t.CourseId ==
+                        courseId &&
+                    t.Term != null &&
+                    t.Term.Status ==
+                        "Active"
+                )
+                .ToListAsync();
+
+        List<string> timetableIds =
+            timetables
+                .Select(t =>
+                    t.TimetableId
+                )
+                .ToList();
+
+        if (
+            timetableIds.Count ==
+            0
+        )
+        {
+            return new AttendanceCalculationResult
+            {
+                AbsentCount =
+                    0,
+
+                Percentage =
+                    100
+            };
+        }
+
+        List<AttendanceSession> sessions =
+            await _context
+                .AttendanceSessions
+                .AsNoTracking()
+                .Where(s =>
+                    timetableIds.Contains(
+                        s.TimetableId
+                    ) &&
+                    s.SessionDate <=
+                        today
+                )
+                .OrderBy(s =>
+                    s.SessionDate
+                )
+                .ToListAsync();
+
+        int absent =
+            0;
+
+        foreach (
+            AttendanceSession session
+            in sessions)
+        {
+            Timetable? timetable =
+                timetables
+                    .FirstOrDefault(t =>
+                        t.TimetableId ==
+                        session.TimetableId
+                    );
+
+            if (
+                timetable ==
+                null
+            )
+            {
+                continue;
+            }
+
+            // ==========================================
+            // STUDENT REGISTRATION VALIDATION
+            // ==========================================
+
+            DateTime classStart =
+                session.SessionDate.Date
+                    .Add(
+                        timetable.StartTime
+                    );
+
+            if (
+                studentClass.RegisteredDate >
+                classStart
+            )
+            {
+                continue;
+            }
+
+            AttendanceRecord? record =
+                await _context
+                    .AttendanceRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(r =>
+                        r.AttendanceSessionId ==
+                            session.AttendanceSessionId &&
+                        r.StudentClassId ==
+                            studentClass.StudentClassId
+                    );
+
+            if (
+                record != null &&
+                !record.IsRemoved
+            )
+            {
+                continue;
+            }
+
+            // ==========================================
+            // APPROVED LEAVE
+            // ==========================================
+
+            bool approvedLeave =
+                await _context
+                    .LeaveApplications
+                    .AsNoTracking()
+                    .AnyAsync(l =>
+                        l.StudentId ==
+                            studentClass.UserId &&
+                        l.Status ==
+                            "Approved" &&
+                        session.SessionDate.Date >=
+                            l.StartDate.Date &&
+                        session.SessionDate.Date <=
+                            l.EndDate.Date
+                    );
+
+            if (
+                approvedLeave
+            )
+            {
+                continue;
+            }
+
+            // ==========================================
+            // CLASS END TIME
+            // ==========================================
+
+            DateTime classEnd =
+                session.SessionDate.Date
+                    .Add(
+                        timetable.EndTime
+                    );
+
+            if (
+                now <
+                classEnd
+            )
+            {
+                continue;
+            }
+
+            absent++;
+        }
+
+        // ==========================================
+        // FORMULA
+        // Attendance % = 100 - (Absent × 6.6667)
+        // ==========================================
+
+        const double AbsentPenalty =
+            6.6667;
+
+        double percentage =
+            100 -
+            (
+                absent *
+                AbsentPenalty
+            );
+
+        if (
+            percentage <
+            0
+        )
+        {
+            percentage =
+                0;
+        }
+
+        return new AttendanceCalculationResult
+        {
+            AbsentCount =
+                absent,
+
+            Percentage =
+                percentage
+        };
+    }
+
+    // ==================================================
+    // ATTENDANCE CALCULATION RESULT
+    // ==================================================
+
+    private class AttendanceCalculationResult
+    {
+        public int AbsentCount { get; set; }
+
+        public double Percentage { get; set; }
+    }
+
+    // ==================================================
     // TIMETABLE PAGE
     // ==================================================
 

@@ -54,5 +54,11 @@ public class User
 
     public DateTime? DeletedAt { get; set; }
 
+    // Language chosen from the student portal dropdown.
+    // "en" | "ms" | "zh" - persisted so the choice survives logout.
+    [Required]
+    [MaxLength(5)]
+    public string PreferredLanguage { get; set; } = "en";
+
     public AdminSecurity? AdminSecurity { get; set; }
 }

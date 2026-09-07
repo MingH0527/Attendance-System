@@ -49,9 +49,11 @@
         </div>
     </header>
 
+
     <section class="security-summary">
 
         <div class="summary-card">
+
             <span class="summary-label">
                 Account Role
             </span>
@@ -59,9 +61,12 @@
             <strong>
                 @Model.Position
             </strong>
+
         </div>
 
+
         <div class="summary-card">
+
             <span class="summary-label">
                 Registered Passkeys
             </span>
@@ -69,9 +74,12 @@
             <strong>
                 @passkeyCount / 3
             </strong>
+
         </div>
 
+
         <div class="summary-card">
+
             <span class="summary-label">
                 Admin Security PIN
             </span>
@@ -88,11 +96,16 @@
                     Not configured
                 </strong>
             }
+
         </div>
 
     </section>
 
+
     <section class="dashboard-grid">
+
+
+        <!-- My Profile -->
 
         <a asp-controller="MyProfile"
            asp-action="Index"
@@ -103,14 +116,22 @@
             </div>
 
             <div>
-                <h2>My Profile</h2>
+
+                <h2>
+                    My Profile
+                </h2>
 
                 <p>
                     View your account information
                     and security settings.
                 </p>
+
             </div>
+
         </a>
+
+
+        <!-- Passkey -->
 
         <a asp-controller="MyProfile"
            asp-action="Passkey"
@@ -121,14 +142,22 @@
             </div>
 
             <div>
-                <h2>Passkey & PIN</h2>
+
+                <h2>
+                    Passkey & PIN
+                </h2>
 
                 <p>
                     Register passkeys and configure
                     the Admin Security PIN.
                 </p>
+
             </div>
+
         </a>
+
+
+        <!-- Timetable -->
 
         <a asp-controller="Admin"
            asp-action="Timetable"
@@ -139,14 +168,22 @@
             </div>
 
             <div>
-                <h2>Timetable</h2>
+
+                <h2>
+                    Timetable
+                </h2>
 
                 <p>
                     Create, update and manage
                     timetable entries.
                 </p>
+
             </div>
+
         </a>
+
+
+        <!-- Program & Subject -->
 
         <a asp-controller="ProgramSubject"
            asp-action="Index"
@@ -157,16 +194,23 @@
             </div>
 
             <div>
-                <h2>Program &amp; Subject CRUD</h2>
+
+                <h2>
+                    Program &amp; Subject CRUD
+                </h2>
 
                 <p>
                     Create programs and subjects,
                     then assign subjects to programs.
                 </p>
+
             </div>
+
         </a>
 
+
         <!-- User Management -->
+
         <a asp-controller="User"
            asp-action="Index"
            class="dashboard-card">
@@ -176,16 +220,23 @@
             </div>
 
             <div>
-                <h2>User Management</h2>
+
+                <h2>
+                    User Management
+                </h2>
 
                 <p>
-                    View, edit and manage user accounts.
+                    View, edit and manage
+                    user accounts.
                 </p>
+
             </div>
 
         </a>
 
+
         <!-- Leave Management -->
+
         <a asp-controller="Admin"
            asp-action="LeaveManagement"
            class="dashboard-card">
@@ -195,15 +246,48 @@
             </div>
 
             <div>
-                <h2>Leave Management</h2>
+
+                <h2>
+                    Leave Management
+                </h2>
 
                 <p>
                     Review student leave applications
                     and approve or reject requests.
                 </p>
+
             </div>
 
         </a>
+
+
+        <!-- Barred List -->
+
+        <a asp-controller="Admin"
+           asp-action="BarredList"
+           class="dashboard-card">
+
+            <div class="card-icon">
+                🚫
+            </div>
+
+            <div>
+
+                <h2>
+                    Barred List
+                </h2>
+
+                <p>
+                    Manage students with attendance
+                    of 80% or below.
+                </p>
+
+            </div>
+
+        </a>
+
+
+        <!-- Logout -->
 
         <div class="dashboard-card logout-card">
 
@@ -212,7 +296,10 @@
             </div>
 
             <div>
-                <h2>Logout</h2>
+
+                <h2>
+                    Logout
+                </h2>
 
                 <p>
                     End the current administrator
@@ -229,8 +316,11 @@
                             class="logout-button">
 
                         Logout
+
                     </button>
+
                 </form>
+
             </div>
 
         </div>

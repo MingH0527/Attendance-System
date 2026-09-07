@@ -93,6 +93,16 @@ builder.Services.AddFido2(options =>
 });
 builder.Services.AddSingleton<PasskeyFido2Factory>();
 
+// TRANSLATION (local dictionary at wwwroot/data/translations.json)
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ITranslationService, DictionaryTranslationService>();
+
+// Let the language fetch() calls send the token as a header.
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+});
+
 // OTHER SERVICES
 builder.Services.AddScoped<GmailServiceHelper>();
 builder.Services.AddScoped<ReceiptPdfService>();
@@ -100,6 +110,31 @@ builder.Services.AddScoped<TimetablePdfService>();
 builder.Services.AddScoped<ITimetableValidationService, TimetableValidationService>();
 
 var app = builder.Build();
+
+// Apply any pending EF Core migrations on startup, so nobody has to run
+// "dotnet ef database update" by hand after pulling from GitHub.
+using (IServiceScope startupScope = app.Services.CreateScope())
+{
+    try
+    {
+        DB startupDb =
+            startupScope.ServiceProvider.GetRequiredService<DB>();
+
+        startupDb.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        // Do not take the whole app down if the database is locked or
+        // mid-sync; the error is logged and startup continues.
+        ILogger<Program> startupLogger =
+            startupScope.ServiceProvider
+                .GetRequiredService<ILogger<Program>>();
+
+        startupLogger.LogError(
+            ex,
+            "Could not apply database migrations on startup.");
+    }
+}
 
 // CLOUDFLARE / REVERSE PROXY HEADERS
 app.UseForwardedHeaders(new ForwardedHeadersOptions

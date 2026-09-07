@@ -1,0 +1,478 @@
+﻿@model WebAndMobile.Models.BarredListViewModel
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Barred List";
+}
+
+<link rel="stylesheet"
+      href="~/css/barredlist.css"
+      asp-append-version="true" />
+
+<div class="barred-page">
+
+    <!-- ==============================
+         HEADER
+         ============================== -->
+
+    <div class="barred-header">
+
+        <div>
+            <p class="barred-eyebrow">
+                ADMIN MANAGEMENT
+            </p>
+
+            <h1>
+                Barred List
+            </h1>
+
+            <p>
+                Manage students whose attendance
+                has reached 80% or below.
+            </p>
+        </div>
+
+
+        <a asp-controller="Admin"
+           asp-action="Index"
+           class="barred-back">
+
+            ← Admin Home
+
+        </a>
+
+    </div>
+
+
+    <!-- ==============================
+         MESSAGE
+         ============================== -->
+    @if (
+            TempData["BarredSuccess"]
+            is string success
+        )
+    {
+        <div class="barred-alert success">
+            @success
+        </div>
+    }
+
+
+    @if (
+        TempData["BarredError"]
+        is string error
+    )
+    {
+        <div class="barred-alert error">
+            @error
+        </div>
+    }
+
+
+    <!-- ==============================
+         CURRENT BARRED STUDENTS
+         ============================== -->
+
+    <section class="barred-card">
+
+        <div class="section-title">
+
+            <div>
+                <h2>
+                    Current Barred Students
+                </h2>
+
+                <p>
+                    Students currently restricted
+                    because of attendance issues.
+                </p>
+            </div>
+
+
+            <span class="count-badge">
+                @Model.BarredStudents.Count
+            </span>
+
+        </div>
+
+
+        @if (
+            !Model.BarredStudents.Any()
+        )
+        {
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    🚫
+                </div>
+
+                <strong>
+                    No barred students
+                </strong>
+
+                <p>
+                    Students added to the barred list
+                    will appear here.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="table-wrapper">
+
+                <table class="barred-table">
+
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Student</th>
+                            <th>Program</th>
+                            <th>Subject</th>
+                            <th>Absent</th>
+                            <th>Attendance</th>
+                            <th>Reason</th>
+                            <th>Barred Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (
+                            var student
+                            in Model.BarredStudents
+                        )
+                        {
+                            double percentage =
+                                Math.Round(
+                                    student.AttendancePercentage,
+                                    1
+                                );
+
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        @student.StudentId
+                                    </strong>
+                                </td>
+
+
+                                <td>
+                                    @student.Username
+                                </td>
+
+
+                                <td>
+                                    @student.ProgramName
+                                </td>
+
+
+                                <td>
+                                    <div class="subject-cell">
+
+                                        @if (
+                                            !string.IsNullOrWhiteSpace(
+                                                student.CourseCode
+                                            )
+                                        )
+                                        {
+                                            <strong>
+                                                @student.CourseCode
+                                            </strong>
+                                        }
+
+                                        <span>
+                                            @student.CourseName
+                                        </span>
+
+                                    </div>
+                                </td>
+
+
+                                <td>
+                                    <span class="absent-badge">
+                                        @student.AbsentCount
+                                    </span>
+                                </td>
+
+
+                                <td>
+
+                                    <span class="attendance-badge danger">
+                                        @percentage.ToString("0.#")%
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <form asp-controller="Admin"
+                                          asp-action="EditBarredStudent"
+                                          method="post"
+                                          class="reason-form">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="id"
+                                               value="@student.BarredStudentId" />
+
+                                        <input type="text"
+                                               name="reason"
+                                               value="@student.Reason"
+                                               maxlength="300"
+                                               required />
+
+                                        <button type="submit"
+                                                class="edit-button">
+                                            Save
+                                        </button>
+
+                                    </form>
+
+                                </td>
+
+
+                                <td>
+                                    @student.BarredAt
+                                    .ToString(
+                                    "dd/MM/yyyy"
+                                    )
+                                </td>
+
+
+                                <td>
+
+                                    <form asp-controller="Admin"
+                                          asp-action="RemoveBarredStudent"
+                                          method="post">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="id"
+                                               value="@student.BarredStudentId" />
+
+                                        <button type="submit"
+                                                class="remove-button"
+                                                onclick="return confirm('Remove this student from the barred list?');">
+
+                                            Remove
+
+                                        </button>
+
+                                    </form>
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </section>
+
+
+    <!-- ==============================
+         ELIGIBLE STUDENTS
+         ============================== -->
+
+    <section class="barred-card">
+
+        <div class="section-title">
+
+            <div>
+                <h2>
+                    Eligible for Barred List
+                </h2>
+
+                <p>
+                    Students with subject attendance
+                    of 80% or below.
+                </p>
+            </div>
+
+
+            <span class="count-badge warning">
+                @Model.EligibleStudents.Count
+            </span>
+
+        </div>
+
+        @if (
+            !Model.EligibleStudents.Any()
+        )
+        {
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    ✅
+                </div>
+
+                <strong>
+                    No students are currently eligible
+                </strong>
+
+                <p>
+                    Students will appear here when
+                    their attendance reaches 80% or below.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="table-wrapper">
+
+                <table class="barred-table">
+
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Student</th>
+                            <th>Program</th>
+                            <th>Subject</th>
+                            <th>Absent</th>
+                            <th>Attendance</th>
+                            <th>Reason</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (
+                            var student
+                            in Model.EligibleStudents
+                        )
+                        {
+                            double percentage =
+                                Math.Round(
+                                    student.AttendancePercentage,
+                                    1
+                                );
+
+                            string formId =
+                                $"barForm_{student.UserId}_{student.CourseId}";
+
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        @student.StudentId
+                                    </strong>
+                                </td>
+
+
+                                <td>
+                                    @student.Username
+                                </td>
+
+
+                                <td>
+                                    @student.ProgramName
+                                </td>
+
+
+                                <td>
+
+                                    <div class="subject-cell">
+
+                                        @if (
+                                            !string.IsNullOrWhiteSpace(
+                                                student.CourseCode
+                                            )
+                                        )
+                                        {
+                                            <strong>
+                                                @student.CourseCode
+                                            </strong>
+                                        }
+
+                                        <span>
+                                            @student.CourseName
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+
+                                <td>
+                                    <span class="absent-badge">
+                                        @student.AbsentCount
+                                    </span>
+                                </td>
+
+
+                                <td>
+                                    <span class="attendance-badge danger">
+                                        @percentage.ToString("0.#")%
+                                    </span>
+                                </td>
+
+
+                                <td>
+
+                                    <input type="text"
+                                           name="reason"
+                                           form="@formId"
+                                           maxlength="300"
+                                           placeholder="e.g. Low attendance"
+                                           required />
+
+                                </td>
+
+
+                                <td>
+
+                                    <form asp-controller="Admin"
+                                          asp-action="AddBarredStudent"
+                                          method="post"
+                                          id="@formId">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="userId"
+                                               value="@student.UserId" />
+
+                                        <input type="hidden"
+                                               name="courseId"
+                                               value="@student.CourseId" />
+
+                                        <button type="submit"
+                                                class="add-button"
+                                                onclick="return confirm('Add this student to the barred list?');">
+
+                                            + Add
+
+                                        </button>
+
+                                    </form>
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </section>
+
+</div>

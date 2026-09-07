@@ -33,12 +33,15 @@
 
 <div class="profile-page">
 
-    @if (TempData["ProfileRequired"] != null)
+    @if (
+        TempData["ProfileRequired"] != null
+    )
     {
         <div class="profile-required-alert">
             ⚠️ @TempData["ProfileRequired"]
         </div>
     }
+
 
     <div class="profile-container">
 
@@ -130,107 +133,326 @@
             </span>
 
         </div>
-            
-    
 
-        <!-- Profile Information -->
+
+        <!-- ==============================
+             PROFILE INFORMATION
+             ============================== -->
+
         <div class="profile-information">
 
-            <div class="information-row">
-                <span>Username</span>
-                <strong>@username</strong>
-            </div>
 
             <div class="information-row">
-                <span>Email</span>
-                <strong>@email</strong>
-            </div>
 
-            <div class="information-row">
-                <span>Role</span>
-                <strong>@role</strong>
-            </div>
+                <span>
+                    Username
+                </span>
 
-            <div class="information-row">
-                <span>Student ID</span>
                 <strong>
-                    @(ViewBag.StudentId ?? "Not registered")
+                    @username
                 </strong>
+
             </div>
 
-            <div class="information-row">
-                <span>Program</span>
-                <strong>
-                    @(ViewBag.ProgramName ?? "Not registered")
-                </strong>
-            </div>
 
             <div class="information-row">
-                <span>Class</span>
+
+                <span>
+                    Email
+                </span>
+
                 <strong>
-                    @(ViewBag.ClassName ?? "Not registered")
+                    @email
                 </strong>
+
             </div>
+
+
+            <div class="information-row">
+
+                <span>
+                    Role
+                </span>
+
+                <strong>
+                    @role
+                </strong>
+
+            </div>
+
+
+            <!-- ==============================
+                 STUDENT INFORMATION
+                 ============================== -->
+            @if (
+                            role ==
+                            "Student"
+                        )
+            {
+                <div class="information-row">
+
+                    <span>
+                        Student ID
+                    </span>
+
+                    <strong>
+                        @(ViewBag.StudentId ?? "Not registered")
+                    </strong>
+
+                </div>
+
+
+                <div class="information-row">
+
+                    <span>
+                        Program
+                    </span>
+
+                    <strong>
+                        @(ViewBag.ProgramName ?? "Not registered")
+                    </strong>
+
+                </div>
+
+
+                <div class="information-row">
+
+                    <span>
+                        Class
+                    </span>
+
+                    <strong>
+                        @(ViewBag.ClassName ?? "Not registered")
+                    </strong>
+
+                </div>
+            }
+
+
+            <!-- ==============================
+                 TEACHER INFORMATION
+                 ============================== -->
+            @if (
+                            role ==
+                            "Teacher"
+                        )
+            {
+                <div class="information-row">
+
+                    <span>
+                        Program
+                    </span>
+
+                    <strong>
+
+                        @if (
+                            !string.IsNullOrWhiteSpace(
+                                ViewBag.ProgramName
+                                as string
+                            )
+                        )
+                        {
+                            foreach (
+                                string program
+                                in (
+                                    ViewBag.ProgramName
+                                    as string
+                                    ?? ""
+                                )
+                                .Split(
+                                    '\n',
+                                    StringSplitOptions
+                                        .RemoveEmptyEntries
+                                )
+                            )
+                            {
+                                <div>
+                                    @program.Trim()
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <span>
+                                Not registered
+                            </span>
+                        }
+
+                    </strong>
+
+                </div>
+
+
+                <div class="information-row">
+
+                    <span>
+                        Subject
+                    </span>
+
+                    <strong>
+
+                        @if (
+                            !string.IsNullOrWhiteSpace(
+                                ViewBag.SubjectName
+                                as string
+                            )
+                        )
+                        {
+                            foreach (
+                                string subject
+                                in (
+                                    ViewBag.SubjectName
+                                    as string
+                                    ?? ""
+                                )
+                                .Split(
+                                    '\n',
+                                    StringSplitOptions
+                                        .RemoveEmptyEntries
+                                )
+                            )
+                            {
+                                <div>
+                                    @subject.Trim()
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <span>
+                                Not registered
+                            </span>
+                        }
+
+                    </strong>
+
+                </div>
+            }
 
         </div>
 
 
-        <!-- Profile Actions -->
+        <!-- ==============================
+             PROFILE ACTIONS
+             ============================== -->
+
         <div class="profile-actions">
 
-            @if (ViewBag.ShowRegisterCourseCard == true)
+
+            <!-- ==============================
+                 COMPLETE PROFILE
+                 ============================== -->
+            @if (
+                            ViewBag.ShowRegisterCourseCard ==
+                            true
+                        )
             {
-                <a asp-controller="Program"
-                   asp-action="RegisterProgram"
-                   class="profile-button security">
+                @if (
+                    role ==
+                    "Teacher"
+                )
+                {
+                    <a asp-controller="Teacher"
+                       asp-action="Create"
+                       class="profile-button security">
 
-                    <span>📋</span>
+                        <span>
+                            📋
+                        </span>
 
-                    <div>
-                        <strong>
-                            Complete My Profile
-                        </strong>
+                        <div>
 
-                        <small>
-                            @(role == "Teacher"
-                                ? "Register the course(s) you teach."
-                                : "Register your program and class to finish setup.")
-                        </small>
-                    </div>
+                            <strong>
+                                Complete My Profile
+                            </strong>
 
-                </a>
+                            <small>
+                                Register your program and
+                                the subject(s) you teach.
+                            </small>
+
+                        </div>
+
+                    </a>
+                }
+                else if (
+                    role ==
+                    "Student"
+                )
+                {
+                    <a asp-controller="Program"
+                       asp-action="RegisterProgram"
+                       class="profile-button security">
+
+                        <span>
+                            📋
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Complete My Profile
+                            </strong>
+
+                            <small>
+                                Register your program and
+                                class to finish setup.
+                            </small>
+
+                        </div>
+
+                    </a>
+                }
             }
 
 
-            @if (role == "Student")
+            <!-- ==============================
+                 STUDENT FACE ID
+                 ============================== -->
+            @if (
+                            role ==
+                            "Student"
+                        )
             {
                 <a asp-controller="FaceId"
                    asp-action="Manage"
                    class="profile-button security">
 
-                    <span>🙂</span>
+                    <span>
+                        🙂
+                    </span>
 
                     <div>
+
                         <strong>
                             Payment Face ID
                         </strong>
 
                         <small>
-                            Register the face used before QR payment.
+                            Register the face used
+                            before QR payment.
                         </small>
+
                     </div>
 
                 </a>
             }
 
 
+            <!-- ==============================
+                 PASSKEY
+                 ============================== -->
+
             <a asp-controller="MyProfile"
                asp-action="Passkey"
                class="profile-button primary">
 
-                <span>🔐</span>
+                <span>
+                    🔐
+                </span>
 
                 <div>
+
                     <strong>
                         Passkey Management
                     </strong>
@@ -239,20 +461,30 @@
                         Register and manage
                         secure login devices.
                     </small>
+
                 </div>
 
             </a>
 
 
-            @if (role == "Admin")
+            <!-- ==============================
+                 ADMIN PIN
+                 ============================== -->
+            @if (
+                            role ==
+                            "Admin"
+                        )
             {
                 <a asp-controller="MyProfile"
                    asp-action="SetAdminPin"
                    class="profile-button security">
 
-                    <span>🔢</span>
+                    <span>
+                        🔢
+                    </span>
 
                     <div>
+
                         <strong>
                             Admin Security PIN
                         </strong>
@@ -261,19 +493,27 @@
                             Create or update your
                             six-digit Admin PIN.
                         </small>
+
                     </div>
 
                 </a>
             }
 
 
+            <!-- ==============================
+                 BACK HOME
+                 ============================== -->
+
             <a asp-controller="@homeController"
                asp-action="Index"
                class="profile-button secondary">
 
-                <span>🏠</span>
+                <span>
+                    🏠
+                </span>
 
                 <div>
+
                     <strong>
                         Back to Home
                     </strong>
@@ -281,6 +521,7 @@
                     <small>
                         Return to your dashboard.
                     </small>
+
                 </div>
 
             </a>

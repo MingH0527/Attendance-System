@@ -124,6 +124,24 @@ public class StudentController : Controller
                     .Include(t => t.Teacher)
                     .OrderBy(t => t.StartTime)
                     .ToListAsync();
+
+            // ==========================================
+            // REGISTRATION TIME VALIDATION
+            // ==========================================
+
+            todayTimetable =
+                todayTimetable
+                    .Where(t =>
+                    {
+                        DateTime classStart =
+                            DateTime.Today.Add(
+                                t.StartTime
+                            );
+
+                        return studentClass.RegisteredDate <=
+                            classStart;
+                    })
+                    .ToList();
         }
 
         ViewBag.TodayTimetable =
@@ -324,6 +342,24 @@ public class StudentController : Controller
                 .OrderBy(t => t.StartTime)
                 .ToListAsync();
 
+        // ==============================
+        // REGISTRATION TIME VALIDATION
+        // ==============================
+
+        todayTimetables =
+            todayTimetables
+                .Where(t =>
+                {
+                    DateTime classStart =
+                        today.Date.Add(
+                            t.StartTime
+                        );
+
+                    return studentClass.RegisteredDate <=
+                        classStart;
+                })
+                .ToList();
+
         bool approvedLeaveToday =
             await db.LeaveApplications
                 .AsNoTracking()
@@ -501,6 +537,39 @@ public class StudentController : Controller
                 AttendanceSession session
                 in sessions)
             {
+                Timetable? sessionTimetable =
+                    subjectTimetables
+                        .FirstOrDefault(t =>
+                            t.TimetableId ==
+                                session.TimetableId
+                        );
+
+                if (
+                    sessionTimetable ==
+                    null
+                )
+                {
+                    continue;
+                }
+
+                // ==============================
+                // REGISTRATION TIME VALIDATION
+                // ==============================
+
+                DateTime classStart =
+                    session.SessionDate.Date
+                        .Add(
+                            sessionTimetable.StartTime
+                        );
+
+                if (
+                    studentClass.RegisteredDate >
+                    classStart
+                )
+                {
+                    continue;
+                }
+
                 AttendanceRecord? record =
                     await db.AttendanceRecords
                         .AsNoTracking()
@@ -521,21 +590,6 @@ public class StudentController : Controller
                 )
                 {
                     present++;
-                    continue;
-                }
-
-                Timetable? sessionTimetable =
-                    subjectTimetables
-                        .FirstOrDefault(t =>
-                            t.TimetableId ==
-                                session.TimetableId
-                        );
-
-                if (
-                    sessionTimetable ==
-                    null
-                )
-                {
                     continue;
                 }
 
@@ -575,16 +629,18 @@ public class StudentController : Controller
                             sessionTimetable.EndTime
                         );
 
-                // Class not ended yet
-                // Do not count absent
                 if (
-                    now < classEnd
+                    now <
+                    classEnd
                 )
                 {
                     continue;
                 }
 
-                // Class already ended
+                // ==============================
+                // ABSENT
+                // ==============================
+
                 absent++;
             }
 
@@ -592,9 +648,12 @@ public class StudentController : Controller
             // ATTENDANCE PERCENTAGE
             // ==============================
 
-            // Each absent deducts 2%
+            // Formula:
+            // Attendance % =
+            // 100 - (Absent × 6.6667)
+
             const double AbsentPenalty =
-                2.0;
+                6.6667;
 
             double percentage =
                 100 -
@@ -604,7 +663,8 @@ public class StudentController : Controller
                 );
 
             if (
-                percentage < 0
+                percentage <
+                0
             )
             {
                 percentage =
@@ -699,8 +759,11 @@ public class StudentController : Controller
             code.Trim();
 
         if (
-            code.Length != 6 ||
-            !code.All(char.IsDigit)
+            code.Length !=
+                6 ||
+            !code.All(
+                char.IsDigit
+            )
         )
         {
             TempData["AttendanceError"] =
@@ -764,6 +827,29 @@ public class StudentController : Controller
         {
             TempData["AttendanceError"] =
                 "Invalid or expired attendance code.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
+        // ==============================
+        // REGISTRATION TIME VALIDATION
+        // ==============================
+
+        DateTime classStart =
+            session.SessionDate.Date
+                .Add(
+                    session.Timetable!.StartTime
+                );
+
+        if (
+            studentClass.RegisteredDate >
+            classStart
+        )
+        {
+            TempData["AttendanceError"] =
+                "This class started before you completed your program and class registration.";
 
             return RedirectToAction(
                 nameof(Attendance)
@@ -969,6 +1055,24 @@ public class StudentController : Controller
                 continue;
             }
 
+            // ==============================
+            // REGISTRATION TIME VALIDATION
+            // ==============================
+
+            DateTime classStart =
+                session.SessionDate.Date
+                    .Add(
+                        timetable.StartTime
+                    );
+
+            if (
+                studentClass.RegisteredDate >
+                classStart
+            )
+            {
+                continue;
+            }
+
             AttendanceRecord? record =
                 await db.AttendanceRecords
                     .AsNoTracking()
@@ -1039,10 +1143,9 @@ public class StudentController : Controller
                                 timetable.EndTime
                             );
 
-                    // Class not finished
-                    // Do not show absent yet
                     if (
-                        now < classEnd
+                        now <
+                        classEnd
                     )
                     {
                         continue;
@@ -1121,9 +1224,12 @@ public class StudentController : Controller
         // ATTENDANCE PERCENTAGE
         // ==============================
 
-        // Each absent deducts 2%
+        // Formula:
+        // Attendance % =
+        // 100 - (Absent × 6.6667)
+
         const double AbsentPenalty =
-            2.0;
+            6.6667;
 
         model.Percentage =
             100 -
@@ -1133,7 +1239,8 @@ public class StudentController : Controller
             );
 
         if (
-            model.Percentage < 0
+            model.Percentage <
+            0
         )
         {
             model.Percentage =
@@ -1150,7 +1257,8 @@ public class StudentController : Controller
             model.LeaveCount;
 
         if (
-            total > 0
+            total >
+            0
         )
         {
             model.PresentPercent =
@@ -1387,7 +1495,6 @@ public class StudentController : Controller
                 "You already have a pending or approved leave application for the selected date range."
             );
         }
-
 
         // ==============================
         // FILE VALIDATION

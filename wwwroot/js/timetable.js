@@ -71,10 +71,7 @@ async function dashboard(){
   const card=document.createElement("article");
   card.className=`tt-term-card ${t.status==="Warning"?"tt-term-warning":""} ${t.status==="Abandoned"?"tt-term-abandoned":""}`;
   const restoredStatusChoice=t.isRestored
-   ? `<div class="tt-status-choice" aria-label="Restored semester status">
-        <button type="button" class="tt-status-choice-btn selected" disabled>Incoming</button>
-        <button type="button" data-term-action="activate-restored" class="tt-status-choice-btn active-choice">Set Active</button>
-      </div>`
+   ? `<button type="button" data-term-action="activate-restored" class="tt-btn-secondary tt-set-active-btn">Set Active</button>`
    : "";
   const actions=S.bucket==="current"
    ? `<div class="tt-term-actions">${t.status==="Incoming"?'<button type="button" data-term-action="edit" class="tt-btn-secondary">Edit Dates</button>':''}${restoredStatusChoice}<button type="button" data-term-action="archive" class="tt-btn-secondary">Move to History</button></div>`
@@ -177,7 +174,18 @@ function renderSkeleton(){
  DAYS[S.type].forEach(day=>{
   const tr=document.createElement("tr");tr.dataset.day=day;tr.innerHTML=`<td class="tt-day-label">${DAY_NAME[day]}</td>`;
   HOURS.forEach(h=>{const td=document.createElement("td");td.className="tt-cell";td.dataset.hour=h;td.dataset.day=day;
-   if(S.mode==="edit"&&!$("weekDate").value){td.ondragover=e=>{e.preventDefault();td.classList.add("drag-over")};td.ondragleave=()=>td.classList.remove("drag-over");td.ondrop=e=>{e.preventDefault();td.classList.remove("drag-over");const raw=e.dataTransfer.getData("assignment");if(raw)openCreate(day,h,JSON.parse(raw))};}
+   const selectedWeek=$("weekDate").value;
+   const occurrence=selectedWeek?occurrenceDate(selectedWeek,+day):null;
+   const outside=occurrence&&!isDateInsideSemester(occurrence);
+   if(outside){
+    td.classList.add("tt-outside-semester");
+    td.dataset.outsideSemester="true";
+    td.title=`${dateShort(occurrence)} is outside ${S.term.name}.`;
+   }else if(S.mode==="edit"&&!selectedWeek){
+    td.ondragover=e=>{e.preventDefault();td.classList.add("drag-over")};
+    td.ondragleave=()=>td.classList.remove("drag-over");
+    td.ondrop=e=>{e.preventDefault();td.classList.remove("drag-over");const raw=e.dataTransfer.getData("assignment");if(raw)openCreate(day,h,JSON.parse(raw))};
+   }
    tr.appendChild(td);
   });body.appendChild(tr);
  });
@@ -194,17 +202,19 @@ function merge(entries){
 }
 
 function renderEntries(){
- document.querySelectorAll(".tt-cell").forEach(x=>{x.innerHTML="";x.style.display="";x.removeAttribute("colspan")});
+ document.querySelectorAll(".tt-cell").forEach(x=>{x.innerHTML="";x.style.display="";x.removeAttribute("colspan");x.classList.remove("has-overlap")});
  const visible=S.mode==="view"?S.entries.filter(e=>!(e.status==="Cancelled"&&e.hasReplacement)):S.entries;
  const rows=S.mode==="view"?merge(visible):visible;
  rows.forEach(e=>{
   const sh=+e.startTime.split(":")[0],eh=+e.endTime.split(":")[0],tr=document.querySelector(`tr[data-day='${e.dayOfWeek}']`),cell=tr?.querySelector(`[data-hour='${sh}']`);if(!cell)return;
+  if(cell.dataset.outsideSemester==="true")return;
   const span=Math.max(1,eh-sh);if(S.mode==="view")cell.colSpan=span;
   const block=document.createElement("div");block.className=`tt-lesson-block ${(e.status||"Normal").toLowerCase()}`;
   block.innerHTML=`<strong>${esc(e.courseName)}${e.isReplacement?'<em class="tt-replacement-badge">Replacement</em>':e.isUpdated?'<em class="tt-updated-badge">Updated</em>':''}</strong><span>${esc(e.teacherName)}${e.roomName?" · "+esc(e.roomName):""}</span>${e.statusReason?`<small>${e.isReplacement?"↪":"⚠"} ${esc(e.statusReason)}</small>`:""}`;
   if(S.mode==="edit"&&!e.isReplacement)block.onclick=()=>openEdit(e);cell.appendChild(block);
   if(S.mode==="view")for(let h=sh+1;h<eh;h++){const x=tr.querySelector(`[data-hour='${h}']`);if(x)x.style.display="none";}
  });
+ document.querySelectorAll(".tt-cell").forEach(cell=>{if(cell.querySelectorAll(":scope > .tt-lesson-block").length>1)cell.classList.add("has-overlap")});
 }
 
 async function openCreate(day,h,a){
@@ -214,6 +224,10 @@ async function openCreate(day,h,a){
  $("deleteLessonBtn").hidden=true;configureStatus(day,"Normal",null);showLessonModal();
 }
 async function openEdit(e){
+ if($("weekDate").value){
+  const date=occurrenceDate($("weekDate").value,+e.dayOfWeek);
+  if(!isDateInsideSemester(date))return;
+ }
  $("lessonModalTitle").textContent=$("weekDate").value?"Edit this lesson date":"Edit weekly template lesson";$("fTimetableId").value=e.timetableId;$("fTeacherId").value=e.teacherId;$("fCourseId").value=e.courseId;$("fDayOfWeek").value=e.dayOfWeek;
  $("fAssignment").value=`${e.courseName} · ${e.teacherName}`;$("fStartTime").value=e.startTime;$("fEndTime").value=e.endTime;
  await fillRooms(e.classroomId,e.dayOfWeek,e.startTime,e.endTime,e.timetableId);$("deleteLessonBtn").hidden=!!$("weekDate").value;
@@ -559,6 +573,11 @@ function showHolidayError(message){$("holidayError").textContent=message;$("holi
 async function deleteHoliday(id){if(!confirm("Delete this holiday from the central Holiday Calendar?"))return;const r=await fetch(`/Timetable/DeleteCalendarEvent?id=${encodeURIComponent(id)}`,{method:"POST"});if(!r.ok){showHolidayError(await r.text());return;}await loadHolidayList();if(S.term)await loadGrid();}
 
 function occurrenceDate(weekStart,day){const d=new Date(weekStart+"T00:00:00"),delta=(day-d.getDay()+7)%7;d.setDate(d.getDate()+delta);return localIso(d);}
+function isDateInsideSemester(date){
+ if(!date||!S.term)return false;
+ const d=String(date).slice(0,10),start=String(S.term.startDate).slice(0,10),end=String(S.term.endDate).slice(0,10);
+ return d>=start&&d<=end;
+}
 function localIso(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}
 function dateText(v){return new Date(v).toLocaleDateString();}
 function dateShort(v){return new Date(v).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});}
