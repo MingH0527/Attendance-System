@@ -456,6 +456,10 @@
     cursor: pointer;
 }
 
+.profile-value-line {
+    display: block;
+}
+
 
 .avatar-toast-hide {
     opacity: 0;

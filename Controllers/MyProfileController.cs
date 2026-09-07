@@ -329,14 +329,7 @@ public class MyProfileController : Controller
                     u => u.UserId == userId
                 );
 
-        User? user =
-            await db.Users
-                .FirstOrDefaultAsync(
-                    u =>
-                        u.UserId ==
-                        userId
-                );
-
+      
 
         if (
             user ==
