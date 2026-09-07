@@ -13,10 +13,13 @@ public class AttendanceController : Controller
 {
     private readonly DB db;
 
-    public AttendanceController(DB db)
+    public AttendanceController(
+        DB db)
     {
-        this.db = db;
+        this.db =
+            db;
     }
+
 
     private string? GetCurrentUserId()
     {
@@ -25,15 +28,25 @@ public class AttendanceController : Controller
         );
     }
 
+
+    // ==================================================
+    // GENERATE ATTENDANCE CODE
+    // ==================================================
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateCode(
-        string timetableId
-    )
+        string timetableId,
+        string? replacementId)
     {
-        var userId = GetCurrentUserId();
+        string? userId =
+            GetCurrentUserId();
 
-        if (userId == null)
+
+        if (
+            userId ==
+            null
+        )
         {
             return RedirectToAction(
                 "Login",
@@ -41,101 +54,320 @@ public class AttendanceController : Controller
             );
         }
 
-        // Make sure this timetable belongs
-        // to the logged-in teacher
-        var timetable = await db.Timetables
-            .FirstOrDefaultAsync(t =>
-                t.TimetableId == timetableId &&
-                t.TeacherId == userId
-            );
 
-        if (timetable == null)
-        {
-            return NotFound();
-        }
+        DateTime now =
+            DateTime.Now;
 
-        DateTime now = DateTime.Now;
 
-        // Must be correct day
-        if (now.DayOfWeek != timetable.DayOfWeek)
-        {
-            TempData["AttendanceError"] =
-                $"Attendance code can only be generated on {timetable.DayOfWeek}.";
+        Timetable? timetable;
 
-            return RedirectToAction(
-                "Timetable",
-                "Teacher"
-            );
-        }
+        TimeSpan actualStartTime;
 
-        // Must be during class time
+        TimeSpan actualEndTime;
+
+
+        // ==================================================
+        // REPLACEMENT CLASS
+        // ==================================================
+
         if (
-            now.TimeOfDay < timetable.StartTime ||
-            now.TimeOfDay > timetable.EndTime
+            !string.IsNullOrWhiteSpace(
+                replacementId
+            )
+        )
+        {
+            ReplacementSession? replacement =
+                await db.ReplacementSessions
+                    .Include(r =>
+                        r.SourceTimetable
+                    )
+                    .ThenInclude(t =>
+                        t!.Term
+                    )
+                    .FirstOrDefaultAsync(r =>
+                        r.ReplacementId ==
+                            replacementId &&
+                        r.TeacherId ==
+                            userId
+                    );
+
+
+            if (
+                replacement ==
+                null ||
+                replacement.SourceTimetable ==
+                null
+            )
+            {
+                return NotFound();
+            }
+
+
+            if (
+                !string.Equals(
+                    replacement.Status,
+                    "Scheduled",
+                    StringComparison
+                        .OrdinalIgnoreCase
+                )
+            )
+            {
+                TempData["AttendanceError"] =
+                    "This replacement class is not available for attendance.";
+
+                return RedirectToAction(
+                    "AttendanceCode",
+                    "Teacher"
+                );
+            }
+
+
+            if (
+                replacement
+                    .ReplacementDate
+                    .Date !=
+                now.Date
+            )
+            {
+                TempData["AttendanceError"] =
+                    "Attendance code can only be generated on the replacement class date.";
+
+                return RedirectToAction(
+                    "AttendanceCode",
+                    "Teacher"
+                );
+            }
+
+
+            timetable =
+                replacement
+                    .SourceTimetable;
+
+
+            if (
+                timetable.Term ==
+                    null ||
+                timetable.Term.Status !=
+                    "Active"
+            )
+            {
+                TempData["AttendanceError"] =
+                    "This class is not in the active semester.";
+
+                return RedirectToAction(
+                    "AttendanceCode",
+                    "Teacher"
+                );
+            }
+
+
+            actualStartTime =
+                replacement.StartTime;
+
+            actualEndTime =
+                replacement.EndTime;
+        }
+
+        // ==================================================
+        // NORMAL CLASS
+        // ==================================================
+
+        else
+        {
+            timetable =
+                await db.Timetables
+                    .Include(t =>
+                        t.Term
+                    )
+                    .FirstOrDefaultAsync(t =>
+                        t.TimetableId ==
+                            timetableId &&
+                        t.TeacherId ==
+                            userId &&
+                        t.Term != null &&
+                        t.Term.Status ==
+                            "Active"
+                    );
+
+
+            if (
+                timetable ==
+                null
+            )
+            {
+                return NotFound();
+            }
+
+
+            if (
+                now.DayOfWeek !=
+                timetable.DayOfWeek
+            )
+            {
+                TempData["AttendanceError"] =
+                    $"Attendance code can only be generated on {timetable.DayOfWeek}.";
+
+                return RedirectToAction(
+                    "AttendanceCode",
+                    "Teacher"
+                );
+            }
+
+
+            TimetableException? exception =
+                await db.TimetableExceptions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e =>
+                        e.TimetableId ==
+                            timetable.TimetableId &&
+                        e.OccurrenceDate.Date ==
+                            now.Date &&
+                        e.Decision !=
+                            "Pending"
+                    );
+
+
+            if (
+                exception !=
+                    null &&
+                IsCancelledValue(
+                    exception.Decision
+                )
+            )
+            {
+                TempData["AttendanceError"] =
+                    "This class has been cancelled.";
+
+                return RedirectToAction(
+                    "AttendanceCode",
+                    "Teacher"
+                );
+            }
+
+
+            actualStartTime =
+                exception
+                    ?.OverrideStartTime
+                ?? timetable.StartTime;
+
+
+            actualEndTime =
+                exception
+                    ?.OverrideEndTime
+                ?? timetable.EndTime;
+        }
+
+
+        // ==================================================
+        // CLASS TIME VALIDATION
+        // ==================================================
+
+        if (
+            now.TimeOfDay <
+                actualStartTime ||
+            now.TimeOfDay >
+                actualEndTime
         )
         {
             TempData["AttendanceError"] =
                 $"Code can only be generated between " +
-                $"{timetable.StartTime:hh\\:mm} and " +
-                $"{timetable.EndTime:hh\\:mm}.";
+                $"{actualStartTime:hh\\:mm} and " +
+                $"{actualEndTime:hh\\:mm}.";
 
             return RedirectToAction(
-                "Timetable",
+                "AttendanceCode",
                 "Teacher"
             );
         }
-        
 
-        // Generate 6-digit code
+
+        // ==================================================
+        // GENERATE UNIQUE 6-DIGIT CODE
+        // ==================================================
+
         string code;
+
 
         do
         {
-            code = RandomNumberGenerator
-                .GetInt32(100000, 1000000)
-                .ToString();
+            code =
+                RandomNumberGenerator
+                    .GetInt32(
+                        100000,
+                        1000000
+                    )
+                    .ToString();
         }
         while (
-            await db.AttendanceSessions.AnyAsync(
-                s =>
-                    s.Code == code &&
+            await db.AttendanceSessions
+                .AnyAsync(s =>
+                    s.Code ==
+                        code &&
                     s.IsActive &&
-                    s.ExpiresAt > now
-            )
+                    s.ExpiresAt >
+                        now
+                )
         );
 
-        // Check whether teacher already
-        // generated attendance today
-        var existingSession =
+
+        // ==================================================
+        // EXISTING SESSION
+        // ==================================================
+
+        AttendanceSession? existingSession =
             await db.AttendanceSessions
                 .FirstOrDefaultAsync(s =>
-                    s.TimetableId == timetableId &&
-                    s.SessionDate == now.Date
+                    s.TimetableId ==
+                        timetable.TimetableId &&
+                    s.SessionDate ==
+                        now.Date
                 );
 
-        // Code valid for 10 minutes
+
+        // ==================================================
+        // EXPIRY
+        // ==================================================
+
         DateTime classEnd =
-             now.Date.Add(timetable.EndTime);
+            now.Date.Add(
+                actualEndTime
+            );
+
 
         DateTime expiresAt =
-            now.AddMinutes(10);
+            now.AddMinutes(
+                10
+            );
 
-        // Code cannot remain valid after class ends
-        if (expiresAt > classEnd)
+
+        if (
+            expiresAt >
+            classEnd
+        )
         {
-            expiresAt = classEnd;
+            expiresAt =
+                classEnd;
         }
 
-        if (existingSession == null)
+
+        // ==================================================
+        // CREATE / REGENERATE
+        // ==================================================
+
+        if (
+            existingSession ==
+            null
+        )
         {
-            var session =
-                new AttendanceSession
+            AttendanceSession session =
+                new()
                 {
                     AttendanceSessionId =
                         await FormattedIdGenerator
                             .NextAsync(
                                 db.AttendanceSessions,
-                                x => x.AttendanceSessionId,
+                                x =>
+                                    x.AttendanceSessionId,
                                 "ATS"
                             ),
 
@@ -158,23 +390,59 @@ public class AttendanceController : Controller
                         true
                 };
 
-            db.AttendanceSessions.Add(session);
+
+            db.AttendanceSessions.Add(
+                session
+            );
         }
         else
         {
-            // Regenerate code instead of
-            // creating duplicated session
-            existingSession.Code = code;
-            existingSession.GeneratedAt = now;
-            existingSession.ExpiresAt = expiresAt;
-            existingSession.IsActive = true;
+            existingSession.Code =
+                code;
+
+            existingSession.GeneratedAt =
+                now;
+
+            existingSession.ExpiresAt =
+                expiresAt;
+
+            existingSession.IsActive =
+                true;
         }
+
 
         await db.SaveChangesAsync();
 
+
+        TempData["AttendanceSuccess"] =
+            "Attendance code generated successfully.";
+
+
         return RedirectToAction(
-            "Timetable",
+            "AttendanceCode",
             "Teacher"
         );
+    }
+
+
+    private static bool IsCancelledValue(
+        string? value)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                value
+            )
+        )
+        {
+            return false;
+        }
+
+
+        return value
+            .Trim()
+            .ToLower()
+            .Contains(
+                "cancel"
+            );
     }
 }

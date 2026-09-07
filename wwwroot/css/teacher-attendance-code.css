@@ -1,0 +1,258 @@
+﻿.attendance-back {
+    display: inline-block;
+    margin-bottom: 14px;
+    color: #14789a;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.attendance-timetable-link {
+    display: inline-block;
+    padding: 11px 17px;
+    border-radius: 9px;
+    background: #edf2ff;
+    color: #3156d3;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.teacher-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.attendance-message {
+    margin-top: 20px;
+    padding: 13px 17px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+    .attendance-message.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .attendance-message.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+.attendance-code-card {
+    background: white;
+    border: 1px solid #e1e8f0;
+    border-radius: 16px;
+    margin-top: 25px;
+    padding: 24px;
+    box-shadow: 0 8px 25px rgba(18, 32, 58, 0.06);
+}
+
+.attendance-code-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+    .attendance-code-heading h2 {
+        margin: 0 0 5px;
+        color: #172033;
+    }
+
+    .attendance-code-heading p {
+        margin: 0;
+        color: #718096;
+    }
+
+.attendance-count {
+    min-width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e0e7ff;
+    color: #3730a3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+}
+
+.attendance-class-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.attendance-class-item {
+    display: grid;
+    grid-template-columns: 120px 1fr 210px;
+    align-items: center;
+    gap: 20px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #3b82f6;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+    .attendance-class-item.replacement {
+        border-left-color: #8b5cf6;
+        background: #faf8ff;
+    }
+
+.attendance-class-time {
+    display: flex;
+    flex-direction: column;
+    color: #172033;
+}
+
+    .attendance-class-time strong {
+        font-size: 20px;
+    }
+
+    .attendance-class-time span {
+        color: #718096;
+        font-size: 13px;
+    }
+
+.attendance-class-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+    .attendance-class-info > div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .attendance-class-info strong {
+        color: #172033;
+        font-size: 17px;
+    }
+
+    .attendance-class-info > span {
+        color: #718096;
+        font-size: 13px;
+    }
+
+.replacement-label {
+    background: #ede9fe;
+    color: #6d28d9;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.attendance-code-action {
+    text-align: right;
+}
+
+.generate-code-button {
+    width: 165px;
+    padding: 11px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+    .generate-code-button:hover {
+        background: #1d4ed8;
+    }
+
+    .generate-code-button.disabled {
+        background: #d4dae3;
+        color: #8792a2;
+        cursor: not-allowed;
+    }
+
+.generate-disabled-reason {
+    display: block;
+    margin-top: 6px;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.active-attendance-code {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 145px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+}
+
+    .active-attendance-code small {
+        color: #15803d;
+        font-size: 10px;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    .active-attendance-code strong {
+        color: #166534;
+        font-size: 26px;
+        letter-spacing: 4px;
+    }
+
+    .active-attendance-code span {
+        color: #4b7b5b;
+        font-size: 10px;
+    }
+
+.attendance-code-empty {
+    min-height: 260px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #718096;
+}
+
+    .attendance-code-empty > span {
+        font-size: 35px;
+    }
+
+    .attendance-code-empty strong {
+        color: #273449;
+        font-size: 17px;
+    }
+
+    .attendance-code-empty p {
+        margin: 0;
+        font-size: 13px;
+    }
+
+@media (max-width: 850px) {
+
+    .teacher-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .attendance-class-item {
+        grid-template-columns: 1fr;
+    }
+
+    .attendance-code-action {
+        text-align: left;
+    }
+
+    .generate-code-button {
+        width: 100%;
+    }
+}

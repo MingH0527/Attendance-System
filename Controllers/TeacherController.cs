@@ -12,422 +12,2343 @@ namespace WebAndMobile.Controllers;
 public class TeacherController : Controller
 {
     private readonly DB db;
-    public TeacherController(DB db) => this.db = db;
 
-    private string? GetCurrentUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
+    public TeacherController(DB db)
+    {
+        this.db = db;
+    }
+
+    private string? GetCurrentUserId()
+    {
+        return User.FindFirstValue(
+            ClaimTypes.NameIdentifier
+        );
+    }
+
+
+    // ==================================================
+    // TEACHER HOME
+    // ==================================================
 
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null) return RedirectToAction("Login", "Account");
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == userId);
-        if (user == null) return RedirectToAction("Login", "Account");
+        var userId =
+            GetCurrentUserId();
 
-        await TryLinkLegacyProfileAsync(userId);
-        if (!await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId)) return RedirectToAction(nameof(Create));
+        if (userId == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
 
-        ViewBag.PasskeyCount = await db.UserPasskeys.CountAsync(p => p.UserId == user.UserId);
-        ViewBag.TimetableCount = await db.Timetables
-            .CountAsync(t => t.TeacherId == user.UserId && t.Term != null && t.Term.Status == "Active");
+        var user =
+            await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    u =>
+                        u.UserId ==
+                        userId
+                );
+
+        if (user == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        await TryLinkLegacyProfileAsync(
+            userId
+        );
+
+        if (
+            !await db.TeacherCourses
+                .AnyAsync(
+                    tc =>
+                        tc.UserId ==
+                        userId
+                )
+        )
+        {
+            return RedirectToAction(
+                nameof(Create)
+            );
+        }
+
+        ViewBag.PasskeyCount =
+            await db.UserPasskeys
+                .CountAsync(
+                    p =>
+                        p.UserId ==
+                        user.UserId
+                );
+
+        ViewBag.TimetableCount =
+            await db.Timetables
+                .CountAsync(
+                    t =>
+                        t.TeacherId ==
+                            user.UserId &&
+                        t.Term !=
+                            null &&
+                        t.Term.Status ==
+                            "Active"
+                );
+
         return View(user);
     }
 
+
+    // ==================================================
+    // TEACHER TIMETABLE
+    // ==================================================
+
     [HttpGet]
-    public async Task<IActionResult> Timetable()
+    public async Task<IActionResult> Timetable(
+        int? weekNumber = null)
     {
-        var userId = GetCurrentUserId();
+        string? userId =
+            GetCurrentUserId();
 
         if (userId == null)
-            return RedirectToAction("Login", "Account");
-
-        await TryLinkLegacyProfileAsync(userId);
-
-        if (!await db.TeacherCourses.AnyAsync(
-                tc => tc.UserId == userId))
         {
-            return RedirectToAction(nameof(Create));
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
         }
 
-        var entries = await db.Timetables
-            .AsNoTracking()
-            .Where(t => t.TeacherId == userId && t.Term != null && t.Term.Status == "Active")
-            .Include(t => t.Term)
-            .Include(t => t.Course)
-            .Include(t => t.ClassGroup)
-            .Include(t => t.Classroom)
-            .OrderBy(t => t.DayOfWeek)
-            .ThenBy(t => t.StartTime)
-            .ToListAsync();
+        await TryLinkLegacyProfileAsync(
+            userId
+        );
 
-        // Get all timetable IDs shown on this page
-        var timetableIds = entries
-            .Select(t => t.TimetableId)
-            .ToList();
-
-        // Get today's attendance session/code
-        var attendanceSessions = await db.AttendanceSessions
-            .AsNoTracking()
-            .Where(a =>
-                timetableIds.Contains(a.TimetableId) &&
-                a.SessionDate == DateTime.Today &&
-                a.IsActive)
-            .ToDictionaryAsync(
-                a => a.TimetableId,
-                a => a
+        if (
+            !await db.TeacherCourses
+                .AnyAsync(
+                    tc =>
+                        tc.UserId ==
+                        userId
+                )
+        )
+        {
+            return RedirectToAction(
+                nameof(Create)
             );
+        }
 
-        // Pass attendance codes to the View
-        ViewBag.AttendanceSessions = attendanceSessions;
 
-        var activeTermIds = entries.Where(t => t.TermId != null).Select(t => t.TermId!).Distinct().ToList();
-        ViewBag.TimetableNotifications = await db.TimetableNotifications
-            .AsNoTracking()
-            .Where(n => n.UserId == userId && n.TermId != null && activeTermIds.Contains(n.TermId))
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(20)
-            .ToListAsync();
+        // ==========================================
+        // ACTIVE SEMESTER
+        // ==========================================
 
-        return View(entries);
+        AcademicTerm? activeTerm =
+            await db.AcademicTerms
+                .AsNoTracking()
+                .Where(
+                    t =>
+                        t.Status ==
+                        "Active"
+                )
+                .OrderBy(
+                    t =>
+                        t.StartDate
+                )
+                .FirstOrDefaultAsync();
+
+
+        TeacherTimetableViewModel model =
+            new();
+
+
+        if (activeTerm == null)
+        {
+            return View(model);
+        }
+
+
+        model.TermName =
+            activeTerm.Name;
+
+
+        // ==========================================
+        // ACADEMIC WEEKS
+        // ==========================================
+
+        model.Weeks =
+            await db.AcademicWeeks
+                .AsNoTracking()
+                .Where(
+                    w =>
+                        w.TermId ==
+                        activeTerm.TermId
+                )
+                .OrderBy(
+                    w =>
+                        w.WeekNumber
+                )
+                .ToListAsync();
+
+
+        // ==========================================
+        // WEEK SELECTION
+        //
+        // 0 = Weekly Template
+        // null = Current Week
+        // 1,2,3... = Specific Week
+        // ==========================================
+
+        if (
+            weekNumber ==
+            0
+        )
+        {
+            model.IsTemplate =
+                true;
+
+            model.SelectedWeekNumber =
+                null;
+        }
+        else
+        {
+            AcademicWeek? selectedWeek =
+                null;
+
+
+            if (
+                weekNumber.HasValue
+            )
+            {
+                selectedWeek =
+                    model.Weeks
+                        .FirstOrDefault(
+                            w =>
+                                w.WeekNumber ==
+                                weekNumber.Value
+                        );
+            }
+
+
+            // No week selected:
+            // automatically find current week
+            if (selectedWeek == null)
+            {
+                DateTime today =
+                    DateTime.Today;
+
+                selectedWeek =
+                    model.Weeks
+                        .FirstOrDefault(
+                            w =>
+                                today >=
+                                    w.StartDate.Date &&
+                                today <=
+                                    w.EndDate.Date
+                        );
+            }
+
+
+            // If current date is outside all academic weeks,
+            // show the first week.
+            selectedWeek ??=
+                model.Weeks
+                    .FirstOrDefault();
+
+
+            if (selectedWeek != null)
+            {
+                model.IsTemplate =
+                    false;
+
+                model.SelectedWeekNumber =
+                    selectedWeek.WeekNumber;
+
+                model.WeekStart =
+                    selectedWeek.StartDate.Date;
+
+                model.WeekEnd =
+                    selectedWeek.EndDate.Date;
+            }
+            else
+            {
+                model.IsTemplate =
+                    true;
+            }
+        }
+
+
+        // ==========================================
+        // BASE WEEKLY TIMETABLE
+        // ==========================================
+
+        List<Timetable> entries =
+            await db.Timetables
+                .AsNoTracking()
+                .Where(
+                    t =>
+                        t.TeacherId ==
+                            userId &&
+                        t.TermId ==
+                            activeTerm.TermId
+                )
+                .Include(
+                    t =>
+                        t.Term
+                )
+                .Include(
+                    t =>
+                        t.Course
+                )
+                .Include(
+                    t =>
+                        t.ClassGroup
+                )
+                .Include(
+                    t =>
+                        t.Classroom
+                )
+                .OrderBy(
+                    t =>
+                        t.DayOfWeek
+                )
+                .ThenBy(
+                    t =>
+                        t.StartTime
+                )
+                .ToListAsync();
+
+
+        // ==========================================
+        // WEEKLY TEMPLATE
+        //
+        // Template does NOT show cancellation /
+        // replacement for specific dates.
+        // ==========================================
+
+        if (model.IsTemplate)
+        {
+            foreach (
+                Timetable entry
+                in entries
+            )
+            {
+                model.Items.Add(
+                    new TeacherTimetableItemViewModel
+                    {
+                        TimetableId =
+                            entry.TimetableId,
+
+                        CourseId =
+                            entry.CourseId,
+
+                        CourseName =
+                            entry.Course
+                                ?.CourseName
+                            ?? entry.CourseId,
+
+                        ClassName =
+                            entry.ClassGroup
+                                ?.ClassName
+                            ?? entry.ClassId,
+
+                        RoomName =
+                            entry.Classroom
+                                ?.RoomName
+                            ?? "-",
+
+                        DayOfWeek =
+                            entry.DayOfWeek,
+
+                        OccurrenceDate =
+                            null,
+
+                        StartTime =
+                            entry.StartTime,
+
+                        EndTime =
+                            entry.EndTime,
+
+                        ClassType =
+                            entry.ClassType,
+
+                        Status =
+                            "Normal",
+
+                        ReplacementId =
+                            null,
+
+                        Reason =
+                            null
+                    }
+                );
+            }
+        }
+
+
+        // ==========================================
+        // SPECIFIC WEEK
+        // ==========================================
+
+        else if (
+            model.WeekStart != null &&
+            model.WeekEnd != null
+        )
+        {
+            DateTime weekStart =
+                model.WeekStart.Value.Date;
+
+            DateTime weekEnd =
+                model.WeekEnd.Value.Date;
+
+
+            List<string> timetableIds =
+                entries
+                    .Select(
+                        t =>
+                            t.TimetableId
+                    )
+                    .ToList();
+
+
+            // ======================================
+            // TIMETABLE EXCEPTIONS
+            // ======================================
+
+            List<TimetableException> exceptions =
+                await db.TimetableExceptions
+                    .AsNoTracking()
+                    .Where(
+                        e =>
+                            timetableIds.Contains(
+                                e.TimetableId
+                            ) &&
+                            e.OccurrenceDate.Date >=
+                                weekStart &&
+                            e.OccurrenceDate.Date <=
+                                weekEnd
+                    )
+                    .ToListAsync();
+
+
+            // ======================================
+            // REPLACEMENT CLASSES
+            // ======================================
+
+            List<ReplacementSession> replacements =
+                await db.ReplacementSessions
+                    .AsNoTracking()
+                    .Where(
+                        r =>
+                            r.TeacherId ==
+                                userId &&
+                            r.ReplacementDate.Date >=
+                                weekStart &&
+                            r.ReplacementDate.Date <=
+                                weekEnd
+                    )
+                    .Include(
+                        r =>
+                            r.SourceTimetable
+                    )
+                    .ThenInclude(
+                        t =>
+                            t!.Course
+                    )
+                    .Include(
+                        r =>
+                            r.SourceTimetable
+                    )
+                    .ThenInclude(
+                        t =>
+                            t!.ClassGroup
+                    )
+                    .ToListAsync();
+
+
+            // ======================================
+            // SPECIAL CLASSROOM IDS
+            // ======================================
+
+            List<string> specialRoomIds =
+                exceptions
+                    .Where(
+                        e =>
+                            !string.IsNullOrWhiteSpace(
+                                e.OverrideClassroomId
+                            )
+                    )
+                    .Select(
+                        e =>
+                            e.OverrideClassroomId!
+                    )
+                    .Concat(
+                        replacements
+                            .Where(
+                                r =>
+                                    !string.IsNullOrWhiteSpace(
+                                        r.ClassroomId
+                                    )
+                            )
+                            .Select(
+                                r =>
+                                    r.ClassroomId!
+                            )
+                    )
+                    .Distinct()
+                    .ToList();
+
+
+            Dictionary<string, string>
+                roomNames =
+                    await db.Classrooms
+                        .AsNoTracking()
+                        .Where(
+                            c =>
+                                specialRoomIds
+                                    .Contains(
+                                        c.ClassroomId
+                                    )
+                        )
+                        .ToDictionaryAsync(
+                            c =>
+                                c.ClassroomId,
+
+                            c =>
+                                c.RoomName
+                        );
+
+
+            // ======================================
+            // NORMAL / CANCELLED CLASSES
+            // ======================================
+
+            foreach (
+                Timetable entry
+                in entries
+            )
+            {
+                DateTime occurrenceDate =
+                    GetDateForDay(
+                        weekStart,
+                        entry.DayOfWeek
+                    );
+
+
+                if (
+                    occurrenceDate <
+                        weekStart ||
+                    occurrenceDate >
+                        weekEnd
+                )
+                {
+                    continue;
+                }
+
+
+                TimetableException? exception =
+                    exceptions
+                        .FirstOrDefault(
+                            e =>
+                                e.TimetableId ==
+                                    entry.TimetableId &&
+                                e.OccurrenceDate.Date ==
+                                    occurrenceDate.Date &&
+                                !IsPendingDecision(
+                                    e.Decision
+                                )
+                        );
+
+
+                bool cancelled =
+                    exception != null &&
+                    IsCancelledValue(
+                        exception.Decision
+                    );
+
+
+                TimeSpan actualStart =
+                    exception
+                        ?.OverrideStartTime
+                    ?? entry.StartTime;
+
+
+                TimeSpan actualEnd =
+                    exception
+                        ?.OverrideEndTime
+                    ?? entry.EndTime;
+
+
+                string roomName =
+                    entry.Classroom
+                        ?.RoomName
+                    ?? "-";
+
+
+                if (
+                    exception != null &&
+                    !string.IsNullOrWhiteSpace(
+                        exception
+                            .OverrideClassroomId
+                    ) &&
+                    roomNames.TryGetValue(
+                        exception
+                            .OverrideClassroomId!,
+                        out string? overrideRoom
+                    )
+                )
+                {
+                    roomName =
+                        overrideRoom;
+                }
+
+
+                model.Items.Add(
+                    new TeacherTimetableItemViewModel
+                    {
+                        TimetableId =
+                            entry.TimetableId,
+
+                        CourseId =
+                            entry.CourseId,
+
+                        CourseName =
+                            entry.Course
+                                ?.CourseName
+                            ?? entry.CourseId,
+
+                        ClassName =
+                            entry.ClassGroup
+                                ?.ClassName
+                            ?? entry.ClassId,
+
+                        RoomName =
+                            roomName,
+
+                        DayOfWeek =
+                            occurrenceDate
+                                .DayOfWeek,
+
+                        OccurrenceDate =
+                            occurrenceDate,
+
+                        StartTime =
+                            actualStart,
+
+                        EndTime =
+                            actualEnd,
+
+                        ClassType =
+                            entry.ClassType,
+
+                        Status =
+                            cancelled
+                                ? "Cancelled"
+                                : "Normal",
+
+                        ReplacementId =
+                            null,
+
+                        Reason =
+                            exception
+                                ?.Reason
+                    }
+                );
+            }
+
+
+            // ======================================
+            // ADD REPLACEMENT CLASSES
+            // ======================================
+
+            foreach (
+                ReplacementSession replacement
+                in replacements
+            )
+            {
+                // Cancelled / rejected replacement
+                // should not appear.
+                if (
+                    IsCancelledValue(
+                        replacement.Status
+                    ) ||
+                    string.Equals(
+                        replacement.Status,
+                        "Rejected",
+                        StringComparison
+                            .OrdinalIgnoreCase
+                    )
+                )
+                {
+                    continue;
+                }
+
+
+                Timetable? source =
+                    replacement
+                        .SourceTimetable;
+
+
+                if (source == null)
+                {
+                    continue;
+                }
+
+
+                string roomName =
+                    "-";
+
+
+                if (
+                    !string.IsNullOrWhiteSpace(
+                        replacement.ClassroomId
+                    ) &&
+                    roomNames.TryGetValue(
+                        replacement
+                            .ClassroomId!,
+                        out string? replacementRoom
+                    )
+                )
+                {
+                    roomName =
+                        replacementRoom;
+                }
+
+
+                model.Items.Add(
+                    new TeacherTimetableItemViewModel
+                    {
+                        TimetableId =
+                            source.TimetableId,
+
+                        ReplacementId =
+                            replacement
+                                .ReplacementId,
+
+                        CourseId =
+                            source.CourseId,
+
+                        CourseName =
+                            source.Course
+                                ?.CourseName
+                            ?? source.CourseId,
+
+                        ClassName =
+                            source.ClassGroup
+                                ?.ClassName
+                            ?? source.ClassId,
+
+                        RoomName =
+                            roomName,
+
+                        DayOfWeek =
+                            replacement
+                                .ReplacementDate
+                                .DayOfWeek,
+
+                        OccurrenceDate =
+                            replacement
+                                .ReplacementDate
+                                .Date,
+
+                        StartTime =
+                            replacement
+                                .StartTime,
+
+                        EndTime =
+                            replacement
+                                .EndTime,
+
+                        ClassType =
+                            replacement
+                                .TargetClassType,
+
+                        Status =
+                            "Replacement",
+
+                        Reason =
+                            replacement
+                                .Reason
+                    }
+                );
+            }
+        }
+
+
+        // ==========================================
+        // TIMETABLE NOTIFICATIONS
+        // ==========================================
+
+        model.Notifications =
+            await db.TimetableNotifications
+                .AsNoTracking()
+                .Where(
+                    n =>
+                        n.UserId ==
+                            userId &&
+                        n.TermId ==
+                            activeTerm.TermId
+                )
+                .OrderByDescending(
+                    n =>
+                        n.CreatedAt
+                )
+                .Take(10)
+                .ToListAsync();
+
+
+        model.Items =
+            model.Items
+                .OrderBy(
+                    i =>
+                        GetDayOrder(
+                            i.DayOfWeek
+                        )
+                )
+                .ThenBy(
+                    i =>
+                        i.StartTime
+                )
+                .ToList();
+
+
+        return View(model);
     }
+
+
+    // ==================================================
+    // ATTENDANCE CODE PAGE
+    // ==================================================
+
+    [HttpGet]
+    public async Task<IActionResult> AttendanceCode()
+    {
+        string? userId =
+            GetCurrentUserId();
+
+
+        if (userId == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        await TryLinkLegacyProfileAsync(
+            userId
+        );
+
+
+        if (
+            !await db.TeacherCourses
+                .AnyAsync(
+                    tc =>
+                        tc.UserId ==
+                        userId
+                )
+        )
+        {
+            return RedirectToAction(
+                nameof(Create)
+            );
+        }
+
+
+        DateTime now =
+            DateTime.Now;
+
+        DateTime today =
+            DateTime.Today;
+
+
+        TeacherAttendanceCodeViewModel model =
+            new()
+            {
+                Date =
+                    today
+            };
+
+
+        // ==========================================
+        // ACTIVE SEMESTER
+        // ==========================================
+
+        AcademicTerm? activeTerm =
+            await db.AcademicTerms
+                .AsNoTracking()
+                .Where(
+                    t =>
+                        t.Status ==
+                        "Active"
+                )
+                .OrderBy(
+                    t =>
+                        t.StartDate
+                )
+                .FirstOrDefaultAsync();
+
+
+        if (activeTerm == null)
+        {
+            return View(model);
+        }
+
+
+        // ==========================================
+        // NORMAL CLASSES TODAY
+        // ==========================================
+
+        List<Timetable> normalClasses =
+            await db.Timetables
+                .AsNoTracking()
+                .Where(
+                    t =>
+                        t.TeacherId ==
+                            userId &&
+                        t.TermId ==
+                            activeTerm.TermId &&
+                        t.DayOfWeek ==
+                            today.DayOfWeek
+                )
+                .Include(
+                    t =>
+                        t.Course
+                )
+                .Include(
+                    t =>
+                        t.ClassGroup
+                )
+                .Include(
+                    t =>
+                        t.Classroom
+                )
+                .OrderBy(
+                    t =>
+                        t.StartTime
+                )
+                .ToListAsync();
+
+
+        List<string> timetableIds =
+            normalClasses
+                .Select(
+                    t =>
+                        t.TimetableId
+                )
+                .ToList();
+
+
+        // ==========================================
+        // TODAY EXCEPTIONS
+        // ==========================================
+
+        List<TimetableException> exceptions =
+            await db.TimetableExceptions
+                .AsNoTracking()
+                .Where(
+                    e =>
+                        timetableIds.Contains(
+                            e.TimetableId
+                        ) &&
+                        e.OccurrenceDate.Date ==
+                            today
+                )
+                .ToListAsync();
+
+
+        // ==========================================
+        // TODAY REPLACEMENT CLASSES
+        // ==========================================
+
+        List<ReplacementSession> replacements =
+            await db.ReplacementSessions
+                .AsNoTracking()
+                .Where(
+                    r =>
+                        r.TeacherId ==
+                            userId &&
+                        r.ReplacementDate.Date ==
+                            today
+                )
+                .Include(
+                    r =>
+                        r.SourceTimetable
+                )
+                .ThenInclude(
+                    t =>
+                        t!.Course
+                )
+                .Include(
+                    r =>
+                        r.SourceTimetable
+                )
+                .ThenInclude(
+                    t =>
+                        t!.ClassGroup
+                )
+                .ToListAsync();
+
+
+        // ==========================================
+        // CLASSROOMS USED BY OVERRIDES /
+        // REPLACEMENTS
+        // ==========================================
+
+        List<string> roomIds =
+            exceptions
+                .Where(
+                    e =>
+                        !string.IsNullOrWhiteSpace(
+                            e.OverrideClassroomId
+                        )
+                )
+                .Select(
+                    e =>
+                        e.OverrideClassroomId!
+                )
+                .Concat(
+                    replacements
+                        .Where(
+                            r =>
+                                !string.IsNullOrWhiteSpace(
+                                    r.ClassroomId
+                                )
+                        )
+                        .Select(
+                            r =>
+                                r.ClassroomId!
+                        )
+                )
+                .Distinct()
+                .ToList();
+
+
+        Dictionary<string, string>
+            rooms =
+                await db.Classrooms
+                    .AsNoTracking()
+                    .Where(
+                        r =>
+                            roomIds.Contains(
+                                r.ClassroomId
+                            )
+                    )
+                    .ToDictionaryAsync(
+                        r =>
+                            r.ClassroomId,
+
+                        r =>
+                            r.RoomName
+                    );
+
+
+        // ==========================================
+        // BUILD NORMAL CLASS LIST
+        // ==========================================
+
+        foreach (
+            Timetable timetable
+            in normalClasses
+        )
+        {
+            TimetableException? exception =
+                exceptions
+                    .FirstOrDefault(
+                        e =>
+                            e.TimetableId ==
+                                timetable
+                                    .TimetableId &&
+                            !IsPendingDecision(
+                                e.Decision
+                            )
+                    );
+
+
+            // Cancelled classes should not
+            // allow attendance generation.
+            if (
+                exception != null &&
+                IsCancelledValue(
+                    exception.Decision
+                )
+            )
+            {
+                continue;
+            }
+
+
+            TimeSpan startTime =
+                exception
+                    ?.OverrideStartTime
+                ?? timetable.StartTime;
+
+
+            TimeSpan endTime =
+                exception
+                    ?.OverrideEndTime
+                ?? timetable.EndTime;
+
+
+            string roomName =
+                timetable.Classroom
+                    ?.RoomName
+                ?? "-";
+
+
+            if (
+                exception != null &&
+                !string.IsNullOrWhiteSpace(
+                    exception
+                        .OverrideClassroomId
+                ) &&
+                rooms.TryGetValue(
+                    exception
+                        .OverrideClassroomId!,
+                    out string? overrideRoom
+                )
+            )
+            {
+                roomName =
+                    overrideRoom;
+            }
+
+
+            model.Classes.Add(
+                new TeacherAttendanceCodeItemViewModel
+                {
+                    TimetableId =
+                        timetable.TimetableId,
+
+                    ReplacementId =
+                        null,
+
+                    CourseName =
+                        timetable.Course
+                            ?.CourseName
+                        ?? timetable.CourseId,
+
+                    ClassName =
+                        timetable.ClassGroup
+                            ?.ClassName
+                        ?? timetable.ClassId,
+
+                    RoomName =
+                        roomName,
+
+                    StartTime =
+                        startTime,
+
+                    EndTime =
+                        endTime,
+
+                    Status =
+                        "Normal"
+                }
+            );
+        }
+
+
+        // ==========================================
+        // BUILD REPLACEMENT CLASS LIST
+        // ==========================================
+
+        foreach (
+            ReplacementSession replacement
+            in replacements
+        )
+        {
+            if (
+                !string.Equals(
+                    replacement.Status,
+                    "Scheduled",
+                    StringComparison
+                        .OrdinalIgnoreCase
+                )
+            )
+            {
+                continue;
+            }
+
+
+            Timetable? source =
+                replacement
+                    .SourceTimetable;
+
+
+            if (source == null)
+            {
+                continue;
+            }
+
+
+            string roomName =
+                "-";
+
+
+            if (
+                !string.IsNullOrWhiteSpace(
+                    replacement.ClassroomId
+                ) &&
+                rooms.TryGetValue(
+                    replacement
+                        .ClassroomId!,
+                    out string? replacementRoom
+                )
+            )
+            {
+                roomName =
+                    replacementRoom;
+            }
+
+
+            model.Classes.Add(
+                new TeacherAttendanceCodeItemViewModel
+                {
+                    TimetableId =
+                        source.TimetableId,
+
+                    ReplacementId =
+                        replacement
+                            .ReplacementId,
+
+                    CourseName =
+                        source.Course
+                            ?.CourseName
+                        ?? source.CourseId,
+
+                    ClassName =
+                        source.ClassGroup
+                            ?.ClassName
+                        ?? source.ClassId,
+
+                    RoomName =
+                        roomName,
+
+                    StartTime =
+                        replacement
+                            .StartTime,
+
+                    EndTime =
+                        replacement
+                            .EndTime,
+
+                    Status =
+                        "Replacement"
+                }
+            );
+        }
+
+
+        // ==========================================
+        // ACTIVE ATTENDANCE CODES
+        // ==========================================
+
+        List<string> allTimetableIds =
+            model.Classes
+                .Select(
+                    c =>
+                        c.TimetableId
+                )
+                .Distinct()
+                .ToList();
+
+
+        List<AttendanceSession> sessions =
+            await db.AttendanceSessions
+                .AsNoTracking()
+                .Where(
+                    s =>
+                        allTimetableIds.Contains(
+                            s.TimetableId
+                        ) &&
+                        s.SessionDate ==
+                            today &&
+                        s.IsActive &&
+                        s.ExpiresAt >
+                            now
+                )
+                .ToListAsync();
+
+
+        // ==========================================
+        // GENERATE BUTTON VALIDATION
+        // ==========================================
+
+        foreach (
+            TeacherAttendanceCodeItemViewModel item
+            in model.Classes
+        )
+        {
+            AttendanceSession? session =
+                sessions
+                    .FirstOrDefault(
+                        s =>
+                            s.TimetableId ==
+                            item.TimetableId
+                    );
+
+
+            if (session != null)
+            {
+                item.ActiveCode =
+                    session.Code;
+
+                item.ExpiresAt =
+                    session.ExpiresAt;
+
+                item.CanGenerate =
+                    false;
+
+                item.DisabledReason =
+                    "Code already generated.";
+
+                continue;
+            }
+
+
+            // Class has not started
+            if (
+                now.TimeOfDay <
+                item.StartTime
+            )
+            {
+                item.CanGenerate =
+                    false;
+
+                item.DisabledReason =
+                    $"Available at " +
+                    $"{item.StartTime:hh\\:mm}.";
+
+                continue;
+            }
+
+
+            // Class already ended
+            if (
+                now.TimeOfDay >
+                item.EndTime
+            )
+            {
+                item.CanGenerate =
+                    false;
+
+                item.DisabledReason =
+                    "Class has ended.";
+
+                continue;
+            }
+
+
+            // Currently inside class period
+            item.CanGenerate =
+                true;
+
+            item.DisabledReason =
+                null;
+        }
+
+
+        model.Classes =
+            model.Classes
+                .OrderBy(
+                    c =>
+                        c.StartTime
+                )
+                .ToList();
+
+
+        return View(model);
+    }
+
+
+    // ==================================================
+    // CREATE / EDIT TEACHER PROFILE
+    // ==================================================
 
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        var userId = GetCurrentUserId();
+        var userId =
+            GetCurrentUserId();
+
 
         if (userId == null)
-            return RedirectToAction("Login", "Account");
-
-        await TryLinkLegacyProfileAsync(userId);
-
-        // 已经选择过的 Program
-        var selectedProgramIds = await db.TeacherPrograms
-            .AsNoTracking()
-            .Where(tp => tp.UserId == userId)
-            .Select(tp => tp.ProgramId)
-            .ToListAsync();
-
-        // 已经选择过的 Subject
-        var selectedCourseIds = await db.TeacherCourses
-            .AsNoTracking()
-            .Where(tc => tc.UserId == userId)
-            .Select(tc => tc.CourseId)
-            .ToListAsync();
-
-        var model = new TeacherProfileSetupViewModel
         {
-            SelectedProgramIds = selectedProgramIds,
-            SelectedCourseIds = selectedCourseIds
-        };
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
 
-        await LoadTeacherSetupOptionsAsync(model);
+
+        await TryLinkLegacyProfileAsync(
+            userId
+        );
+
+
+        // ==========================================
+        // SELECTED PROGRAMS
+        // ==========================================
+
+        var selectedProgramIds =
+            await db.TeacherPrograms
+                .AsNoTracking()
+                .Where(
+                    tp =>
+                        tp.UserId ==
+                        userId
+                )
+                .Select(
+                    tp =>
+                        tp.ProgramId
+                )
+                .ToListAsync();
+
+
+        // ==========================================
+        // SELECTED SUBJECTS
+        // ==========================================
+
+        var selectedCourseIds =
+            await db.TeacherCourses
+                .AsNoTracking()
+                .Where(
+                    tc =>
+                        tc.UserId ==
+                        userId
+                )
+                .Select(
+                    tc =>
+                        tc.CourseId
+                )
+                .ToListAsync();
+
+
+        var model =
+            new TeacherProfileSetupViewModel
+            {
+                SelectedProgramIds =
+                    selectedProgramIds,
+
+                SelectedCourseIds =
+                    selectedCourseIds
+            };
+
+
+        await LoadTeacherSetupOptionsAsync(
+            model
+        );
+
 
         return View(model);
     }
-    private async Task LoadTeacherSetupOptionsAsync(
-    TeacherProfileSetupViewModel model)
-    {
-        model.Programs = await db.AcademicPrograms
-            .AsNoTracking()
-            .OrderBy(p => p.ProgramCode)
-            .ToListAsync();
 
-        model.Subjects = await db.ProgramCourses
-            .AsNoTracking()
-            .Include(pc => pc.Course)
-            .Where(pc => pc.Course != null)
-            .OrderBy(pc => pc.ProgramId)
-            .ThenBy(pc => pc.Course!.CourseName)
-            .Select(pc => new TeacherSubjectOptionViewModel
-            {
-                ProgramId = pc.ProgramId,
-                CourseId = pc.CourseId,
-                CourseName = pc.Course!.CourseName,
-                CourseCode = pc.Course.CourseCode
-            })
-            .ToListAsync();
+
+    // ==================================================
+    // LOAD TEACHER SETUP OPTIONS
+    // ==================================================
+
+    private async Task LoadTeacherSetupOptionsAsync(
+        TeacherProfileSetupViewModel model)
+    {
+        model.Programs =
+            await db.AcademicPrograms
+                .AsNoTracking()
+                .OrderBy(
+                    p =>
+                        p.ProgramCode
+                )
+                .ToListAsync();
+
+
+        model.Subjects =
+            await db.ProgramCourses
+                .AsNoTracking()
+                .Include(
+                    pc =>
+                        pc.Course
+                )
+                .Where(
+                    pc =>
+                        pc.Course !=
+                        null
+                )
+                .OrderBy(
+                    pc =>
+                        pc.ProgramId
+                )
+                .ThenBy(
+                    pc =>
+                        pc.Course!
+                            .CourseName
+                )
+                .Select(
+                    pc =>
+                        new TeacherSubjectOptionViewModel
+                        {
+                            ProgramId =
+                                pc.ProgramId,
+
+                            CourseId =
+                                pc.CourseId,
+
+                            CourseName =
+                                pc.Course!
+                                    .CourseName,
+
+                            CourseCode =
+                                pc.Course
+                                    .CourseCode
+                        }
+                )
+                .ToListAsync();
     }
 
+
+    // ==================================================
+    // SUBJECTS BY PROGRAM
+    // ==================================================
+
     [HttpGet]
-    public async Task<IActionResult> Subjects(string programId)
+    public async Task<IActionResult> Subjects(
+        string programId)
     {
-        var rows = await db.ProgramCourses.AsNoTracking().Where(pc => pc.ProgramId == programId).Include(pc => pc.Course)
-            .OrderBy(pc => pc.Course!.CourseName)
-            .Select(pc => new { id = pc.CourseId, name = pc.Course!.CourseName, code = pc.Course.CourseCode }).ToListAsync();
+        var rows =
+            await db.ProgramCourses
+                .AsNoTracking()
+                .Where(
+                    pc =>
+                        pc.ProgramId ==
+                        programId
+                )
+                .Include(
+                    pc =>
+                        pc.Course
+                )
+                .OrderBy(
+                    pc =>
+                        pc.Course!
+                            .CourseName
+                )
+                .Select(
+                    pc =>
+                        new
+                        {
+                            id =
+                                pc.CourseId,
+
+                            name =
+                                pc.Course!
+                                    .CourseName,
+
+                            code =
+                                pc.Course
+                                    .CourseCode
+                        }
+                )
+                .ToListAsync();
+
+
         return Json(rows);
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+
+    // ==================================================
+    // SAVE TEACHER PROFILE
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(
-    TeacherProfileSetupViewModel model)
+        TeacherProfileSetupViewModel model)
     {
-        var userId = GetCurrentUserId();
+        var userId =
+            GetCurrentUserId();
+
 
         if (userId == null)
-            return RedirectToAction("Login", "Account");
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
 
-        // Remove duplicate values
-        model.SelectedProgramIds = model.SelectedProgramIds
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct()
-            .ToList();
 
-        model.SelectedCourseIds = model.SelectedCourseIds
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct()
-            .ToList();
+        // ==========================================
+        // REMOVE DUPLICATES
+        // ==========================================
 
-        // Must select program
-        if (model.SelectedProgramIds.Count == 0)
+        model.SelectedProgramIds =
+            model.SelectedProgramIds
+                .Where(
+                    x =>
+                        !string.IsNullOrWhiteSpace(
+                            x
+                        )
+                )
+                .Distinct()
+                .ToList();
+
+
+        model.SelectedCourseIds =
+            model.SelectedCourseIds
+                .Where(
+                    x =>
+                        !string.IsNullOrWhiteSpace(
+                            x
+                        )
+                )
+                .Distinct()
+                .ToList();
+
+
+        // ==========================================
+        // PROGRAM REQUIRED
+        // ==========================================
+
+        if (
+            model.SelectedProgramIds.Count ==
+            0
+        )
         {
             ModelState.AddModelError(
                 "",
-                "Please select at least one program.");
+                "Please select at least one program."
+            );
         }
 
-        // Must select subject
-        if (model.SelectedCourseIds.Count == 0)
+
+        // ==========================================
+        // SUBJECT REQUIRED
+        // ==========================================
+
+        if (
+            model.SelectedCourseIds.Count ==
+            0
+        )
         {
             ModelState.AddModelError(
                 "",
-                "Please select at least one subject.");
+                "Please select at least one subject."
+            );
         }
+
 
         if (!ModelState.IsValid)
         {
-            await LoadTeacherSetupOptionsAsync(model);
+            await LoadTeacherSetupOptionsAsync(
+                model
+            );
+
             return View(model);
         }
 
-        // Make sure programs really exist
-        var validProgramIds = await db.AcademicPrograms
-            .AsNoTracking()
-            .Where(p => model.SelectedProgramIds.Contains(p.ProgramId))
-            .Select(p => p.ProgramId)
-            .ToListAsync();
 
-        if (validProgramIds.Count != model.SelectedProgramIds.Count)
+        // ==========================================
+        // VALIDATE PROGRAM IDS
+        // ==========================================
+
+        var validProgramIds =
+            await db.AcademicPrograms
+                .AsNoTracking()
+                .Where(
+                    p =>
+                        model
+                            .SelectedProgramIds
+                            .Contains(
+                                p.ProgramId
+                            )
+                )
+                .Select(
+                    p =>
+                        p.ProgramId
+                )
+                .ToListAsync();
+
+
+        if (
+            validProgramIds.Count !=
+            model.SelectedProgramIds.Count
+        )
         {
             ModelState.AddModelError(
                 "",
-                "One or more selected programs are invalid.");
+                "One or more selected programs are invalid."
+            );
 
-            await LoadTeacherSetupOptionsAsync(model);
+
+            await LoadTeacherSetupOptionsAsync(
+                model
+            );
+
 
             return View(model);
         }
 
-        // Check whether selected subjects belong to selected programs
-        var validMappings = await db.ProgramCourses
-            .AsNoTracking()
-            .Where(pc =>
-                model.SelectedProgramIds.Contains(pc.ProgramId) &&
-                model.SelectedCourseIds.Contains(pc.CourseId))
-            .Select(pc => new
-            {
-                pc.ProgramId,
-                pc.CourseId
-            })
-            .ToListAsync();
 
-        var validCourseIds = validMappings
-            .Select(x => x.CourseId)
-            .Distinct()
-            .ToList();
+        // ==========================================
+        // VALIDATE SUBJECT / PROGRAM MAPPING
+        // ==========================================
 
-        // Subject selected but not under selected programs
-        if (validCourseIds.Count != model.SelectedCourseIds.Count)
+        var validMappings =
+            await db.ProgramCourses
+                .AsNoTracking()
+                .Where(
+                    pc =>
+                        model
+                            .SelectedProgramIds
+                            .Contains(
+                                pc.ProgramId
+                            ) &&
+                        model
+                            .SelectedCourseIds
+                            .Contains(
+                                pc.CourseId
+                            )
+                )
+                .Select(
+                    pc =>
+                        new
+                        {
+                            pc.ProgramId,
+                            pc.CourseId
+                        }
+                )
+                .ToListAsync();
+
+
+        var validCourseIds =
+            validMappings
+                .Select(
+                    x =>
+                        x.CourseId
+                )
+                .Distinct()
+                .ToList();
+
+
+        if (
+            validCourseIds.Count !=
+            model.SelectedCourseIds.Count
+        )
         {
             ModelState.AddModelError(
                 "",
-                "One or more selected subjects do not belong to the selected programs.");
+                "One or more selected subjects do not belong to the selected programs."
+            );
 
-            await LoadTeacherSetupOptionsAsync(model);
+
+            await LoadTeacherSetupOptionsAsync(
+                model
+            );
+
 
             return View(model);
         }
 
-        // Every selected program should have at least one subject
-        foreach (var programId in model.SelectedProgramIds)
+
+        // ==========================================
+        // EVERY PROGRAM MUST HAVE SUBJECT
+        // ==========================================
+
+        foreach (
+            var programId
+            in model.SelectedProgramIds
+        )
         {
             bool hasSubject =
-                validMappings.Any(x => x.ProgramId == programId);
+                validMappings.Any(
+                    x =>
+                        x.ProgramId ==
+                        programId
+                );
+
 
             if (!hasSubject)
             {
                 ModelState.AddModelError(
                     "",
-                    "Please select at least one subject for every selected program.");
+                    "Please select at least one subject for every selected program."
+                );
 
-                await LoadTeacherSetupOptionsAsync(model);
+
+                await LoadTeacherSetupOptionsAsync(
+                    model
+                );
+
 
                 return View(model);
             }
         }
 
-        // Create / update Teacher
-        var teacher = await db.Teacher
-            .FirstOrDefaultAsync(t => t.UserId == userId);
+
+        // ==========================================
+        // CREATE / UPDATE TEACHER RECORD
+        // ==========================================
+
+        var teacher =
+            await db.Teacher
+                .FirstOrDefaultAsync(
+                    t =>
+                        t.UserId ==
+                        userId
+                );
+
 
         if (teacher == null)
         {
-            teacher = new Teacher
-            {
-                TeacherId =
-                    await FormattedIdGenerator.NextAsync(
-                        db.Teacher,
-                        t => t.TeacherId,
-                        "TCH"),
+            teacher =
+                new Teacher
+                {
+                    TeacherId =
+                        await FormattedIdGenerator
+                            .NextAsync(
+                                db.Teacher,
+                                t =>
+                                    t.TeacherId,
+                                "TCH"
+                            ),
 
-                UserId = userId
-            };
+                    UserId =
+                        userId
+                };
 
-            db.Teacher.Add(teacher);
+
+            db.Teacher.Add(
+                teacher
+            );
         }
 
-        // Keep legacy Program / Subject fields
-        // so older pages do not suddenly break
-        var programCodes = await db.AcademicPrograms
-            .AsNoTracking()
-            .Where(p =>
-                model.SelectedProgramIds.Contains(p.ProgramId))
-            .OrderBy(p => p.ProgramCode)
-            .Select(p => p.ProgramCode)
-            .ToListAsync();
 
-        var courseNames = await db.Courses
-            .AsNoTracking()
-            .Where(c =>
-                model.SelectedCourseIds.Contains(c.CourseId))
-            .OrderBy(c => c.CourseName)
-            .Select(c => c.CourseName)
-            .ToListAsync();
+        // ==========================================
+        // LEGACY PROGRAM / SUBJECT FIELDS
+        // ==========================================
 
-        teacher.Program = string.Join(", ", programCodes);
-        teacher.Subject = string.Join(", ", courseNames);
+        var programCodes =
+            await db.AcademicPrograms
+                .AsNoTracking()
+                .Where(
+                    p =>
+                        model
+                            .SelectedProgramIds
+                            .Contains(
+                                p.ProgramId
+                            )
+                )
+                .OrderBy(
+                    p =>
+                        p.ProgramCode
+                )
+                .Select(
+                    p =>
+                        p.ProgramCode
+                )
+                .ToListAsync();
+
+
+        var courseNames =
+            await db.Courses
+                .AsNoTracking()
+                .Where(
+                    c =>
+                        model
+                            .SelectedCourseIds
+                            .Contains(
+                                c.CourseId
+                            )
+                )
+                .OrderBy(
+                    c =>
+                        c.CourseName
+                )
+                .Select(
+                    c =>
+                        c.CourseName
+                )
+                .ToListAsync();
+
+
+        teacher.Program =
+            string.Join(
+                ", ",
+                programCodes
+            );
+
+
+        teacher.Subject =
+            string.Join(
+                ", ",
+                courseNames
+            );
+
+
+        // ==========================================
+        // TRANSACTION
+        // ==========================================
 
         await using var transaction =
-            await db.Database.BeginTransactionAsync();
+            await db.Database
+                .BeginTransactionAsync();
+
 
         try
         {
-           //update teacher programs
+            // ======================================
+            // UPDATE TEACHER PROGRAMS
+            // ======================================
 
-            var existingPrograms = await db.TeacherPrograms
-                .Where(tp => tp.UserId == userId)
-                .ToListAsync();
+            var existingPrograms =
+                await db.TeacherPrograms
+                    .Where(
+                        tp =>
+                            tp.UserId ==
+                            userId
+                    )
+                    .ToListAsync();
 
-            var programsToRemove = existingPrograms
-                .Where(tp =>
-                    !model.SelectedProgramIds.Contains(tp.ProgramId))
-                .ToList();
 
-            db.TeacherPrograms.RemoveRange(programsToRemove);
+            var programsToRemove =
+                existingPrograms
+                    .Where(
+                        tp =>
+                            !model
+                                .SelectedProgramIds
+                                .Contains(
+                                    tp.ProgramId
+                                )
+                    )
+                    .ToList();
 
-            var existingProgramIds = existingPrograms
-                .Select(tp => tp.ProgramId)
-                .ToHashSet();
 
-            foreach (var programId in model.SelectedProgramIds)
+            db.TeacherPrograms
+                .RemoveRange(
+                    programsToRemove
+                );
+
+
+            var existingProgramIds =
+                existingPrograms
+                    .Select(
+                        tp =>
+                            tp.ProgramId
+                    )
+                    .ToHashSet();
+
+
+            foreach (
+                var programId
+                in model.SelectedProgramIds
+            )
             {
-                if (!existingProgramIds.Contains(programId))
+                if (
+                    !existingProgramIds
+                        .Contains(
+                            programId
+                        )
+                )
                 {
                     db.TeacherPrograms.Add(
                         new TeacherProgram
                         {
-                            UserId = userId,
-                            ProgramId = programId,
-                            RegisteredDate = DateTime.Now
-                        });
+                            UserId =
+                                userId,
+
+                            ProgramId =
+                                programId,
+
+                            RegisteredDate =
+                                DateTime.Now
+                        }
+                    );
                 }
             }
-            //update teacher subjects
-       
-            var existingCourses = await db.TeacherCourses
-                .Where(tc => tc.UserId == userId)
-                .ToListAsync();
 
-            var coursesToRemove = existingCourses
-                .Where(tc =>
-                    !model.SelectedCourseIds.Contains(tc.CourseId))
-                .ToList();
 
-            db.TeacherCourses.RemoveRange(coursesToRemove);
+            // ======================================
+            // UPDATE TEACHER SUBJECTS
+            // ======================================
+
+            var existingCourses =
+                await db.TeacherCourses
+                    .Where(
+                        tc =>
+                            tc.UserId ==
+                            userId
+                    )
+                    .ToListAsync();
+
+
+            var coursesToRemove =
+                existingCourses
+                    .Where(
+                        tc =>
+                            !model
+                                .SelectedCourseIds
+                                .Contains(
+                                    tc.CourseId
+                                )
+                    )
+                    .ToList();
+
+
+            db.TeacherCourses
+                .RemoveRange(
+                    coursesToRemove
+                );
+
 
             await db.SaveChangesAsync();
 
-            var remainingCourseIds = await db.TeacherCourses
-                .Where(tc => tc.UserId == userId)
-                .Select(tc => tc.CourseId)
-                .ToListAsync();
 
-            // Add new courses
-            foreach (var courseId in model.SelectedCourseIds)
+            var remainingCourseIds =
+                await db.TeacherCourses
+                    .Where(
+                        tc =>
+                            tc.UserId ==
+                            userId
+                    )
+                    .Select(
+                        tc =>
+                            tc.CourseId
+                    )
+                    .ToListAsync();
+
+
+            // ======================================
+            // ADD NEW SUBJECTS
+            // ======================================
+
+            foreach (
+                var courseId
+                in model.SelectedCourseIds
+            )
             {
-                if (!remainingCourseIds.Contains(courseId))
+                if (
+                    !remainingCourseIds
+                        .Contains(
+                            courseId
+                        )
+                )
                 {
                     var teacherCourse =
                         new TeacherCourse
                         {
                             TeacherCourseId =
-                                await FormattedIdGenerator.NextAsync(
-                                    db.TeacherCourses,
-                                    x => x.TeacherCourseId,
-                                    "TCR"),
+                                await FormattedIdGenerator
+                                    .NextAsync(
+                                        db.TeacherCourses,
+                                        x =>
+                                            x.TeacherCourseId,
+                                        "TCR"
+                                    ),
 
-                            UserId = userId,
-                            CourseId = courseId,
-                            RegisteredDate = DateTime.Now
+                            UserId =
+                                userId,
+
+                            CourseId =
+                                courseId,
+
+                            RegisteredDate =
+                                DateTime.Now
                         };
 
-                    db.TeacherCourses.Add(teacherCourse);
 
-                    // Save here so next generated TCR ID
-                    // will not duplicate
+                    db.TeacherCourses.Add(
+                        teacherCourse
+                    );
+
+
+                    // Save here so the next
+                    // generated TCR ID is unique.
                     await db.SaveChangesAsync();
                 }
             }
 
-            await transaction.CommitAsync();
+
+            await transaction
+                .CommitAsync();
         }
         catch
         {
-            await transaction.RollbackAsync();
+            await transaction
+                .RollbackAsync();
+
             throw;
         }
 
-        return RedirectToAction("Index", "MyProfile");
+
+        return RedirectToAction(
+            "Index",
+            "MyProfile"
+        );
     }
+
+
+    // ==================================================
+    // TEACHER PROFILE
+    // ==================================================
 
     [HttpGet]
     public async Task<IActionResult> Profile()
     {
-        var userId = GetCurrentUserId();
-        var teacher = await db.Teacher.FirstOrDefaultAsync(t => t.UserId == userId);
-        if (teacher == null) return RedirectToAction(nameof(Create));
-        await TryLinkLegacyProfileAsync(userId!);
-        if (!await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId)) return RedirectToAction(nameof(Create));
+        var userId =
+            GetCurrentUserId();
+
+
+        if (userId == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        var teacher =
+            await db.Teacher
+                .FirstOrDefaultAsync(
+                    t =>
+                        t.UserId ==
+                        userId
+                );
+
+
+        if (teacher == null)
+        {
+            return RedirectToAction(
+                nameof(Create)
+            );
+        }
+
+
+        await TryLinkLegacyProfileAsync(
+            userId
+        );
+
+
+        if (
+            !await db.TeacherCourses
+                .AnyAsync(
+                    tc =>
+                        tc.UserId ==
+                        userId
+                )
+        )
+        {
+            return RedirectToAction(
+                nameof(Create)
+            );
+        }
+
+
         return View(teacher);
     }
 
-    private async Task TryLinkLegacyProfileAsync(string userId)
+
+    // ==================================================
+    // LEGACY TEACHER PROFILE LINK
+    // ==================================================
+
+    private async Task TryLinkLegacyProfileAsync(
+        string userId)
     {
-        if (await db.TeacherCourses.AnyAsync(tc => tc.UserId == userId)) return;
-        var teacher = await db.Teacher.AsNoTracking().FirstOrDefaultAsync(t => t.UserId == userId);
-        if (teacher == null || string.IsNullOrWhiteSpace(teacher.Program) || string.IsNullOrWhiteSpace(teacher.Subject)) return;
-        var program = await db.AcademicPrograms.AsNoTracking().FirstOrDefaultAsync(p => p.ProgramCode.ToLower() == teacher.Program.ToLower());
-        if (program == null) return;
-        var mapping = await db.ProgramCourses.AsNoTracking().Include(pc => pc.Course)
-            .FirstOrDefaultAsync(pc => pc.ProgramId == program.ProgramId && pc.Course != null && pc.Course.CourseName.ToLower() == teacher.Subject.ToLower());
-        if (mapping == null) return;
-        db.TeacherCourses.Add(new TeacherCourse
+        if (
+            await db.TeacherCourses
+                .AnyAsync(
+                    tc =>
+                        tc.UserId ==
+                        userId
+                )
+        )
         {
-            TeacherCourseId = await FormattedIdGenerator.NextAsync(db.TeacherCourses, x => x.TeacherCourseId, "TCR"),
-            UserId = userId,
-            CourseId = mapping.CourseId,
-            RegisteredDate = DateTime.Now
-        });
+            return;
+        }
+
+
+        var teacher =
+            await db.Teacher
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    t =>
+                        t.UserId ==
+                        userId
+                );
+
+
+        if (
+            teacher == null ||
+            string.IsNullOrWhiteSpace(
+                teacher.Program
+            ) ||
+            string.IsNullOrWhiteSpace(
+                teacher.Subject
+            )
+        )
+        {
+            return;
+        }
+
+
+        var program =
+            await db.AcademicPrograms
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    p =>
+                        p.ProgramCode
+                            .ToLower() ==
+                        teacher.Program
+                            .ToLower()
+                );
+
+
+        if (program == null)
+        {
+            return;
+        }
+
+
+        var mapping =
+            await db.ProgramCourses
+                .AsNoTracking()
+                .Include(
+                    pc =>
+                        pc.Course
+                )
+                .FirstOrDefaultAsync(
+                    pc =>
+                        pc.ProgramId ==
+                            program.ProgramId &&
+                        pc.Course !=
+                            null &&
+                        pc.Course
+                            .CourseName
+                            .ToLower() ==
+                        teacher.Subject
+                            .ToLower()
+                );
+
+
+        if (mapping == null)
+        {
+            return;
+        }
+
+
+        db.TeacherCourses.Add(
+            new TeacherCourse
+            {
+                TeacherCourseId =
+                    await FormattedIdGenerator
+                        .NextAsync(
+                            db.TeacherCourses,
+                            x =>
+                                x.TeacherCourseId,
+                            "TCR"
+                        ),
+
+                UserId =
+                    userId,
+
+                CourseId =
+                    mapping.CourseId,
+
+                RegisteredDate =
+                    DateTime.Now
+            }
+        );
+
+
         await db.SaveChangesAsync();
+    }
+
+
+    // ==================================================
+    // GET DATE FOR A DAY INSIDE ACADEMIC WEEK
+    // ==================================================
+
+    private static DateTime GetDateForDay(
+        DateTime weekStart,
+        DayOfWeek day)
+    {
+        int difference =
+            (
+                (int)day -
+                (int)weekStart.DayOfWeek +
+                7
+            ) % 7;
+
+
+        return weekStart
+            .AddDays(
+                difference
+            )
+            .Date;
+    }
+
+
+    // ==================================================
+    // DAY ORDER
+    //
+    // Monday = 1
+    // Tuesday = 2
+    // ...
+    // Sunday = 7
+    // ==================================================
+
+    private static int GetDayOrder(
+        DayOfWeek day)
+    {
+        return day ==
+            DayOfWeek.Sunday
+                ? 7
+                : (int)day;
+    }
+
+
+    // ==================================================
+    // PENDING TIMETABLE CHANGE
+    // ==================================================
+
+    private static bool IsPendingDecision(
+        string? value)
+    {
+        return string.Equals(
+            value,
+            "Pending",
+            StringComparison
+                .OrdinalIgnoreCase
+        );
+    }
+
+
+    // ==================================================
+    // CANCELLED STATUS HELPER
+    // ==================================================
+
+    private static bool IsCancelledValue(
+        string? value)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                value
+            )
+        )
+        {
+            return false;
+        }
+
+
+        return value
+            .Trim()
+            .Contains(
+                "cancel",
+                StringComparison
+                    .OrdinalIgnoreCase
+            );
     }
 }

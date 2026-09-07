@@ -1,0 +1,243 @@
+﻿@model WebAndMobile.Models.TeacherAttendanceCodeViewModel
+
+@{
+    ViewData["Title"] = "Attendance Code";
+}
+
+<link rel="stylesheet"
+      href="~/css/teacherhome.css"
+      asp-append-version="true" />
+
+<link rel="stylesheet"
+      href="~/css/teacher-attendance-code.css"
+      asp-append-version="true" />
+
+
+<div class="teacher-dashboard">
+
+    <header class="teacher-header">
+
+        <div>
+
+            <a asp-controller="Teacher"
+               asp-action="Index"
+               class="attendance-back">
+                ← Back to Dashboard
+            </a>
+
+            <p class="teacher-role">
+                Teacher Portal
+            </p>
+
+            <h1>
+                Generate Attendance Code
+            </h1>
+
+            <p>
+                Generate attendance codes for
+                today's classes.
+            </p>
+
+        </div>
+
+
+        <a asp-controller="Teacher"
+           asp-action="Timetable"
+           class="attendance-timetable-link">
+            📅 View Timetable
+        </a>
+
+    </header>
+
+
+    @if (TempData["AttendanceError"] != null)
+    {
+        <div class="attendance-message error">
+            ⚠ @TempData["AttendanceError"]
+        </div>
+    }
+
+
+    @if (TempData["AttendanceSuccess"] != null)
+    {
+        <div class="attendance-message success">
+            ✓ @TempData["AttendanceSuccess"]
+        </div>
+    }
+
+
+    <section class="attendance-code-card">
+
+        <div class="attendance-code-heading">
+
+            <div>
+
+                <h2>
+                    Today's Classes
+                </h2>
+
+                <p>
+                    @(Model.Date.ToString("dddd, dd MMMM yyyy"))
+                </p>
+
+            </div>
+
+            <span class="attendance-count">
+                @Model.Classes.Count
+            </span>
+
+        </div>
+
+
+        @if (Model.Classes.Count == 0)
+        {
+            <div class="attendance-code-empty">
+
+                <span>
+                    ✨
+                </span>
+
+                <strong>
+                    No classes today
+                </strong>
+
+                <p>
+                    You do not have any classes
+                    scheduled today.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="attendance-class-list">
+
+                @foreach (var item in Model.Classes)
+                {
+                    string classStyle =
+                        item.Status == "Replacement"
+                            ? "replacement"
+                            : "";
+
+                    <div class="attendance-class-item @classStyle">
+
+                        <div class="attendance-class-time">
+
+                            <strong>
+                                @(item.StartTime.ToString(@"hh\:mm"))
+                            </strong>
+
+                            <span>
+                                @(item.EndTime.ToString(@"hh\:mm"))
+                            </span>
+
+                        </div>
+
+
+                        <div class="attendance-class-info">
+
+                            <div>
+
+                                <strong>
+                                    @item.CourseName
+                                </strong>
+
+                                @if (item.Status == "Replacement")
+                                {
+                                    <span class="replacement-label">
+                                        Replacement
+                                    </span>
+                                }
+
+                            </div>
+
+
+                            <span>
+                                @item.ClassName
+                                ·
+                                @item.RoomName
+                            </span>
+
+                        </div>
+
+
+                        <div class="attendance-code-action">
+
+                            @if (!string.IsNullOrWhiteSpace(item.ActiveCode))
+                            {
+                                <div class="active-attendance-code">
+
+                                    <small>
+                                        Active Code
+                                    </small>
+
+                                    <strong>
+                                        @item.ActiveCode
+                                    </strong>
+
+                                    @if (item.ExpiresAt != null)
+                                    {
+                                        <span>
+                                            Expires
+                                            @(item.ExpiresAt.Value.ToString("HH:mm"))
+                                        </span>
+                                    }
+
+                                </div>
+                            }
+                            else
+                            {
+                                <form asp-controller="Attendance"
+                                      asp-action="GenerateCode"
+                                      method="post">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                           name="timetableId"
+                                           value="@item.TimetableId" />
+
+                                    @if (!string.IsNullOrWhiteSpace(item.ReplacementId))
+                                    {
+                                        <input type="hidden"
+                                               name="replacementId"
+                                               value="@item.ReplacementId" />
+                                    }
+
+                                    @if (item.CanGenerate)
+                                    {
+                                        <button type="submit"
+                                                class="generate-code-button">
+                                            Generate Code
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="generate-code-button disabled"
+                                                disabled>
+                                            Generate Code
+                                        </button>
+
+                                        @if (!string.IsNullOrWhiteSpace(item.DisabledReason))
+                                        {
+                                            <small class="generate-disabled-reason">
+                                                @item.DisabledReason
+                                            </small>
+                                        }
+                                    }
+
+                                </form>
+                            }
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+        }
+
+    </section>
+
+</div>
