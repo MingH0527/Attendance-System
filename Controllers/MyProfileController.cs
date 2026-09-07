@@ -118,43 +118,74 @@ public class MyProfileController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UploadAvatar(IFormFile avatar)
+    public async Task<IActionResult> UploadAvatar(
+        IFormFile avatar)
     {
-        string? userId = GetCurrentUserId();
+        string? userId =
+            GetCurrentUserId();
 
         if (userId == null)
         {
-            return RedirectToAction("Login", "Account");
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
         }
 
-        User? user = await db.Users
-            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        User? user =
+            await db.Users
+                .FirstOrDefaultAsync(
+                    u => u.UserId == userId
+                );
 
         if (user == null)
         {
             return NotFound();
         }
 
-        if (avatar == null || avatar.Length == 0)
+
+        // ==========================================
+        // NO FILE
+        // ==========================================
+
+        if (avatar == null ||
+            avatar.Length == 0)
         {
             TempData["AvatarError"] =
                 "Please select a profile picture.";
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(
+                nameof(Index)
+            );
         }
 
-        // Maximum 2MB
-        if (avatar.Length > 2 * 1024 * 1024)
+
+        // ==========================================
+        // MAXIMUM 2MB
+        // ==========================================
+
+        if (avatar.Length >
+            2 * 1024 * 1024)
         {
             TempData["AvatarError"] =
                 "Profile picture must be smaller than 2MB.";
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(
+                nameof(Index)
+            );
         }
 
+
+        // ==========================================
+        // FILE EXTENSION VALIDATION
+        // ==========================================
+
         string extension =
-            Path.GetExtension(avatar.FileName)
-                .ToLowerInvariant();
+            Path.GetExtension(
+                avatar.FileName
+            ).ToLowerInvariant();
+
 
         string[] allowedExtensions =
         {
@@ -164,62 +195,153 @@ public class MyProfileController : Controller
         ".webp"
     };
 
+
         if (!allowedExtensions.Contains(extension))
         {
             TempData["AvatarError"] =
-                "Only JPG, JPEG, PNG and WEBP images are allowed.";
+                "Invalid image format. Only JPG, JPEG, PNG and WEBP files are allowed.";
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(
+                nameof(Index)
+            );
         }
 
-        string uploadFolder = Path.Combine(
-            environment.WebRootPath,
-            "uploads",
-            "avatars"
+
+        // ==========================================
+        // CONTENT TYPE VALIDATION
+        // ==========================================
+
+        string[] allowedContentTypes =
+        {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
+
+
+        if (!allowedContentTypes.Contains(
+                avatar.ContentType.ToLowerInvariant()
+            ))
+        {
+            TempData["AvatarError"] =
+                "Invalid image format. Only JPG, JPEG, PNG and WEBP files are allowed.";
+
+            return RedirectToAction(
+                nameof(Index)
+            );
+        }
+
+
+        // ==========================================
+        // CREATE AVATAR FOLDER
+        // ==========================================
+
+        string uploadFolder =
+            Path.Combine(
+                environment.WebRootPath,
+                "uploads",
+                "avatars"
+            );
+
+
+        Directory.CreateDirectory(
+            uploadFolder
         );
 
-        Directory.CreateDirectory(uploadFolder);
+
+        // ==========================================
+        // GENERATE NEW FILE NAME
+        // ==========================================
 
         string fileName =
             $"{user.UserId}_{Guid.NewGuid():N}{extension}";
 
+
         string filePath =
-            Path.Combine(uploadFolder, fileName);
-
-        await using (FileStream stream =
-            new FileStream(filePath, FileMode.Create))
-        {
-            await avatar.CopyToAsync(stream);
-        }
-
-        // Delete previous uploaded avatar
-        if (!string.IsNullOrWhiteSpace(user.Avatar) &&
-            user.Avatar.StartsWith("/uploads/avatars/"))
-        {
-            string oldAvatarPath = Path.Combine(
-                environment.WebRootPath,
-                user.Avatar
-                    .TrimStart('/')
-                    .Replace(
-                        '/',
-                        Path.DirectorySeparatorChar)
+            Path.Combine(
+                uploadFolder,
+                fileName
             );
 
-            if (System.IO.File.Exists(oldAvatarPath))
+
+        // ==========================================
+        // SAVE NEW AVATAR
+        // ==========================================
+
+        await using (
+            FileStream stream =
+                new FileStream(
+                    filePath,
+                    FileMode.Create
+                )
+        )
+        {
+            await avatar.CopyToAsync(
+                stream
+            );
+        }
+
+
+        // ==========================================
+        // DELETE OLD AVATAR
+        // ==========================================
+
+        if (
+            !string.IsNullOrWhiteSpace(
+                user.Avatar
+            ) &&
+            user.Avatar.StartsWith(
+                "/uploads/avatars/"
+            )
+        )
+        {
+            string oldAvatarPath =
+                Path.Combine(
+                    environment.WebRootPath,
+                    user.Avatar
+                        .TrimStart('/')
+                        .Replace(
+                            '/',
+                            Path.DirectorySeparatorChar
+                        )
+                );
+
+
+            if (
+                System.IO.File.Exists(
+                    oldAvatarPath
+                )
+            )
             {
-                System.IO.File.Delete(oldAvatarPath);
+                System.IO.File.Delete(
+                    oldAvatarPath
+                );
             }
         }
+
+
+        // ==========================================
+        // UPDATE DATABASE
+        // ==========================================
 
         user.Avatar =
             $"/uploads/avatars/{fileName}";
 
+
         await db.SaveChangesAsync();
 
-        TempData["AvatarSuccess"] =
-            "Profile picture updated successfully.";
 
-        return RedirectToAction(nameof(Index));
+        // ==========================================
+        // SUCCESS MESSAGE
+        // ==========================================
+
+        TempData["AvatarSuccess"] =
+            "Profile picture uploaded successfully.";
+
+
+        return RedirectToAction(
+            nameof(Index)
+        );
     }
     // ==================================================
     // PASSKEY PAGE

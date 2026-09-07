@@ -11,10 +11,9 @@
     const currentUserId =
         app.dataset.currentUserId ||
         "";
-
-    const initialSelectedUserId =
-        app.dataset.selectedUserId ||
-        "";
+    const currentUserName =
+        app.dataset.currentUserName ||
+        "User";
 
     const searchInput =
         document.getElementById(
@@ -49,6 +48,11 @@
     const activeChatAvatar =
         document.getElementById(
             "activeChatAvatar"
+        );
+
+    const activeChatAvatarFallback =
+        document.getElementById(
+            "activeChatAvatarFallback"
         );
 
     const activeChatName =
@@ -109,6 +113,11 @@
     const incomingCallerAvatar =
         document.getElementById(
             "incomingCallerAvatar"
+        );
+
+    const incomingCallerAvatarFallback =
+        document.getElementById(
+            "incomingCallerAvatarFallback"
         );
 
     const incomingCallerName =
@@ -180,6 +189,9 @@
     let selectedUserName =
         "";
 
+    let selectedUserAvatar =
+        "";
+
     let oldestMessageId =
         "";
 
@@ -232,19 +244,19 @@
         [];
 
     const rtcConfiguration =
-        {
-            iceServers:
-                [
-                    {
-                        urls:
-                            "stun:stun.l.google.com:19302"
-                    },
-                    {
-                        urls:
-                            "stun:stun1.l.google.com:19302"
-                    }
-                ]
-        };
+    {
+        iceServers:
+            [
+                {
+                    urls:
+                        "stun:stun.l.google.com:19302"
+                },
+                {
+                    urls:
+                        "stun:stun1.l.google.com:19302"
+                }
+            ]
+    };
 
     const connection =
         new signalR
@@ -271,20 +283,136 @@
         return element.innerHTML;
     }
 
-    function avatarUrl(value) {
-        const avatar = String(value || "").trim();
+    function hasCustomAvatar(value) {
 
-        if (!avatar || avatar === "default.png") {
-            return "/image/default.png";
+        const avatar =
+            String(value || "").trim();
+
+        return (
+            avatar !== "" &&
+            avatar !== "default.png" &&
+            avatar !== "default-avatar.png"
+        );
+    }
+
+
+    function getAvatarUrl(value) {
+
+        const avatar =
+            String(value || "").trim();
+
+        if (!hasCustomAvatar(avatar)) {
+            return "";
         }
 
-        // Uploaded profile picture
-        if (avatar.startsWith("/")) {
+        if (
+            avatar.startsWith("/") ||
+            avatar.startsWith("http://") ||
+            avatar.startsWith("https://")
+        ) {
             return avatar;
         }
 
-        // Old/default image stored as filename
         return `/image/${avatar}`;
+    }
+
+    function getInitial(username) {
+        return (
+            String(username || "U")
+                .trim()
+                .charAt(0)
+                .toUpperCase() ||
+            "U"
+        );
+    }
+
+    function avatarMarkup(
+        avatarValue,
+        username,
+        wrapperClass = "chat-avatar-wrap",
+        fallbackClass = "chat-avatar-fallback",
+        imageClass = "chat-avatar-image"
+    ) {
+        const avatar =
+            getAvatarUrl(
+                avatarValue
+            );
+
+        const initial =
+            getInitial(
+                username
+            );
+
+        return `
+            <span class="${wrapperClass}">
+                <span class="${fallbackClass}">
+                    ${escapeHtml(initial)}
+                </span>
+
+                ${avatar
+                ? `
+                            <img
+                                src="${escapeHtml(avatar)}"
+                                class="${imageClass}"
+                                alt=""
+                                onerror="this.style.display='none';" />
+                          `
+                : ""
+            }
+            </span>
+        `;
+    }
+
+    function setAvatarElements(
+        image,
+        fallback,
+        avatarValue,
+        username
+    ) {
+        if (fallback) {
+            fallback.textContent =
+                getInitial(
+                    username
+                );
+        }
+
+        if (!image) {
+            return;
+        }
+
+        image.onload = null;
+        image.onerror = null;
+        image.hidden = true;
+        image.style.display = "none";
+        image.removeAttribute("src");
+
+        const avatar =
+            getAvatarUrl(
+                avatarValue
+            );
+
+        if (!avatar) {
+            return;
+        }
+
+        image.onload =
+            () => {
+                image.hidden = false;
+                image.style.display = "block";
+
+                if (image === activeChatAvatar) {
+                    syncOpenConversationAvatars();
+                }
+            };
+
+        image.onerror =
+            () => {
+                image.hidden = true;
+                image.style.display = "none";
+            };
+
+        image.src =
+            avatar;
     }
 
 
@@ -497,25 +625,40 @@
             currentUserId;
 
         const isCall =
-            (message.messageType || "Text") === "VideoCall";
-
-        const senderAvatar =
-            avatarUrl(message.senderAvatar);
+            (message.messageType || "Text") ===
+            "VideoCall";
 
         const senderName =
-            message.senderName ||
-            (mine ? "You" : selectedUserName || "User");
+            mine
+                ? (
+                    message.senderName ||
+                    currentUserName
+                )
+                : (
+                    selectedUserName ||
+                    message.senderName ||
+                    "User"
+                );
 
-        let contentHtml;
+     
+        const senderAvatarValue =
+            mine
+                ? (message.senderAvatar || "")
+                : (selectedUserAvatar || "");
+
+        let contentHtml = "";
 
         if (isCall) {
             const status =
-                message.callStatus || "Calling";
+                message.callStatus ||
+                "Calling";
 
-            let detail = "Calling…";
+            let detail =
+                "Calling…";
 
             if (status === "Connected") {
-                detail = "Video call in progress";
+                detail =
+                    "Video call in progress";
             }
             else if (status === "Completed") {
                 detail =
@@ -524,70 +667,180 @@
                     )}`;
             }
             else if (status === "Declined") {
-                detail = "Declined";
+                detail =
+                    "Declined";
             }
             else if (status === "Missed") {
-                detail = "Missed video call";
+                detail =
+                    "Missed video call";
             }
 
             contentHtml = `
-            <div class="call-message-card">
-                <div class="call-message-icon">📹</div>
-                <div>
-                    <strong>Video call</strong>
-                    <div class="call-message-detail">
-                        ${escapeHtml(detail)}
+                <div class="call-message-card">
+                    <div class="call-message-icon">
+                        📹
+                    </div>
+
+                    <div>
+                        <strong>
+                            Video call
+                        </strong>
+
+                        <div class="call-message-detail">
+                            ${escapeHtml(detail)}
+                        </div>
                     </div>
                 </div>
-            </div>`;
+            `;
         }
         else {
             contentHtml = `
-            <div class="message-content">
-                ${escapeHtml(message.content)
-                    .replace(/\n/g, "<br>")}
-            </div>`;
+                <div class="message-content">
+                    ${escapeHtml(
+                message.content || ""
+            ).replace(
+                /\n/g,
+                "<br>"
+            )}
+                </div>
+            `;
         }
 
-        const avatarHtml = `
-        <img
-            class="message-avatar"
-            src="${escapeHtml(senderAvatar)}"
-            alt="${escapeHtml(senderName)}"
-            onerror="this.onerror=null; this.src='/image/default.png';" />
-    `;
+        const avatarHtml =
+            avatarMarkup(
+                senderAvatarValue,
+                senderName,
+                "message-avatar-wrap",
+                "message-avatar-fallback",
+                "message-avatar"
+            );
 
         return `
-        <article
-            class="message-row ${mine ? "message-mine" : "message-other"
+            <article
+                class="message-row ${mine
+                ? "message-mine"
+                : "message-other"
             }"
-            data-message-id="${message.messageId}">
+                data-message-id="${escapeHtml(
+                message.messageId || ""
+            )}">
 
-            ${mine ? "" : avatarHtml}
+                ${mine
+                ? ""
+                : avatarHtml
+            }
 
-            <div class="message-bubble ${isCall ? "call-message-bubble" : ""
+                <div class="message-bubble ${isCall
+                ? "call-message-bubble"
+                : ""
             }">
 
-                ${contentHtml}
+                    ${contentHtml}
 
-                <div class="message-meta">
-                    <time data-utc="${escapeHtml(message.sentAtUtc)}">
-                        ${formatTime(message.sentAtUtc)}
-                    </time>
+                    <div class="message-meta">
+                        <time data-utc="${escapeHtml(
+                message.sentAtUtc || ""
+            )}">
+                            ${formatTime(
+                message.sentAtUtc
+            )}
+                        </time>
 
-                    ${mine
-                ? `<span class="read-state">
-                                ${message.isRead ? "Read" : "Sent"}
-                               </span>`
+                        ${mine
+                ? `
+                                    <span class="read-state">
+                                        ${message.isRead
+                    ? "Read"
+                    : "Sent"
+                }
+                                    </span>
+                                  `
                 : ""
             }
+                    </div>
                 </div>
 
-            </div>
+                ${mine
+                ? avatarHtml
+                : ""
+            }
+            </article>
+        `;
+    }
 
-            ${mine ? avatarHtml : ""}
+    function syncOpenConversationAvatars() {
+        const avatar =
+            getAvatarUrl(
+                selectedUserAvatar
+            );
 
-        </article>`;
+        const initial =
+            getInitial(
+                selectedUserName
+            );
+
+        document
+            .querySelectorAll(
+                ".message-other .message-avatar-wrap"
+            )
+            .forEach(
+                wrapper => {
+                    const fallback =
+                        wrapper.querySelector(
+                            ".message-avatar-fallback"
+                        );
+
+                    if (fallback) {
+                        fallback.textContent =
+                            initial;
+                    }
+
+                    let image =
+                        wrapper.querySelector(
+                            ".message-avatar"
+                        );
+
+                    if (!avatar) {
+                        if (image) {
+                            image.remove();
+                        }
+
+                        return;
+                    }
+
+                    if (!image) {
+                        image =
+                            document.createElement(
+                                "img"
+                            );
+
+                        image.className =
+                            "message-avatar";
+
+                        image.alt = "";
+
+                        wrapper.appendChild(
+                            image
+                        );
+                    }
+
+                    image.onerror =
+                        () => {
+                            image.style.display =
+                                "none";
+                        };
+
+                    image.onload =
+                        () => {
+                            image.style.display =
+                                "block";
+                        };
+
+                    // Force the exact same latest avatar path for every
+                    // incoming message in the open conversation.
+                    image.src = avatar;
+                }
+            );
     }
 
     function replaceMessage(message) {
@@ -625,6 +878,13 @@
                 )
             );
 
+        if (
+            String(message.senderId || "") !==
+            currentUserId
+        ) {
+            syncOpenConversationAvatars();
+        }
+
         if (!oldestMessageId) {
             oldestMessageId =
                 String(message.messageId || "");
@@ -655,6 +915,8 @@
                 html
             );
 
+        syncOpenConversationAvatars();
+
         if (messages.length > 0) {
             oldestMessageId =
                 String(
@@ -680,6 +942,12 @@
         selectedConversationId =
             "";
 
+        selectedUserName =
+            "";
+
+        selectedUserAvatar =
+            "";
+
         oldestMessageId =
             "";
 
@@ -699,7 +967,6 @@
                         .classList
                         .toggle(
                             "active",
-
                             item.dataset.userId ===
                             selectedUserId
                         );
@@ -709,7 +976,12 @@
         try {
             const response =
                 await fetch(
-                    `/Chat/GetConversation?otherUserId=${selectedUserId}`
+                    `/Chat/GetConversation?otherUserId=${encodeURIComponent(
+                        selectedUserId
+                    )}`,
+                    {
+                        cache: "no-store"
+                    }
                 );
 
             if (!response.ok) {
@@ -726,25 +998,26 @@
                 "";
 
             selectedUserName =
-                data.otherUser.username;
+                data.otherUser?.username ||
+                "User";
 
-            activeChatAvatar.src =
-                avatarUrl(data.otherUser.avatar);
-
-            activeChatAvatar.onerror =
-                () => {
-                    activeChatAvatar.onerror =
-                        null;
-
-                    activeChatAvatar.src =
-                        "/image/default.png";
-                };
+            selectedUserAvatar =
+                data.otherUser?.avatar ||
+                "";
 
             activeChatName.textContent =
-                data.otherUser.username;
+                selectedUserName;
 
             activeChatInfo.textContent =
-                data.otherUser.position;
+                data.otherUser?.position ||
+                "";
+
+            setAvatarElements(
+                activeChatAvatar,
+                activeChatAvatarFallback,
+                selectedUserAvatar,
+                selectedUserName
+            );
 
             emptyState.hidden =
                 true;
@@ -752,14 +1025,22 @@
             activeChat.hidden =
                 false;
 
-            data.messages
-                .forEach(
-                    message =>
-                        appendMessage(
-                            message,
-                            false
-                        )
-                );
+            const messages =
+                Array.isArray(data.messages)
+                    ? data.messages
+                    : [];
+
+            messages.forEach(
+                message =>
+                    appendMessage(
+                        message,
+                        false
+                    )
+            );
+
+            // Extra safety: make every received message use exactly the
+            // currently selected user's latest avatar.
+            syncOpenConversationAvatars();
 
             loadOlderButton.hidden =
                 !data.hasMore;
@@ -769,11 +1050,10 @@
 
             if (
                 selectedConversationId &&
-
                 connection.state ===
-                    signalR
-                        .HubConnectionState
-                        .Connected
+                signalR
+                    .HubConnectionState
+                    .Connected
             ) {
                 await connection.invoke(
                     "MarkConversationAsRead",
@@ -788,7 +1068,6 @@
         catch (error) {
             showError(
                 error.message ||
-
                 "Unable to open conversation."
             );
         }
@@ -915,30 +1194,27 @@
                             <button
                                 type="button"
                                 class="search-user"
-                                data-user-id="${user.userId}">
+                                data-user-id="${escapeHtml(
+                            user.userId
+                        )}">
 
-                                <img
-                                 src="${escapeHtml(
-                                     avatarUrl(
-                                         user.avatar)
-                                    )}"
-                                    alt="${escapeHtml(
-                                        user.username
-                                    )}"
-                                    onerror="this.onerror=null; this.src='/image/default.png';" />
+                                ${avatarMarkup(
+                            user.avatar,
+                            user.username
+                        )}
 
                                 <span class="search-user-details">
 
                                     <strong>
                                         ${escapeHtml(
-                                            user.username
-                                        )}
+                            user.username
+                        )}
                                     </strong>
 
                                     <small>
                                         ${escapeHtml(
-                                            user.position
-                                        )}
+                            user.position
+                        )}
                                     </small>
 
                                 </span>
@@ -947,7 +1223,8 @@
                                     ›
                                 </span>
 
-                            </button>`
+                            </button>
+                        `
                     )
                     .join("");
         }
@@ -1032,38 +1309,43 @@
                         item => `
                             <button
                                 type="button"
-                                class="conversation-item ${
-                                    String(item.otherUserId || "") ===
-                                    selectedUserId
-                                        ? "active"
-                                        : ""
-                                }"
-                                data-user-id="${item.otherUserId}"
-                                data-conversation-id="${item.conversationId}">
+                                class="conversation-item ${String(
+                            item.otherUserId ||
+                            ""
+                        ) ===
+                                selectedUserId
+                                ? "active"
+                                : ""
+                            }"
+                                data-user-id="${escapeHtml(
+                                item.otherUserId
+                            )}"
+                                data-conversation-id="${escapeHtml(
+                                item.conversationId
+                            )}">
 
-                                <img
-                                    src="${escapeHtml(avatarUrl(user.avatar))}"
-                                    )}"
-                                    alt"${escapeHtml(user.username)}"
+                                ${avatarMarkup(
+                                item.otherAvatar,
+                                item.otherUsername
+                            )}
 
-                                    onerror="this.onerror=null; this.src='/image/default.png';" />
                                 <span class="conversation-main">
 
                                     <span class="conversation-topline">
 
                                         <strong>
                                             ${escapeHtml(
-                                                item.otherUsername
-                                            )}
+                                item.otherUsername
+                            )}
                                         </strong>
 
                                         <time
                                             data-utc="${escapeHtml(
-                                                item.lastMessageAtUtc
-                                            )}">
+                                item.lastMessageAtUtc
+                            )}">
                                             ${formatTime(
-                                                item.lastMessageAtUtc
-                                            )}
+                                item.lastMessageAtUtc
+                            )}
                                         </time>
 
                                     </span>
@@ -1072,25 +1354,29 @@
 
                                         <span class="conversation-preview">
                                             ${escapeHtml(
-                                                item.lastMessage
-                                            )}
+                                item.lastMessage
+                            )}
                                         </span>
 
-                                        ${
-                                            item.unreadCount > 0
-                                                ? `<span class="unread-badge">
-                                                    ${item.unreadCount}
-                                                   </span>`
-                                                : ""
-                                        }
+                                        ${item.unreadCount > 0
+                                ? `
+                                                    <span class="unread-badge">
+                                                        ${item.unreadCount}
+                                                    </span>
+                                                  `
+                                : ""
+                            }
 
                                     </span>
 
                                 </span>
 
-                            </button>`
+                            </button>
+                        `
                     )
                     .join("");
+
+            refreshVisibleTimes();
         }
         catch {
             // Existing list remains visible.
@@ -1122,29 +1408,29 @@
                 .getUserMedia(
                     {
                         video:
+                        {
+                            width:
                             {
-                                width:
-                                    {
-                                        ideal:
-                                            1280
-                                    },
-
-                                height:
-                                    {
-                                        ideal:
-                                            720
-                                    },
-
-                                facingMode:
-                                    "user"
+                                ideal:
+                                    1280
                             },
 
-                        audio:
+                            height:
                             {
-                                echoCancellation: true,
-                                noiseSuppression: true,
-                                autoGainControl: true
-                            }
+                                ideal:
+                                    720
+                            },
+
+                            facingMode:
+                                "user"
+                        },
+
+                        audio:
+                        {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
                     }
                 );
 
@@ -1510,9 +1796,9 @@
         if (
             callerId &&
             connection.state ===
-                signalR
-                    .HubConnectionState
-                    .Connected
+            signalR
+                .HubConnectionState
+                .Connected
         ) {
             await connection.invoke(
                 "RejectVideoCall",
@@ -1712,9 +1998,9 @@
             notifyOtherUser &&
             peerUserId &&
             connection.state ===
-                signalR
-                    .HubConnectionState
-                    .Connected
+            signalR
+                .HubConnectionState
+                .Connected
         ) {
             try {
                 await connection.invoke(
@@ -1979,7 +2265,7 @@
                         callPeerUserId
                     )
                     .catch(
-                        () => {}
+                        () => { }
                     );
             }
 
@@ -1996,10 +2282,10 @@
         async message => {
             const belongsToOpenChat =
                 String(message.senderId || "") ===
-                    selectedUserId ||
+                selectedUserId ||
 
                 String(message.receiverId || "") ===
-                    selectedUserId;
+                selectedUserId;
 
             if (belongsToOpenChat) {
                 appendMessage(
@@ -2008,7 +2294,7 @@
 
                 if (
                     String(message.receiverId || "") ===
-                        currentUserId &&
+                    currentUserId &&
 
                     selectedConversationId
                 ) {
@@ -2036,10 +2322,10 @@
         ) => {
             if (
                 String(conversationId || "") !==
-                    selectedConversationId ||
+                selectedConversationId ||
 
                 String(readerId || "") ===
-                    currentUserId
+                currentUserId
             ) {
                 return;
             }
@@ -2068,7 +2354,7 @@
                         String(caller.callerId || "")
                     )
                     .catch(
-                        () => {}
+                        () => { }
                     );
 
                 return;
@@ -2081,22 +2367,18 @@
                 String(caller.callMessageId || "");
 
             pendingCallerName =
-                caller.callerName;
+                caller.callerName ||
+                "User";
 
             incomingCallerName.textContent =
-                caller.callerName;
+                pendingCallerName;
 
-            incomingCallerAvatar.src =
-                `/image/${caller.callerAvatar}`;
-
-            incomingCallerAvatar.onerror =
-                () => {
-                    incomingCallerAvatar.onerror =
-                        null;
-
-                    incomingCallerAvatar.src =
-                        "/image/default.png";
-                };
+            setAvatarElements(
+                incomingCallerAvatar,
+                incomingCallerAvatarFallback,
+                caller.callerAvatar || "",
+                pendingCallerName
+            );
 
             incomingCallOverlay.hidden =
                 false;

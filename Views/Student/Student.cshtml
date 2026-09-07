@@ -4,16 +4,33 @@
     Layout = "_Layout";
     ViewData["Title"] = "Student Home";
 
-    <link rel="stylesheet"
-          href="~/css/student.css"
-          asp-append-version="true" />
 
     // ==============================
     // CURRENT USER
     // ==============================
 
-    string username =
-        User.Identity?.Name ?? "Student";
+    string studentUsername =
+        ViewBag.StudentUsername as string
+        ?? User.Identity?.Name
+        ?? "Student";
+
+    string studentAvatar =
+        ViewBag.StudentAvatar as string
+        ?? "";
+
+
+    bool hasAvatar =
+        !string.IsNullOrWhiteSpace(studentAvatar) &&
+        studentAvatar != "default.png" &&
+        studentAvatar != "default-avatar.png";
+
+
+    string studentInitial =
+        !string.IsNullOrWhiteSpace(studentUsername)
+            ? studentUsername
+                .Substring(0, 1)
+                .ToUpper()
+            : "S";
 
 
     // ==============================
@@ -24,10 +41,12 @@
         ViewBag.ProfileCompleted == true;
 
     string programName =
-        ViewBag.ProgramName ?? "Not Registered";
+        ViewBag.ProgramName
+        ?? "Not Registered";
 
     string className =
-        ViewBag.ClassName ?? "Not Registered";
+        ViewBag.ClassName
+        ?? "Not Registered";
 
 
     // ==============================
@@ -49,10 +68,15 @@
     // ==============================
 
     List<Timetable> todayTimetable =
-        ViewBag.TodayTimetable as List<Timetable>
+        ViewBag.TodayTimetable
+            as List<Timetable>
         ?? new List<Timetable>();
 }
 
+
+<link rel="stylesheet"
+      href="~/css/student.css"
+      asp-append-version="true" />
 
 <link rel="stylesheet"
       href="~/css/student-home.css"
@@ -75,7 +99,7 @@
             </span>
 
             <h1>
-                Welcome back, @username 👋
+                Welcome back, @studentUsername 👋
             </h1>
 
             <p>
@@ -85,15 +109,45 @@
         </div>
 
 
-        <div class="hero-date">
+        <!-- Right Side -->
+        <div class="hero-right">
 
-            <span>
-                Today
-            </span>
+            <!-- Today -->
+            <div class="hero-date">
 
-            <strong>
-                @DateTime.Now.ToString("dd MMM yyyy")
-            </strong>
+                <span>
+                    Today
+                </span>
+
+                <strong>
+                    @DateTime.Now.ToString("dd MMM yyyy")
+                </strong>
+
+            </div>
+
+
+            <!-- Student Avatar -->
+            <div class="student-home-avatar">
+
+                <!-- Letter fallback -->
+                <div class="student-home-avatar-fallback">
+                    @studentInitial
+                </div>
+
+
+                @if (hasAvatar)
+                {
+                    string avatarUrl =
+                        studentAvatar.StartsWith("/")
+                            ? studentAvatar
+                            : $"/image/{studentAvatar}";
+
+                    <img src="@avatarUrl"
+                         alt="@studentUsername"
+                         onerror="this.style.display='none';" />
+                }
+
+            </div>
 
         </div>
 
@@ -210,20 +264,22 @@
 
 
     <!-- ==========================================
-     MAIN DASHBOARD CONTENT
-=========================================== -->
+         MAIN DASHBOARD CONTENT
+    =========================================== -->
 
     <section class="dashboard-content">
 
+
         <!-- ======================================
-         TODAY'S TIMETABLE
-    ======================================= -->
+             TODAY'S TIMETABLE
+        ======================================= -->
 
         <div class="dashboard-card timetable-card">
 
             <div class="card-heading">
 
                 <div>
+
                     <span class="card-eyebrow">
                         SCHEDULE
                     </span>
@@ -231,18 +287,23 @@
                     <h2>
                         Today's Timetable
                     </h2>
+
                 </div>
+
 
                 @if (profileCompleted)
                 {
                     <a asp-controller="Student"
                        asp-action="Timetable"
                        class="card-link">
+
                         View Timetable →
+
                     </a>
                 }
 
             </div>
+
 
 
             @if (!profileCompleted)
@@ -312,8 +373,11 @@
 
                                 <span>
                                     @(
-                                        !string.IsNullOrWhiteSpace(item.ClassroomId)
-                                            ? "Classroom: " + item.ClassroomId
+                                        !string.IsNullOrWhiteSpace(
+                                            item.ClassroomId
+                                        )
+                                            ? "Classroom: " +
+                                              item.ClassroomId
                                             : "Classroom not assigned"
                                     )
                                 </span>
@@ -329,9 +393,10 @@
         </div>
 
 
+
         <!-- ======================================
-         STUDENT STATUS
-    ======================================= -->
+             STUDENT STATUS
+        ======================================= -->
 
         <div class="dashboard-card">
 
@@ -353,6 +418,7 @@
 
 
             <div class="status-list">
+
 
                 <!-- Pending Leave -->
                 <div class="status-row">
@@ -377,11 +443,13 @@
 
                     </div>
 
+
                     <span class="status-number">
                         @pendingLeaveCount
                     </span>
 
                 </div>
+
 
 
                 <!-- Unread Messages -->
@@ -407,11 +475,13 @@
 
                     </div>
 
+
                     <span class="status-number">
                         @unreadMessageCount
                     </span>
 
                 </div>
+
 
 
                 <!-- Profile Status -->
@@ -437,6 +507,7 @@
 
                     </div>
 
+
                     @if (profileCompleted)
                     {
                         <span class="status-badge complete">
@@ -458,217 +529,6 @@
 
     </section>
 
-    <!-- ==========================================
-         QUICK ACCESS
-    =========================================== -->
 
-    <section class="quick-section">
 
-
-        <div class="section-heading">
-
-            <span class="card-eyebrow">
-                QUICK ACCESS
-            </span>
-
-            <h2>
-                Student Services
-            </h2>
-
-        </div>
-
-
-
-        <div class="quick-grid">
-
-
-            <!-- Timetable -->
-            <a asp-controller="Student"
-               asp-action="Timetable"
-               class="quick-card">
-
-                <span class="quick-icon">
-                    📅
-                </span>
-
-
-                <div>
-
-                    <strong>
-                        My Timetable
-                    </strong>
-
-                    <span>
-                        View your class schedule.
-                    </span>
-
-                </div>
-
-
-                <span class="quick-arrow">
-                    →
-                </span>
-
-            </a>
-
-
-
-            <!-- Apply Leave -->
-            <a asp-controller="Student"
-               asp-action="ApplyLeave"
-               class="quick-card">
-
-                <span class="quick-icon">
-                    📝
-                </span>
-
-
-                <div>
-
-                    <strong>
-                        Apply Leave
-                    </strong>
-
-                    <span>
-                        Submit and review leave applications.
-                    </span>
-
-                </div>
-
-
-                <span class="quick-arrow">
-                    →
-                </span>
-
-            </a>
-
-
-
-            <!-- Chat -->
-            <a asp-controller="Chat"
-               asp-action="Index"
-               class="quick-card">
-
-                <span class="quick-icon">
-                    💬
-                </span>
-
-
-                <div>
-
-                    <strong>
-                        Teacher Chat
-                    </strong>
-
-                    <span>
-                        Message your teachers in real time.
-                    </span>
-
-                </div>
-
-
-                <span class="quick-arrow">
-                    →
-                </span>
-
-            </a>
-
-
-
-            <!-- Payment -->
-            <a asp-controller="Payment"
-               asp-action="Index"
-               class="quick-card">
-
-                <span class="quick-icon">
-                    💳
-                </span>
-
-
-                <div>
-
-                    <strong>
-                        Payment
-                    </strong>
-
-                    <span>
-                        View and make your payments.
-                    </span>
-
-                </div>
-
-
-                <span class="quick-arrow">
-                    →
-                </span>
-
-            </a>
-
-
-
-            <!-- Payment History -->
-            <a asp-controller="Payment"
-               asp-action="History"
-               class="quick-card">
-
-                <span class="quick-icon">
-                    🧾
-                </span>
-
-
-                <div>
-
-                    <strong>
-                        Payment History
-                    </strong>
-
-                    <span>
-                        Review your previous transactions.
-                    </span>
-
-                </div>
-
-
-                <span class="quick-arrow">
-                    →
-                </span>
-
-            </a>
-
-
-
-            <!-- My Profile -->
-            <a asp-controller="MyProfile"
-               asp-action="Index"
-               class="quick-card">
-
-                <span class="quick-icon">
-                    👤
-                </span>
-
-
-                <div>
-
-                    <strong>
-                        My Profile
-                    </strong>
-
-                    <span>
-                        View your account details and security.
-                    </span>
-
-                </div>
-
-
-                <span class="quick-arrow">
-                    →
-                </span>
-
-            </a>
-
-        </div>
-
-    </section>
-
-
-</div>
+ 

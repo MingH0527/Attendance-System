@@ -45,6 +45,29 @@ public class StudentController : Controller
             );
         }
 
+
+        // ==========================================
+        // CURRENT STUDENT USER
+        // ==========================================
+
+        User? currentUser =
+            await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    u => u.UserId == studentId
+                );
+
+        ViewBag.StudentUsername =
+            currentUser?.Username ?? "Student";
+
+        ViewBag.StudentAvatar =
+            currentUser?.Avatar ?? "";
+
+
+        // ==========================================
+        // STUDENT PROFILE
+        // ==========================================
+
         StudentClass? studentClass =
             await db.StudentClasses
                 .AsNoTracking()
@@ -68,11 +91,13 @@ public class StudentController : Controller
             studentClass?.ClassGroup?.ClassName
             ?? "Not Registered";
 
+
         // ==========================================
         // TODAY'S CLASSES
         // ==========================================
 
-        List<Timetable> todayTimetable = new();
+        List<Timetable> todayTimetable =
+            new();
 
         if (studentClass != null)
         {
@@ -83,10 +108,16 @@ public class StudentController : Controller
                 await db.Timetables
                     .AsNoTracking()
                     .Where(t =>
-                        t.ClassId == studentClass.ClassId &&
-                        t.DayOfWeek == today &&
+                        t.ClassId ==
+                            studentClass.ClassId &&
+
+                        t.DayOfWeek ==
+                            today &&
+
                         t.Term != null &&
-                        t.Term.Status == "Active"
+
+                        t.Term.Status ==
+                            "Active"
                     )
                     .Include(t => t.Course)
                     .Include(t => t.Classroom)
@@ -101,6 +132,7 @@ public class StudentController : Controller
         ViewBag.TodayClassCount =
             todayTimetable.Count;
 
+
         // ==========================================
         // PENDING LEAVE
         // ==========================================
@@ -113,6 +145,7 @@ public class StudentController : Controller
                     l.Status == "Pending"
                 );
 
+
         // ==========================================
         // UNREAD CHAT
         // ==========================================
@@ -124,6 +157,7 @@ public class StudentController : Controller
                     m.ReceiverId == studentId &&
                     !m.IsRead
                 );
+
 
         return View("Student");
     }
