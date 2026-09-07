@@ -1139,6 +1139,29 @@ public class StudentController : Controller
     }
 
     // ==============================
+    // GET ACTIVE SEMESTER
+    // ==============================
+
+    private async Task<AcademicTerm?>
+        GetActiveLeaveTermAsync()
+    {
+        DateTime today =
+            DateTime.Today;
+
+        return await db.AcademicTerms
+            .AsNoTracking()
+            .Where(t =>
+                t.Status == "Active" &&
+                t.StartDate.Date <= today &&
+                t.EndDate.Date >= today
+            )
+            .OrderBy(t =>
+                t.StartDate
+            )
+            .FirstOrDefaultAsync();
+    }
+
+    // ==============================
     // APPLY LEAVE - GET
     // ==============================
 
@@ -1160,14 +1183,23 @@ public class StudentController : Controller
             return Unauthorized();
         }
 
+        AcademicTerm? activeTerm =
+            await GetActiveLeaveTermAsync();
+
+        ViewBag.ActiveLeaveTerm =
+            activeTerm;
+
+        DateTime today =
+            DateTime.Today;
+
         ApplyLeaveViewModel model =
             new()
             {
                 StartDate =
-                    DateTime.Today,
+                    today,
 
                 EndDate =
-                    DateTime.Today,
+                    today,
 
                 LeaveHistory =
                     await db.LeaveApplications
@@ -1247,6 +1279,83 @@ public class StudentController : Controller
         }
 
         // ==============================
+        // ACTIVE SEMESTER VALIDATION
+        // ==============================
+
+        AcademicTerm? activeTerm =
+            await GetActiveLeaveTermAsync();
+
+        if (
+            activeTerm ==
+            null
+        )
+        {
+            ModelState.AddModelError(
+                nameof(model.StartDate),
+                "There is currently no active semester."
+            );
+        }
+        else
+        {
+            if (
+                model.StartDate.Date <
+                    activeTerm.StartDate.Date ||
+                model.StartDate.Date >
+                    activeTerm.EndDate.Date
+            )
+            {
+                ModelState.AddModelError(
+                    nameof(model.StartDate),
+                    "Start date must be within the current semester."
+                );
+            }
+
+            if (
+                model.EndDate.Date <
+                    activeTerm.StartDate.Date ||
+                model.EndDate.Date >
+                    activeTerm.EndDate.Date
+            )
+            {
+                ModelState.AddModelError(
+                    nameof(model.EndDate),
+                    "End date must be within the current semester."
+                );
+            }
+        }
+
+        // ==============================
+        // OVERLAPPING LEAVE VALIDATION
+        // ==============================
+
+        bool hasOverlappingLeave =
+            await db.LeaveApplications
+                .AsNoTracking()
+                .AnyAsync(l =>
+                    l.StudentId ==
+                        studentId &&
+                    (
+                        l.Status == "Pending" ||
+                        l.Status == "Approved"
+                    ) &&
+                    model.StartDate.Date <=
+                        l.EndDate.Date &&
+                    model.EndDate.Date >=
+                        l.StartDate.Date
+                );
+
+        if (
+            hasOverlappingLeave
+        )
+        {
+            ModelState.AddModelError(
+                nameof(model.StartDate),
+                "You already have a pending or approved leave application for the selected date range."
+            );
+        }
+
+
+        // ==============================
         // FILE VALIDATION
         // ==============================
 
@@ -1306,6 +1415,9 @@ public class StudentController : Controller
             !ModelState.IsValid
         )
         {
+            ViewBag.ActiveLeaveTerm =
+                activeTerm;
+
             model.LeaveHistory =
                 await db.LeaveApplications
                     .Where(l =>
