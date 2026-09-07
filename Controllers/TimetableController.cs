@@ -335,6 +335,7 @@ public class TimetableController : Controller
             {
                 var source = rep.SourceTimetable;
                 if (source is null) continue;
+                var replacementConflictReason = await GetReplacementConflictReasonAsync(rep);
                 result.Add(new TimetableSlotDto
                 {
                     TermId = source.TermId,
@@ -351,8 +352,8 @@ public class TimetableController : Controller
                     StartTime = rep.StartTime.ToString(@"hh\:mm"),
                     EndTime = rep.EndTime.ToString(@"hh\:mm"),
                     ClassType = rep.TargetClassType,
-                    Status = "Normal",
-                    StatusReason = "Replacement class",
+                    Status = replacementConflictReason is null ? "Normal" : "Attention",
+                    StatusReason = replacementConflictReason ?? "Replacement class",
                     IsUpdated = true,
                     IsReplacement = true,
                     ReplacementId = rep.ReplacementId,
@@ -377,6 +378,13 @@ public class TimetableController : Controller
 
         var v = await _validation.ValidateAsync(r);
         if (!v.IsValid) return BadRequest(v.ErrorMessage);
+
+        // The Weekly template is the parent schedule. Before creating/updating a
+        // recurring Tuition slot, also check every already-scheduled replacement
+        // in the child Weeks. Otherwise a parent slot can silently be added on top
+        // of a one-day replacement that was created earlier.
+        var replacementConflict = await ValidateTemplateAgainstReplacementsAsync(r);
+        if (replacementConflict is not null) return Conflict(replacementConflict);
 
         Timetable? e = null;
         if (!string.IsNullOrWhiteSpace(r.TimetableId)) e = await _db.Timetables.FindAsync(r.TimetableId);
@@ -431,6 +439,19 @@ public class TimetableController : Controller
         if (r.Date == default) return BadRequest("Please select the Week and specific lesson date you want to change. Status cannot be changed from the Weekly template.");
         if (r.Date.Date < term.StartDate.Date || r.Date.Date > term.EndDate.Date) return BadRequest("The selected date is outside the semester.");
         if (r.Date.DayOfWeek != t.DayOfWeek) return BadRequest("The selected date does not match the timetable day.");
+
+        // Do not allow retroactive cancellation of a lesson that was Normal once
+        // its actual occurrence start time has already been reached. This protects
+        // attendance/history from being rewritten after the lesson has started.
+        if (r.Status == "Cancelled")
+        {
+            var existingException = await _db.TimetableExceptions.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.TimetableId == r.TimetableId && x.OccurrenceDate.Date == r.Date.Date);
+            var effectiveStartForLock = existingException?.OverrideStartTime ?? t.StartTime;
+            var isCurrentlyCancelled = existingException?.Decision == "Cancel";
+            if (!isCurrentlyCancelled && r.Date.Date.Add(effectiveStartForLock) <= MalaysiaNow())
+                return BadRequest("This lesson has already started or passed. A Normal lesson cannot be changed to Cancelled after its scheduled start time.");
+        }
 
         if (r.Status == "Normal")
         {
@@ -528,6 +549,19 @@ public class TimetableController : Controller
         if (term.Status is "Warning" or "Abandoned") return BadRequest("History semesters are read-only.");
         if (r.Date.Date < term.StartDate.Date || r.Date.Date > term.EndDate.Date) return BadRequest("The selected date is outside the semester.");
         if (r.Date.DayOfWeek != t.DayOfWeek) return BadRequest("The selected date does not match the timetable day.");
+
+        // Do not allow retroactive cancellation of a lesson that was Normal once
+        // its actual occurrence start time has already been reached. This protects
+        // attendance/history from being rewritten after the lesson has started.
+        if (r.Status == "Cancelled")
+        {
+            var existingException = await _db.TimetableExceptions.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.TimetableId == r.TimetableId && x.OccurrenceDate.Date == r.Date.Date);
+            var effectiveStartForLock = existingException?.OverrideStartTime ?? t.StartTime;
+            var isCurrentlyCancelled = existingException?.Decision == "Cancel";
+            if (!isCurrentlyCancelled && r.Date.Date.Add(effectiveStartForLock) <= MalaysiaNow())
+                return BadRequest("This lesson has already started or passed. A Normal lesson cannot be changed to Cancelled after its scheduled start time.");
+        }
 
         if (r.Status == "Normal")
         {
@@ -674,6 +708,8 @@ public class TimetableController : Controller
             return BadRequest("Invalid replacement time.");
         if (s < TimeSpan.FromHours(8) || e > TimeSpan.FromHours(18))
             return BadRequest("Replacement time must be between 08:00 AM and 06:00 PM.");
+        if (r.Date.Date.Add(s) <= MalaysiaNow())
+            return BadRequest("A replacement class cannot be scheduled in a time slot that has already started or passed.");
 
         var originalStart = cancelled.OverrideStartTime ?? source.StartTime;
         var originalEnd = cancelled.OverrideEndTime ?? source.EndTime;
@@ -699,9 +735,9 @@ public class TimetableController : Controller
             var oe = ox?.OverrideEndTime ?? other.EndTime;
             if (!(os < e && s < oe)) continue;
             var roomId = ox?.OverrideClassroomId ?? other.ClassroomId;
-            if (other.TeacherId == source.TeacherId) return BadRequest("Teacher conflict: this teacher already has a lesson at the selected replacement time.");
-            if (other.ClassId == source.ClassId) return BadRequest("Class conflict: this class already has a lesson at the selected replacement time.");
-            if (roomId == r.ClassroomId) return BadRequest("Classroom conflict: this classroom is already occupied at the selected replacement time.");
+            if (other.TeacherId == source.TeacherId) return Conflict("Parent timetable conflict: this teacher already has a normal lesson at the selected replacement time. Move the replacement or change the parent timetable first.");
+            if (other.ClassId == source.ClassId) return Conflict("Parent timetable conflict: this class already has a normal lesson at the selected replacement time. Choose another replacement time.");
+            if (roomId == r.ClassroomId) return Conflict("Parent timetable conflict: this classroom is already occupied by a normal lesson at the selected replacement time. Choose another classroom or time.");
         }
 
         var otherReplacements = await _db.ReplacementSessions.AsNoTracking().Include(x => x.SourceTimetable)
@@ -846,7 +882,7 @@ public class TimetableController : Controller
     {
         var term = await _db.AcademicTerms.FirstOrDefaultAsync(t => t.TermId == request.TermId);
         if (term is null) return NotFound("Semester not found.");
-        if (term.Status != "Incoming")
+        if (term.Status is not ("Incoming" or "RestoredIncoming" or "WarningRestored"))
             return BadRequest("Only an Incoming semester can change its start and end dates. Active semester dates are locked.");
 
         var today = DateTime.Today;
@@ -1358,6 +1394,107 @@ public class TimetableController : Controller
         if (replacements.Any(r => r.SourceTimetable != null && r.SourceTimetable.ClassId == source.ClassId && !(r.SourceTimetableId == source.TimetableId && r.SourceOccurrenceDate == date.Date)))
             return "Class/time conflict - this class has a replacement class at this time";
         return null;
+    }
+
+    private async Task<string?> ValidateTemplateAgainstReplacementsAsync(TimetableRequest request)
+    {
+        if (request.ClassType != ClassType.Tuition || string.IsNullOrWhiteSpace(request.TermId)) return null;
+        if (!TimeSpan.TryParse(request.StartTime, out var start) || !TimeSpan.TryParse(request.EndTime, out var end)) return null;
+
+        var replacements = await _db.ReplacementSessions.AsNoTracking()
+            .Include(r => r.SourceTimetable)
+            .Where(r => r.Status != "Cancelled" &&
+                        r.SourceTimetable != null && r.SourceTimetable.TermId == request.TermId &&
+                        r.StartTime < end && start < r.EndTime)
+            .OrderBy(r => r.ReplacementDate).ThenBy(r => r.StartTime)
+            .ToListAsync();
+        replacements = replacements.Where(r => r.ReplacementDate.DayOfWeek == request.DayOfWeek).ToList();
+
+        if (replacements.Count == 0) return null;
+
+        var conflicts = new List<(ReplacementSession Rep, string Kind)>();
+        foreach (var rep in replacements)
+        {
+            // When editing an existing parent entry, an explicit cancellation for
+            // this exact Week means that parent occurrence does not exist that day.
+            if (!string.IsNullOrWhiteSpace(request.TimetableId))
+            {
+                var cancelledOccurrence = await _db.TimetableExceptions.AsNoTracking().AnyAsync(x =>
+                    x.TimetableId == request.TimetableId &&
+                    x.OccurrenceDate == rep.ReplacementDate.Date &&
+                    x.Decision == "Cancel");
+                if (cancelledOccurrence) continue;
+            }
+
+            string? kind = null;
+            if (rep.TeacherId == request.TeacherId) kind = "teacher";
+            else if (rep.SourceTimetable?.ClassId == request.ClassId) kind = "class";
+            else if (!string.IsNullOrWhiteSpace(request.ClassroomId) && rep.ClassroomId == request.ClassroomId) kind = "classroom";
+            if (kind is not null) conflicts.Add((rep, kind));
+        }
+
+        if (conflicts.Count == 0) return null;
+
+        var weeks = await _db.AcademicWeeks.AsNoTracking()
+            .Where(w => w.TermId == request.TermId)
+            .OrderBy(w => w.WeekNumber)
+            .ToListAsync();
+
+        var details = conflicts.Take(4).Select(x =>
+        {
+            var week = weeks.FirstOrDefault(w => w.StartDate.Date <= x.Rep.ReplacementDate.Date && w.EndDate.Date >= x.Rep.ReplacementDate.Date);
+            var weekText = week is null ? "Academic Week" : $"Week {week.WeekNumber}";
+            return $"{weekText} · {x.Rep.ReplacementDate:dd MMM yyyy} · {x.Rep.StartTime:hh\\:mm}-{x.Rep.EndTime:hh\\:mm} ({x.Kind} conflict, Replacement {x.Rep.ReplacementId})";
+        });
+
+        var extra = conflicts.Count > 4 ? $"\n...and {conflicts.Count - 4} more replacement conflict(s)." : string.Empty;
+        return "This Weekly Tuition slot cannot be saved because it conflicts with replacement class(es) already scheduled in specific Weeks:\n" +
+               string.Join("\n", details) + extra +
+               "\nPlease choose another day/time/teacher/classroom, or move/cancel the conflicting replacement first.";
+    }
+
+    private async Task<string?> GetReplacementConflictReasonAsync(ReplacementSession rep)
+    {
+        var source = rep.SourceTimetable ?? await _db.Timetables.AsNoTracking().FirstOrDefaultAsync(t => t.TimetableId == rep.SourceTimetableId);
+        if (source is null) return null;
+
+        var templates = await _db.Timetables.AsNoTracking()
+            .Where(t => t.TermId == source.TermId && t.DayOfWeek == rep.ReplacementDate.DayOfWeek)
+            .ToListAsync();
+        var ids = templates.Select(t => t.TimetableId).ToList();
+        var exceptions = await _db.TimetableExceptions.AsNoTracking()
+            .Where(x => ids.Contains(x.TimetableId) && x.OccurrenceDate == rep.ReplacementDate.Date)
+            .ToListAsync();
+
+        foreach (var t in templates)
+        {
+            var ex = exceptions.FirstOrDefault(x => x.TimetableId == t.TimetableId);
+            if (ex?.Decision == "Cancel") continue;
+            var ts = ex?.OverrideStartTime ?? t.StartTime;
+            var te = ex?.OverrideEndTime ?? t.EndTime;
+            if (!(ts < rep.EndTime && rep.StartTime < te)) continue;
+            var roomId = ex?.OverrideClassroomId ?? t.ClassroomId;
+
+            if (t.TeacherId == rep.TeacherId)
+                return $"Replacement conflict - teacher also has a parent timetable lesson from {ts:hh\\:mm} to {te:hh\\:mm}";
+            if (t.ClassId == source.ClassId)
+                return $"Replacement conflict - class also has a parent timetable lesson from {ts:hh\\:mm} to {te:hh\\:mm}";
+            if (!string.IsNullOrWhiteSpace(rep.ClassroomId) && roomId == rep.ClassroomId)
+                return $"Replacement conflict - classroom is also used by a parent timetable lesson from {ts:hh\\:mm} to {te:hh\\:mm}";
+        }
+        return null;
+    }
+
+    private static DateTime MalaysiaNow()
+    {
+        var utc = DateTime.UtcNow;
+        foreach (var id in new[] { "Singapore Standard Time", "Asia/Kuala_Lumpur" })
+        {
+            try { return TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.FindSystemTimeZoneById(id)); }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        return DateTime.Now;
     }
 
     private async Task<string?> RoomNameAsync(string? roomId)
