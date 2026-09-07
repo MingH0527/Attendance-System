@@ -434,6 +434,132 @@
     </div>
 </div>
 
+<!-- ==================================================
+     REGISTER STUDENT PROGRAM
+=================================================== -->
+
+<div class="detail-overlay"
+     id="registerOverlay"
+     hidden>
+
+    <aside class="detail-drawer"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="registerTitle">
+
+        <div class="detail-header">
+
+            <div>
+                <span class="detail-eyebrow">
+                    Program Registration
+                </span>
+
+                <h2 id="registerTitle">
+                    Register Student to Program
+                </h2>
+            </div>
+
+            <button type="button"
+                    class="detail-close"
+                    id="registerClose"
+                    aria-label="Close">
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="registerForm"
+              method="post"
+              asp-controller="User"
+              asp-action="RegisterProgram">
+
+            @Html.AntiForgeryToken()
+
+
+            <!-- Student User ID -->
+            <input type="hidden"
+                   name="userId"
+                   id="registerUserId" />
+
+
+            <div class="detail-list"
+                 style="grid-template-columns: 1fr;">
+
+
+                <!-- Student -->
+                <div class="detail-item detail-item-wide">
+
+                    <span class="detail-label">
+                        Student
+                    </span>
+
+                    <strong id="registerUsername">
+                        -
+                    </strong>
+
+                </div>
+
+
+                <!-- Program -->
+                <div class="detail-item detail-item-wide">
+
+                    <label class="detail-label"
+                           for="registerProgramSelect">
+                        Program
+                    </label>
+
+                    <select id="registerProgramSelect"
+                            name="programId"
+                            required
+                            style="width:100%; padding:8px;">
+                    </select>
+
+                </div>
+
+
+                <!-- Class -->
+                <div class="detail-item detail-item-wide">
+
+                    <label class="detail-label"
+                           for="registerClassSelect">
+                        Class
+                    </label>
+
+                    <select id="registerClassSelect"
+                            name="classId"
+                            required
+                            style="width:100%; padding:8px;">
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <!-- Actions -->
+            <div class="filter-actions"
+                 style="margin-top:16px;">
+
+                <button type="button"
+                        class="filter-reset"
+                        id="registerCancel">
+                    Cancel
+                </button>
+
+                <button type="submit"
+                        class="filter-apply">
+                    Save Registration
+                </button>
+
+            </div>
+
+        </form>
+
+    </aside>
+
+</div>
+
 <div class="detail-overlay"
      id="detailOverlay"
      hidden>
