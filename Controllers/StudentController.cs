@@ -93,6 +93,24 @@ public class StudentController : Controller
                     .Include(t => t.Teacher)
                     .OrderBy(t => t.StartTime)
                     .ToListAsync();
+
+            // ==========================================
+            // REGISTRATION TIME VALIDATION
+            // ==========================================
+
+            todayTimetable =
+                todayTimetable
+                    .Where(t =>
+                    {
+                        DateTime classStart =
+                            DateTime.Today.Add(
+                                t.StartTime
+                            );
+
+                        return studentClass.RegisteredDate <=
+                            classStart;
+                    })
+                    .ToList();
         }
 
         ViewBag.TodayTimetable =
@@ -290,6 +308,26 @@ public class StudentController : Controller
                 .OrderBy(t => t.StartTime)
                 .ToListAsync();
 
+        // ==============================
+        // REGISTRATION TIME VALIDATION
+        // ==============================
+
+        // Student only starts attendance calculation
+        // from classes that begin after registration.
+        todayTimetables =
+            todayTimetables
+                .Where(t =>
+                {
+                    DateTime classStart =
+                        today.Date.Add(
+                            t.StartTime
+                        );
+
+                    return studentClass.RegisteredDate <=
+                        classStart;
+                })
+                .ToList();
+
         bool approvedLeaveToday =
             await db.LeaveApplications
                 .AsNoTracking()
@@ -467,6 +505,41 @@ public class StudentController : Controller
                 AttendanceSession session
                 in sessions)
             {
+                Timetable? sessionTimetable =
+                    subjectTimetables
+                        .FirstOrDefault(t =>
+                            t.TimetableId ==
+                                session.TimetableId
+                        );
+
+                if (
+                    sessionTimetable ==
+                    null
+                )
+                {
+                    continue;
+                }
+
+                // ==============================
+                // REGISTRATION TIME VALIDATION
+                // ==============================
+
+                DateTime classStart =
+                    session.SessionDate.Date
+                        .Add(
+                            sessionTimetable.StartTime
+                        );
+
+                // Class started before student registered.
+                // Do not count Present, Absent or Leave.
+                if (
+                    studentClass.RegisteredDate >
+                    classStart
+                )
+                {
+                    continue;
+                }
+
                 AttendanceRecord? record =
                     await db.AttendanceRecords
                         .AsNoTracking()
@@ -487,21 +560,6 @@ public class StudentController : Controller
                 )
                 {
                     present++;
-                    continue;
-                }
-
-                Timetable? sessionTimetable =
-                    subjectTimetables
-                        .FirstOrDefault(t =>
-                            t.TimetableId ==
-                                session.TimetableId
-                        );
-
-                if (
-                    sessionTimetable ==
-                    null
-                )
-                {
                     continue;
                 }
 
@@ -736,6 +794,29 @@ public class StudentController : Controller
             );
         }
 
+        // ==============================
+        // REGISTRATION TIME VALIDATION
+        // ==============================
+
+        DateTime classStart =
+            session.SessionDate.Date
+                .Add(
+                    session.Timetable!.StartTime
+                );
+
+        if (
+            studentClass.RegisteredDate >
+            classStart
+        )
+        {
+            TempData["AttendanceError"] =
+                "This class started before you completed your program and class registration.";
+
+            return RedirectToAction(
+                nameof(Attendance)
+            );
+        }
+
         bool alreadySubmitted =
             await db.AttendanceRecords
                 .AnyAsync(r =>
@@ -930,6 +1011,26 @@ public class StudentController : Controller
             if (
                 timetable ==
                 null
+            )
+            {
+                continue;
+            }
+
+            // ==============================
+            // REGISTRATION TIME VALIDATION
+            // ==============================
+
+            DateTime classStart =
+                session.SessionDate.Date
+                    .Add(
+                        timetable.StartTime
+                    );
+
+            // Do not include classes that started
+            // before student registration.
+            if (
+                studentClass.RegisteredDate >
+                classStart
             )
             {
                 continue;
@@ -1353,7 +1454,6 @@ public class StudentController : Controller
                 "You already have a pending or approved leave application for the selected date range."
             );
         }
-
 
         // ==============================
         // FILE VALIDATION

@@ -26,26 +26,41 @@ public class MyProfileController : Controller
 
     private const int MaximumPasskeys = 3;
     private const int MaximumAccountsPerDevice = 4;
-    private const string DeviceCookieName = "WebAndMobile.PasskeyDevice";
+
+    private const string DeviceCookieName =
+        "WebAndMobile.PasskeyDevice";
 
     private readonly DB db;
-    private readonly PasskeyFido2Factory passkeyFido2Factory;
-    private readonly IWebHostEnvironment environment;
+
+    private readonly PasskeyFido2Factory
+        passkeyFido2Factory;
+
+    private readonly IWebHostEnvironment
+        environment;
 
     private readonly IPasswordHasher<AdminSecurity>
         adminPinHasher;
 
+
     public MyProfileController(
-     DB db,
-     PasskeyFido2Factory passkeyFido2Factory,
-     IPasswordHasher<AdminSecurity> adminPinHasher,
-     IWebHostEnvironment environment)
+        DB db,
+        PasskeyFido2Factory passkeyFido2Factory,
+        IPasswordHasher<AdminSecurity> adminPinHasher,
+        IWebHostEnvironment environment)
     {
-        this.db = db;
-        this.passkeyFido2Factory = passkeyFido2Factory;
-        this.adminPinHasher = adminPinHasher;
-        this.environment = environment;
+        this.db =
+            db;
+
+        this.passkeyFido2Factory =
+            passkeyFido2Factory;
+
+        this.adminPinHasher =
+            adminPinHasher;
+
+        this.environment =
+            environment;
     }
+
 
     // ==================================================
     // MY PROFILE
@@ -54,184 +69,13 @@ public class MyProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
-        string? userId = GetCurrentUserId();
-
-        if (userId == null)
-        {
-            return RedirectToAction("Login", "Account");
-        }
-
-        User? user = await db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.UserId == userId);
-
-       
-
-        if (user == null)
-        {
-            return RedirectToAction("Login", "Account");
-        }
-
-         ViewBag.Avatar = user.Avatar;
-        ViewBag.Username = user.Username;
-
-        // STUDENT
-        if (user.Position == "Student")
-        {
-            StudentClass? studentClass = await db.StudentClasses
-                .Include(sc => sc.Program)
-                .Include(sc => sc.ClassGroup)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(sc => sc.UserId == userId);
-
-            if (studentClass != null)
-            {
-                ViewBag.StudentId = studentClass.StudentId;
-                ViewBag.ProgramName = studentClass.Program?.ProgramName;
-                ViewBag.ClassName = studentClass.ClassGroup?.ClassName;
-
-                ViewBag.ShowRegisterCourseCard = false;
-            }
-            else
-            {
-                ViewBag.ShowRegisterCourseCard = true;
-            }
-        }
-        // TEACHER
-        else if (user.Position == "Teacher")
-        {
-            bool registered = await db.TeacherCourses
-                .AnyAsync(tc => tc.UserId == userId);
-
-            ViewBag.ShowRegisterCourseCard = !registered;
-        }
-        else
-        {
-            ViewBag.ShowRegisterCourseCard = false;
-        }
-
-        return View();
-    }
-    // ==================================================
-    // UPLOAD PROFILE PICTURE
-    // ==================================================
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UploadAvatar(IFormFile avatar)
-    {
-        string? userId = GetCurrentUserId();
-
-        if (userId == null)
-        {
-            return RedirectToAction("Login", "Account");
-        }
-
-        User? user = await db.Users
-            .FirstOrDefaultAsync(u => u.UserId == userId);
-
-        if (user == null)
-        {
-            return NotFound();
-        }
-
-        if (avatar == null || avatar.Length == 0)
-        {
-            TempData["AvatarError"] =
-                "Please select a profile picture.";
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        // Maximum 2MB
-        if (avatar.Length > 2 * 1024 * 1024)
-        {
-            TempData["AvatarError"] =
-                "Profile picture must be smaller than 2MB.";
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        string extension =
-            Path.GetExtension(avatar.FileName)
-                .ToLowerInvariant();
-
-        string[] allowedExtensions =
-        {
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp"
-    };
-
-        if (!allowedExtensions.Contains(extension))
-        {
-            TempData["AvatarError"] =
-                "Only JPG, JPEG, PNG and WEBP images are allowed.";
-
-            return RedirectToAction(nameof(Index));
-        }
-
-        string uploadFolder = Path.Combine(
-            environment.WebRootPath,
-            "uploads",
-            "avatars"
-        );
-
-        Directory.CreateDirectory(uploadFolder);
-
-        string fileName =
-            $"{user.UserId}_{Guid.NewGuid():N}{extension}";
-
-        string filePath =
-            Path.Combine(uploadFolder, fileName);
-
-        await using (FileStream stream =
-            new FileStream(filePath, FileMode.Create))
-        {
-            await avatar.CopyToAsync(stream);
-        }
-
-        // Delete previous uploaded avatar
-        if (!string.IsNullOrWhiteSpace(user.Avatar) &&
-            user.Avatar.StartsWith("/uploads/avatars/"))
-        {
-            string oldAvatarPath = Path.Combine(
-                environment.WebRootPath,
-                user.Avatar
-                    .TrimStart('/')
-                    .Replace(
-                        '/',
-                        Path.DirectorySeparatorChar)
-            );
-
-            if (System.IO.File.Exists(oldAvatarPath))
-            {
-                System.IO.File.Delete(oldAvatarPath);
-            }
-        }
-
-        user.Avatar =
-            $"/uploads/avatars/{fileName}";
-
-        await db.SaveChangesAsync();
-
-        TempData["AvatarSuccess"] =
-            "Profile picture updated successfully.";
-
-        return RedirectToAction(nameof(Index));
-    }
-    // ==================================================
-    // PASSKEY PAGE
-    // ==================================================
-
-    [HttpGet]
-    public async Task<IActionResult> Passkey()
-    {
         string? userId =
             GetCurrentUserId();
 
-        if (userId == null)
+        if (
+            userId ==
+            null
+        )
         {
             return RedirectToAction(
                 "Login",
@@ -239,30 +83,6 @@ public class MyProfileController : Controller
             );
         }
 
-        List<UserPasskey> passkeys =
-            await db.UserPasskeys
-                .AsNoTracking()
-                .Where(
-                    p =>
-                        p.UserId ==
-                        userId
-                )
-                .OrderByDescending(
-                    p => p.CreatedAt
-                )
-                .ToListAsync();
-
-        ViewBag.PasskeyCount =
-            passkeys.Count;
-
-        ViewBag.MaximumPasskeys =
-            MaximumPasskeys;
-
-        ViewBag.PasskeyEnvironment =
-            passkeyFido2Factory.GetMode(Request);
-
-        ViewBag.PasskeyRpId =
-            passkeyFido2Factory.GetCurrentRpId(Request);
 
         User? user =
             await db.Users
@@ -273,11 +93,487 @@ public class MyProfileController : Controller
                         userId
                 );
 
-        if (user != null &&
+
+        if (
+            user ==
+            null
+        )
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        ViewBag.Avatar =
+            user.Avatar;
+
+        ViewBag.Username =
+            user.Username;
+
+
+        // ==================================================
+        // STUDENT
+        // ==================================================
+
+        if (
+            user.Position ==
+            "Student"
+        )
+        {
+            StudentClass? studentClass =
+                await db.StudentClasses
+                    .Include(
+                        sc =>
+                            sc.Program
+                    )
+                    .Include(
+                        sc =>
+                            sc.ClassGroup
+                    )
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        sc =>
+                            sc.UserId ==
+                            userId
+                    );
+
+
+            if (
+                studentClass !=
+                null
+            )
+            {
+                ViewBag.StudentId =
+                    studentClass.StudentId;
+
+                ViewBag.ProgramName =
+                    studentClass.Program
+                        ?.ProgramName;
+
+                ViewBag.ClassName =
+                    studentClass.ClassGroup
+                        ?.ClassName;
+
+                ViewBag.ShowRegisterCourseCard =
+                    false;
+            }
+            else
+            {
+                ViewBag.StudentId =
+                    null;
+
+                ViewBag.ProgramName =
+                    null;
+
+                ViewBag.ClassName =
+                    null;
+
+                ViewBag.ShowRegisterCourseCard =
+                    true;
+            }
+        }
+
+
+        // ==================================================
+        // TEACHER
+        // ==================================================
+
+        else if (
+            user.Position ==
+            "Teacher"
+        )
+        {
+            List<string> programNames =
+                await db.TeacherPrograms
+                    .AsNoTracking()
+                    .Where(
+                        tp =>
+                            tp.UserId ==
+                            userId
+                    )
+                    .Include(
+                        tp =>
+                            tp.Program
+                    )
+                    .Where(
+                        tp =>
+                            tp.Program !=
+                            null
+                    )
+                    .Select(
+                        tp =>
+                            tp.Program!
+                                .ProgramName
+                    )
+                    .Distinct()
+                    .OrderBy(
+                        name =>
+                            name
+                    )
+                    .ToListAsync();
+
+
+            List<string> subjectNames =
+                await db.TeacherCourses
+                    .AsNoTracking()
+                    .Where(
+                        tc =>
+                            tc.UserId ==
+                            userId
+                    )
+                    .Include(
+                        tc =>
+                            tc.Course
+                    )
+                    .Where(
+                        tc =>
+                            tc.Course !=
+                            null
+                    )
+                    .Select(
+                        tc =>
+                            tc.Course!
+                                .CourseName
+                    )
+                    .Distinct()
+                    .OrderBy(
+                        name =>
+                            name
+                    )
+                    .ToListAsync();
+
+
+            bool hasProgram =
+                programNames.Count >
+                0;
+
+            bool hasSubject =
+                subjectNames.Count >
+                0;
+
+
+            ViewBag.ProgramName =
+                hasProgram
+                    ? string.Join(
+                        "\n",
+                        programNames
+                    )
+                    : null;
+
+
+            ViewBag.SubjectName =
+                hasSubject
+                    ? string.Join(
+                        "\n",
+                        subjectNames
+                    )
+                    : null;
+
+
+            // Teacher must have BOTH
+            // Program and Subject
+            // before profile is considered complete.
+            ViewBag.ShowRegisterCourseCard =
+                !(
+                    hasProgram &&
+                    hasSubject
+                );
+        }
+
+
+        // ==================================================
+        // ADMIN
+        // ==================================================
+
+        else
+        {
+            ViewBag.ShowRegisterCourseCard =
+                false;
+        }
+
+
+        return View();
+    }
+
+
+    // ==================================================
+    // UPLOAD PROFILE PICTURE
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadAvatar(
+        IFormFile avatar)
+    {
+        string? userId =
+            GetCurrentUserId();
+
+
+        if (
+            userId ==
+            null
+        )
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        User? user =
+            await db.Users
+                .FirstOrDefaultAsync(
+                    u =>
+                        u.UserId ==
+                        userId
+                );
+
+
+        if (
+            user ==
+            null
+        )
+        {
+            return NotFound();
+        }
+
+
+        if (
+            avatar ==
+            null ||
+            avatar.Length ==
+            0
+        )
+        {
+            TempData["AvatarError"] =
+                "Please select a profile picture.";
+
+            return RedirectToAction(
+                nameof(Index)
+            );
+        }
+
+
+        // Maximum 2MB
+
+        if (
+            avatar.Length >
+            2 * 1024 * 1024
+        )
+        {
+            TempData["AvatarError"] =
+                "Profile picture must be smaller than 2MB.";
+
+            return RedirectToAction(
+                nameof(Index)
+            );
+        }
+
+
+        string extension =
+            Path.GetExtension(
+                avatar.FileName
+            )
+            .ToLowerInvariant();
+
+
+        string[] allowedExtensions =
+        {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp"
+        };
+
+
+        if (
+            !allowedExtensions.Contains(
+                extension
+            )
+        )
+        {
+            TempData["AvatarError"] =
+                "Only JPG, JPEG, PNG and WEBP images are allowed.";
+
+            return RedirectToAction(
+                nameof(Index)
+            );
+        }
+
+
+        string uploadFolder =
+            Path.Combine(
+                environment.WebRootPath,
+                "uploads",
+                "avatars"
+            );
+
+
+        Directory.CreateDirectory(
+            uploadFolder
+        );
+
+
+        string fileName =
+            $"{user.UserId}_{Guid.NewGuid():N}{extension}";
+
+
+        string filePath =
+            Path.Combine(
+                uploadFolder,
+                fileName
+            );
+
+
+        await using (
+            FileStream stream =
+                new FileStream(
+                    filePath,
+                    FileMode.Create
+                )
+        )
+        {
+            await avatar.CopyToAsync(
+                stream
+            );
+        }
+
+
+        // Delete previous uploaded avatar
+
+        if (
+            !string.IsNullOrWhiteSpace(
+                user.Avatar
+            ) &&
+            user.Avatar.StartsWith(
+                "/uploads/avatars/"
+            )
+        )
+        {
+            string oldAvatarPath =
+                Path.Combine(
+                    environment.WebRootPath,
+                    user.Avatar
+                        .TrimStart('/')
+                        .Replace(
+                            '/',
+                            Path.DirectorySeparatorChar
+                        )
+                );
+
+
+            if (
+                System.IO.File.Exists(
+                    oldAvatarPath
+                )
+            )
+            {
+                System.IO.File.Delete(
+                    oldAvatarPath
+                );
+            }
+        }
+
+
+        user.Avatar =
+            $"/uploads/avatars/{fileName}";
+
+
+        await db.SaveChangesAsync();
+
+
+        TempData["AvatarSuccess"] =
+            "Profile picture updated successfully.";
+
+
+        return RedirectToAction(
+            nameof(Index)
+        );
+    }
+
+
+    // ==================================================
+    // PASSKEY PAGE
+    // ==================================================
+
+    [HttpGet]
+    public async Task<IActionResult> Passkey()
+    {
+        string? userId =
+            GetCurrentUserId();
+
+
+        if (
+            userId ==
+            null
+        )
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+
+        List<UserPasskey> passkeys =
+            await db.UserPasskeys
+                .AsNoTracking()
+                .Where(
+                    p =>
+                        p.UserId ==
+                        userId
+                )
+                .OrderByDescending(
+                    p =>
+                        p.CreatedAt
+                )
+                .ToListAsync();
+
+
+        ViewBag.PasskeyCount =
+            passkeys.Count;
+
+
+        ViewBag.MaximumPasskeys =
+            MaximumPasskeys;
+
+
+        ViewBag.PasskeyEnvironment =
+            passkeyFido2Factory
+                .GetMode(
+                    Request
+                );
+
+
+        ViewBag.PasskeyRpId =
+            passkeyFido2Factory
+                .GetCurrentRpId(
+                    Request
+                );
+
+
+        User? user =
+            await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    u =>
+                        u.UserId ==
+                        userId
+                );
+
+
+        if (
+            user !=
+            null &&
             string.Equals(
                 user.Position,
                 "Admin",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             AdminSecurity? security =
                 await db.AdminSecurities
@@ -288,25 +584,39 @@ public class MyProfileController : Controller
                             user.UserId
                     );
 
-            ViewBag.IsAdmin = true;
+
+            ViewBag.IsAdmin =
+                true;
+
 
             ViewBag.AdminPinEnabled =
-                security?.PinEnabled == true;
+                security
+                    ?.PinEnabled ==
+                true;
         }
         else
         {
-            ViewBag.IsAdmin = false;
-            ViewBag.AdminPinEnabled = false;
+            ViewBag.IsAdmin =
+                false;
+
+            ViewBag.AdminPinEnabled =
+                false;
         }
+
 
         ViewBag.Error =
             TempData["Error"];
 
+
         ViewBag.Message =
             TempData["Message"];
 
-        return View(passkeys);
+
+        return View(
+            passkeys
+        );
     }
+
 
     // ==================================================
     // CREATE PASSKEY OPTIONS
@@ -317,154 +627,263 @@ public class MyProfileController : Controller
     public async Task<IActionResult>
         CreatePasskeyOptions()
     {
-        string? userId = GetCurrentUserId();
+        string? userId =
+            GetCurrentUserId();
 
-        if (userId == null)
+
+        if (
+            userId ==
+            null
+        )
         {
-            return Unauthorized(new
-            {
-                success = false,
-                message = "Your login session has expired."
-            });
+            return Unauthorized(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Your login session has expired."
+                }
+            );
         }
 
-        User? user = await db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                u => u.UserId == userId);
 
-        if (user == null)
+        User? user =
+            await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    u =>
+                        u.UserId ==
+                        userId
+                );
+
+
+        if (
+            user ==
+            null
+        )
         {
-            return NotFound(new
-            {
-                success = false,
-                message = "User account could not be found."
-            });
+            return NotFound(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "User account could not be found."
+                }
+            );
         }
+
 
         List<UserPasskey> existingPasskeys =
             await db.UserPasskeys
                 .AsNoTracking()
-                .Where(p => p.UserId == userId)
+                .Where(
+                    p =>
+                        p.UserId ==
+                        userId
+                )
                 .ToListAsync();
 
-        if (existingPasskeys.Count >= MaximumPasskeys)
+
+        if (
+            existingPasskeys.Count >=
+            MaximumPasskeys
+        )
         {
-            return BadRequest(new
-            {
-                success = false,
-                message =
-                    "This account already has the maximum of 3 passkeys."
-            });
+            return BadRequest(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "This account already has the maximum of 3 passkeys."
+                }
+            );
         }
 
+
         string? verifiedPhoneDeviceIdentifier =
-            HttpContext.Session.GetString(
-                VerifiedBindingSessionKey
-            );
+            HttpContext.Session
+                .GetString(
+                    VerifiedBindingSessionKey
+                );
+
 
         string deviceIdentifier =
             NormaliseDeviceIdentifier(
                 verifiedPhoneDeviceIdentifier
             );
 
-        if (string.IsNullOrWhiteSpace(
-                deviceIdentifier))
+
+        if (
+            string.IsNullOrWhiteSpace(
+                deviceIdentifier
+            )
+        )
         {
             return StatusCode(
-                StatusCodes.Status428PreconditionRequired,
+                StatusCodes
+                    .Status428PreconditionRequired,
+
                 new
                 {
-                    success = false,
-                    code = "PHONE_BINDING_REQUIRED",
+                    success =
+                        false,
+
+                    code =
+                        "PHONE_BINDING_REQUIRED",
+
                     message =
                         "Verify the phone or tablet that will own this Passkey first."
-                });
+                }
+            );
         }
 
-        HttpContext.Session.SetString(
-            PasskeyDeviceSessionKey,
-            deviceIdentifier
-        );
+
+        HttpContext.Session
+            .SetString(
+                PasskeyDeviceSessionKey,
+                deviceIdentifier
+            );
+
 
         bool sameDeviceAlreadyRegistered =
             existingPasskeys.Any(
                 p =>
                     !string.IsNullOrWhiteSpace(
-                        p.DeviceIdentifier) &&
+                        p.DeviceIdentifier
+                    ) &&
                     string.Equals(
                         p.DeviceIdentifier,
                         deviceIdentifier,
-                        StringComparison.Ordinal));
+                        StringComparison.Ordinal
+                    )
+            );
 
-        if (sameDeviceAlreadyRegistered)
+
+        if (
+            sameDeviceAlreadyRegistered
+        )
         {
-            return Conflict(new
-            {
-                success = false,
-                code = "DEVICE_ALREADY_REGISTERED",
-                message =
-                    "This phone or tablet is already registered for this account. " +
-                    "Use a different device."
-            });
+            return Conflict(
+                new
+                {
+                    success =
+                        false,
+
+                    code =
+                        "DEVICE_ALREADY_REGISTERED",
+
+                    message =
+                        "This phone or tablet is already registered for this account. " +
+                        "Use a different device."
+                }
+            );
         }
+
 
         int deviceAccountCount =
             await GetDeviceAccountCountAsync(
-                deviceIdentifier);
-
-        if (deviceAccountCount >=
-            MaximumAccountsPerDevice)
-        {
-            HttpContext.Session.Remove(
-                VerifiedBindingSessionKey
+                deviceIdentifier
             );
 
+
+        if (
+            deviceAccountCount >=
+            MaximumAccountsPerDevice
+        )
+        {
+            HttpContext.Session
+                .Remove(
+                    VerifiedBindingSessionKey
+                );
+
+
             return StatusCode(
-                StatusCodes.Status429TooManyRequests,
+                StatusCodes
+                    .Status429TooManyRequests,
+
                 new
                 {
-                    success = false,
-                    code = "DEVICE_ACCOUNT_LIMIT_REACHED",
+                    success =
+                        false,
+
+                    code =
+                        "DEVICE_ACCOUNT_LIMIT_REACHED",
+
                     deviceAccountCount,
+
                     deviceMaximumAccounts =
                         MaximumAccountsPerDevice,
+
                     message =
                         "Passkey registration blocked. " +
                         "This phone or tablet is already linked to the maximum of 4 accounts. " +
                         "Delete a Passkey association from an account you no longer want linked " +
                         "to this device, then try again."
-                });
+                }
+            );
         }
 
-        string? warningMessage = null;
-        string warningLevel = "none";
 
-        if (deviceAccountCount == 2)
+        string? warningMessage =
+            null;
+
+        string warningLevel =
+            "none";
+
+
+        if (
+            deviceAccountCount ==
+            2
+        )
         {
-            warningLevel = "warning";
+            warningLevel =
+                "warning";
+
+
             warningMessage =
                 "This device is currently linked to 2 accounts. " +
                 "After registering this account, only 1 Passkey account slot " +
                 "will remain on this device.";
         }
-        else if (deviceAccountCount == 3)
+        else if (
+            deviceAccountCount ==
+            3
+        )
         {
-            warningLevel = "final";
+            warningLevel =
+                "final";
+
+
             warningMessage =
                 "This is the final available Passkey account slot on this device. " +
                 "After registering this account, this device will not accept " +
                 "Passkey registration for any additional accounts.";
         }
 
-        Fido2User fidoUser = new()
-        {
-            Id =
-                Encoding.UTF8.GetBytes(
-                    user.UserId.ToString()),
-            Name = user.Username,
-            DisplayName = user.Username
-        };
+
+        Fido2User fidoUser =
+            new()
+            {
+                Id =
+                    Encoding.UTF8
+                        .GetBytes(
+                            user.UserId
+                                .ToString()
+                        ),
+
+                Name =
+                    user.Username,
+
+                DisplayName =
+                    user.Username
+            };
+
 
         List<PublicKeyCredentialDescriptor>
             excludedCredentials =
@@ -472,58 +891,95 @@ public class MyProfileController : Controller
                     .Select(
                         p =>
                             new PublicKeyCredentialDescriptor(
-                                p.CredentialId))
+                                p.CredentialId
+                            )
+                    )
                     .ToList();
 
+
         AuthenticatorSelection
-            authenticatorSelection = new()
-            {
-                ResidentKey =
-                    ResidentKeyRequirement.Required,
-                UserVerification =
-                    UserVerificationRequirement.Required
-            };
+            authenticatorSelection =
+                new()
+                {
+                    ResidentKey =
+                        ResidentKeyRequirement.Required,
+
+                    UserVerification =
+                        UserVerificationRequirement.Required
+                };
+
 
         IFido2 fido2 =
-            passkeyFido2Factory.Create(Request);
+            passkeyFido2Factory.Create(
+                Request
+            );
+
 
         CredentialCreateOptions options =
             fido2.RequestNewCredential(
                 new RequestNewCredentialParams
                 {
-                    User = fidoUser,
+                    User =
+                        fidoUser,
+
                     ExcludeCredentials =
                         excludedCredentials,
+
                     AuthenticatorSelection =
                         authenticatorSelection,
+
                     AttestationPreference =
                         AttestationConveyancePreference.None,
+
                     Extensions =
                         new AuthenticationExtensionsClientInputs
                         {
-                            CredProps = true
+                            CredProps =
+                                true
                         }
-                });
+                }
+            );
 
-        HttpContext.Session.SetString(
-            PasskeyOptionsSessionKey,
-            options.ToJson());
 
-        return Json(new
-        {
-            success = true,
-            options,
-            environment =
-                passkeyFido2Factory.GetMode(Request),
-            rpId =
-                passkeyFido2Factory.GetCurrentRpId(Request),
-            deviceAccountCount,
-            deviceMaximumAccounts =
-                MaximumAccountsPerDevice,
-            warningLevel,
-            warningMessage
-        });
+        HttpContext.Session
+            .SetString(
+                PasskeyOptionsSessionKey,
+                options.ToJson()
+            );
+
+
+        return Json(
+            new
+            {
+                success =
+                    true,
+
+                options,
+
+                environment =
+                    passkeyFido2Factory
+                        .GetMode(
+                            Request
+                        ),
+
+                rpId =
+                    passkeyFido2Factory
+                        .GetCurrentRpId(
+                            Request
+                        ),
+
+                deviceAccountCount,
+
+                deviceMaximumAccounts =
+                    MaximumAccountsPerDevice,
+
+                warningLevel,
+
+                warningMessage
+            }
+        );
     }
+
 
     // ==================================================
     // COMPLETE PASSKEY REGISTRATION
@@ -538,294 +994,519 @@ public class MyProfileController : Controller
 
             CancellationToken cancellationToken)
     {
-        string? userId = GetCurrentUserId();
+        string? userId =
+            GetCurrentUserId();
 
-        if (userId == null)
+
+        if (
+            userId ==
+            null
+        )
         {
-            return Unauthorized(new
-            {
-                success = false,
-                message = "Your login session has expired."
-            });
+            return Unauthorized(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Your login session has expired."
+                }
+            );
         }
 
-        if (request?.AttestationResponse == null)
+
+        if (
+            request?.AttestationResponse ==
+            null
+        )
         {
-            return BadRequest(new
-            {
-                success = false,
-                message =
-                    "Invalid Passkey registration response."
-            });
+            return BadRequest(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Invalid Passkey registration response."
+                }
+            );
         }
+
 
         string? optionsJson =
-            HttpContext.Session.GetString(
-                PasskeyOptionsSessionKey);
+            HttpContext.Session
+                .GetString(
+                    PasskeyOptionsSessionKey
+                );
 
-        if (string.IsNullOrWhiteSpace(optionsJson))
+
+        if (
+            string.IsNullOrWhiteSpace(
+                optionsJson
+            )
+        )
         {
-            return BadRequest(new
-            {
-                success = false,
-                message =
-                    "Passkey registration expired. Please try again."
-            });
+            return BadRequest(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Passkey registration expired. Please try again."
+                }
+            );
         }
 
+
         string? registrationDeviceIdentifier =
-            HttpContext.Session.GetString(
+            HttpContext.Session
+                .GetString(
+                    PasskeyDeviceSessionKey
+                );
+
+
+        HttpContext.Session
+            .Remove(
+                PasskeyOptionsSessionKey
+            );
+
+
+        HttpContext.Session
+            .Remove(
                 PasskeyDeviceSessionKey
             );
 
-        HttpContext.Session.Remove(
-            PasskeyOptionsSessionKey);
 
-        HttpContext.Session.Remove(
-            PasskeyDeviceSessionKey);
-
-        if (string.IsNullOrWhiteSpace(
-                registrationDeviceIdentifier))
+        if (
+            string.IsNullOrWhiteSpace(
+                registrationDeviceIdentifier
+            )
+        )
         {
-            return BadRequest(new
-            {
-                success = false,
-                code = "DEVICE_SESSION_MISSING",
-                message =
-                    "The device registration session expired. " +
-                    "Please start Passkey registration again."
-            });
+            return BadRequest(
+                new
+                {
+                    success =
+                        false,
+
+                    code =
+                        "DEVICE_SESSION_MISSING",
+
+                    message =
+                        "The device registration session expired. " +
+                        "Please start Passkey registration again."
+                }
+            );
         }
+
 
         string deviceIdentifier =
             NormaliseDeviceIdentifier(
                 registrationDeviceIdentifier
             );
 
-        if (string.IsNullOrWhiteSpace(
-                deviceIdentifier))
+
+        if (
+            string.IsNullOrWhiteSpace(
+                deviceIdentifier
+            )
+        )
         {
-            return BadRequest(new
-            {
-                success = false,
-                code = "DEVICE_IDENTIFIER_INVALID",
-                message =
-                    "The verified phone or tablet identity is invalid. " +
-                    "Please restart Passkey registration."
-            });
+            return BadRequest(
+                new
+                {
+                    success =
+                        false,
+
+                    code =
+                        "DEVICE_IDENTIFIER_INVALID",
+
+                    message =
+                        "The verified phone or tablet identity is invalid. " +
+                        "Please restart Passkey registration."
+                }
+            );
         }
 
-        HttpContext.Session.Remove(
-            VerifiedBindingSessionKey
-        );
+
+        HttpContext.Session
+            .Remove(
+                VerifiedBindingSessionKey
+            );
+
 
         try
         {
             int currentCount =
-                await db.UserPasskeys.CountAsync(
-                    p => p.UserId == userId,
-                    cancellationToken);
+                await db.UserPasskeys
+                    .CountAsync(
+                        p =>
+                            p.UserId ==
+                            userId,
 
-            if (currentCount >= MaximumPasskeys)
+                        cancellationToken
+                    );
+
+
+            if (
+                currentCount >=
+                MaximumPasskeys
+            )
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    message =
-                        "This account already has the maximum of 3 passkeys."
-                });
+                return BadRequest(
+                    new
+                    {
+                        success =
+                            false,
+
+                        message =
+                            "This account already has the maximum of 3 passkeys."
+                    }
+                );
             }
+
 
             bool sameDeviceAlreadyRegistered =
-                await db.UserPasskeys.AnyAsync(
-                    p =>
-                        p.UserId == userId &&
-                        p.DeviceIdentifier ==
-                            deviceIdentifier,
-                    cancellationToken);
+                await db.UserPasskeys
+                    .AnyAsync(
+                        p =>
+                            p.UserId ==
+                                userId &&
 
-            if (sameDeviceAlreadyRegistered)
+                            p.DeviceIdentifier ==
+                                deviceIdentifier,
+
+                        cancellationToken
+                    );
+
+
+            if (
+                sameDeviceAlreadyRegistered
+            )
             {
-                return Conflict(new
-                {
-                    success = false,
-                    code = "DEVICE_ALREADY_REGISTERED",
-                    message =
-                        "This device is already registered for this account."
-                });
+                return Conflict(
+                    new
+                    {
+                        success =
+                            false,
+
+                        code =
+                            "DEVICE_ALREADY_REGISTERED",
+
+                        message =
+                            "This device is already registered for this account."
+                    }
+                );
             }
+
 
             int deviceAccountCount =
                 await GetDeviceAccountCountAsync(
                     deviceIdentifier,
-                    cancellationToken);
+                    cancellationToken
+                );
 
-            if (deviceAccountCount >=
-                MaximumAccountsPerDevice)
+
+            if (
+                deviceAccountCount >=
+                MaximumAccountsPerDevice
+            )
             {
                 return StatusCode(
-                    StatusCodes.Status429TooManyRequests,
+                    StatusCodes
+                        .Status429TooManyRequests,
+
                     new
                     {
-                        success = false,
+                        success =
+                            false,
+
                         code =
                             "DEVICE_ACCOUNT_LIMIT_REACHED",
+
                         message =
                             "Passkey registration blocked. " +
                             "This device is already linked to 4 accounts. " +
                             "Delete an unwanted account association first."
-                    });
+                    }
+                );
             }
 
+
             CredentialCreateOptions originalOptions =
-                CredentialCreateOptions.FromJson(
-                    optionsJson);
+                CredentialCreateOptions
+                    .FromJson(
+                        optionsJson
+                    );
+
 
             IsCredentialIdUniqueToUserAsyncDelegate
                 uniqueCredentialCallback =
-                    async (args, token) =>
+                    async (
+                        args,
+                        token
+                    ) =>
                     {
                         bool credentialExists =
-                            await db.UserPasskeys.AnyAsync(
-                                p =>
-                                    p.CredentialId ==
-                                    args.CredentialId,
-                                token);
+                            await db.UserPasskeys
+                                .AnyAsync(
+                                    p =>
+                                        p.CredentialId ==
+                                        args.CredentialId,
+
+                                    token
+                                );
+
 
                         return !credentialExists;
                     };
 
+
             IFido2 fido2 =
-                passkeyFido2Factory.Create(Request);
+                passkeyFido2Factory
+                    .Create(
+                        Request
+                    );
+
 
             var result =
-                await fido2.MakeNewCredentialAsync(
-                    new MakeNewCredentialParams
-                    {
-                        AttestationResponse =
-                            request.AttestationResponse,
-                        OriginalOptions =
-                            originalOptions,
-                        IsCredentialIdUniqueToUserCallback =
-                            uniqueCredentialCallback
-                    },
-                    cancellationToken:
-                        cancellationToken);
+                await fido2
+                    .MakeNewCredentialAsync(
+                        new MakeNewCredentialParams
+                        {
+                            AttestationResponse =
+                                request.AttestationResponse,
+
+                            OriginalOptions =
+                                originalOptions,
+
+                            IsCredentialIdUniqueToUserCallback =
+                                uniqueCredentialCallback
+                        },
+
+                        cancellationToken:
+                            cancellationToken
+                    );
+
 
             bool duplicateExists =
-                await db.UserPasskeys.AnyAsync(
-                    p => p.CredentialId == result.Id,
-                    cancellationToken);
+                await db.UserPasskeys
+                    .AnyAsync(
+                        p =>
+                            p.CredentialId ==
+                            result.Id,
 
-            if (duplicateExists)
+                        cancellationToken
+                    );
+
+
+            if (
+                duplicateExists
+            )
             {
-                return Conflict(new
-                {
-                    success = false,
-                    message =
-                        "This passkey has already been registered."
-                });
+                return Conflict(
+                    new
+                    {
+                        success =
+                            false,
+
+                        message =
+                            "This passkey has already been registered."
+                    }
+                );
             }
+
 
             string attachment =
                 CleanDeviceValue(
                     request.DeviceInfo
                         .AuthenticatorAttachment,
+
                     50,
-                    "Unknown");
+
+                    "Unknown"
+                );
+
 
             string transports =
-                request.DeviceInfo.Transports == null
+                request.DeviceInfo
+                    .Transports ==
+                null
                     ? ""
                     : string.Join(
                         ",",
-                        request.DeviceInfo.Transports
+
+                        request.DeviceInfo
+                            .Transports
                             .Where(
                                 x =>
                                     !string.IsNullOrWhiteSpace(
-                                        x))
-                            .Take(10));
+                                        x
+                                    )
+                            )
+                            .Take(10)
+                    );
+
 
             string deviceType =
                 NormaliseDeviceType(
-                    request.DeviceInfo.DeviceType);
+                    request.DeviceInfo
+                        .DeviceType
+                );
+
 
             string deviceName =
                 CleanDeviceValue(
-                    request.DeviceInfo.DeviceName,
+                    request.DeviceInfo
+                        .DeviceName,
+
                     100,
+
                     GetDeviceDisplayName(
                         attachment,
-                        transports));
+                        transports
+                    )
+                );
+
 
             string operatingSystem =
                 CleanDeviceValue(
-                    request.DeviceInfo.OperatingSystem,
+                    request.DeviceInfo
+                        .OperatingSystem,
+
                     100,
-                    "Unknown OS");
+
+                    "Unknown OS"
+                );
+
 
             string browser =
                 CleanDeviceValue(
-                    request.DeviceInfo.Browser,
+                    request.DeviceInfo
+                        .Browser,
+
                     100,
-                    "Unknown Browser");
 
-            UserPasskey passkey = new()
-            {
-                UserPasskeyId = await FormattedIdGenerator.NextAsync(
-                    db.UserPasskeys,
-                    p => p.UserPasskeyId,
-                    "UPK",
-                    cancellationToken: cancellationToken
-                ),
-                UserId = userId,
-                CredentialId = result.Id,
-                PublicKey = result.PublicKey,
-                SignCount = result.SignCount,
-                AaGuid = result.AaGuid,
-                UserHandle =
-                    originalOptions.User.Id,
-                CredentialType = "public-key",
-                DeviceIdentifier =
-                    deviceIdentifier,
-                RelyingPartyId =
-                    passkeyFido2Factory
-                        .GetCurrentRpId(Request),
-                DeviceName = deviceName,
-                DeviceType = deviceType,
-                OperatingSystem =
-                    operatingSystem,
-                Browser = browser,
-                AuthenticatorAttachment =
-                    attachment,
-                AuthenticatorTransports =
-                    CleanDeviceValue(
-                        transports,
-                        200,
-                        ""),
-                UserAgent =
-                    CleanDeviceValue(
-                        request.DeviceInfo.UserAgent,
-                        300,
-                        ""),
-                CreatedAt = DateTime.UtcNow
-            };
+                    "Unknown Browser"
+                );
 
-            db.UserPasskeys.Add(passkey);
+
+            UserPasskey passkey =
+                new()
+                {
+                    UserPasskeyId =
+                        await FormattedIdGenerator
+                            .NextAsync(
+                                db.UserPasskeys,
+
+                                p =>
+                                    p.UserPasskeyId,
+
+                                "UPK",
+
+                                cancellationToken:
+                                    cancellationToken
+                            ),
+
+                    UserId =
+                        userId,
+
+                    CredentialId =
+                        result.Id,
+
+                    PublicKey =
+                        result.PublicKey,
+
+                    SignCount =
+                        result.SignCount,
+
+                    AaGuid =
+                        result.AaGuid,
+
+                    UserHandle =
+                        originalOptions
+                            .User
+                            .Id,
+
+                    CredentialType =
+                        "public-key",
+
+                    DeviceIdentifier =
+                        deviceIdentifier,
+
+                    RelyingPartyId =
+                        passkeyFido2Factory
+                            .GetCurrentRpId(
+                                Request
+                            ),
+
+                    DeviceName =
+                        deviceName,
+
+                    DeviceType =
+                        deviceType,
+
+                    OperatingSystem =
+                        operatingSystem,
+
+                    Browser =
+                        browser,
+
+                    AuthenticatorAttachment =
+                        attachment,
+
+                    AuthenticatorTransports =
+                        CleanDeviceValue(
+                            transports,
+                            200,
+                            ""
+                        ),
+
+                    UserAgent =
+                        CleanDeviceValue(
+                            request.DeviceInfo
+                                .UserAgent,
+
+                            300,
+
+                            ""
+                        ),
+
+                    CreatedAt =
+                        DateTime.UtcNow
+                };
+
+
+            db.UserPasskeys
+                .Add(
+                    passkey
+                );
+
 
             await db.SaveChangesAsync(
-                cancellationToken);
+                cancellationToken
+            );
 
 
             int newCount =
-                await db.UserPasskeys.CountAsync(
-                    p => p.UserId == userId,
-                    cancellationToken);
+                await db.UserPasskeys
+                    .CountAsync(
+                        p =>
+                            p.UserId ==
+                            userId,
+
+                        cancellationToken
+                    );
+
 
             int newDeviceAccountCount =
                 await GetDeviceAccountCountAsync(
                     deviceIdentifier,
-                    cancellationToken);
+                    cancellationToken
+                );
+
 
             User? currentUser =
                 await db.Users
@@ -834,79 +1515,129 @@ public class MyProfileController : Controller
                         u =>
                             u.UserId ==
                             userId,
-                        cancellationToken);
 
-            bool requiresAdminPinSetup = false;
+                        cancellationToken
+                    );
 
-            if (currentUser != null &&
+
+            bool requiresAdminPinSetup =
+                false;
+
+
+            if (
+                currentUser !=
+                null &&
                 string.Equals(
                     currentUser.Position,
                     "Admin",
-                    StringComparison.OrdinalIgnoreCase))
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
                 bool hasAdminPin =
                     await db.AdminSecurities
                         .AnyAsync(
                             a =>
                                 a.UserId ==
-                                currentUser.UserId &&
+                                    currentUser.UserId &&
+
                                 a.PinEnabled,
-                            cancellationToken);
+
+                            cancellationToken
+                        );
+
 
                 requiresAdminPinSetup =
                     !hasAdminPin;
             }
 
+
             string successMessage =
                 newDeviceAccountCount >=
                 MaximumAccountsPerDevice
+
                     ? "Passkey registered successfully. " +
                       "This device has now reached its 4-account limit."
+
                     : requiresAdminPinSetup
+
                         ? "Passkey registered. " +
                           "Please set your Admin Security PIN."
+
                         : "Passkey registered successfully.";
 
-            return Json(new
-            {
-                success = true,
-                message = successMessage,
-                count = newCount,
-                maximum = MaximumPasskeys,
-                deviceAccountCount =
-                    newDeviceAccountCount,
-                deviceMaximumAccounts =
-                    MaximumAccountsPerDevice,
-                requiresAdminPinSetup,
-                environment =
-                    passkeyFido2Factory.GetMode(Request),
-                redirectUrl =
-                    requiresAdminPinSetup
-                        ? "/MyProfile/SetAdminPin"
-                        : "/MyProfile/Passkey"
-            });
+
+            return Json(
+                new
+                {
+                    success =
+                        true,
+
+                    message =
+                        successMessage,
+
+                    count =
+                        newCount,
+
+                    maximum =
+                        MaximumPasskeys,
+
+                    deviceAccountCount =
+                        newDeviceAccountCount,
+
+                    deviceMaximumAccounts =
+                        MaximumAccountsPerDevice,
+
+                    requiresAdminPinSetup,
+
+                    environment =
+                        passkeyFido2Factory
+                            .GetMode(
+                                Request
+                            ),
+
+                    redirectUrl =
+                        requiresAdminPinSetup
+                            ? "/MyProfile/SetAdminPin"
+                            : "/MyProfile/Passkey"
+                }
+            );
         }
-        catch (DbUpdateException)
+        catch (
+            DbUpdateException
+        )
         {
-            return Conflict(new
-            {
-                success = false,
-                message =
-                    "This account/device Passkey association already exists."
-            });
+            return Conflict(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "This account/device Passkey association already exists."
+                }
+            );
         }
-        catch (Exception exception)
+        catch (
+            Exception exception
+        )
         {
-            return BadRequest(new
-            {
-                success = false,
-                message =
-                    "Passkey registration failed. " +
-                    GetRealExceptionMessage(
-                        exception)
-            });
+            return BadRequest(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Passkey registration failed. " +
+                        GetRealExceptionMessage(
+                            exception
+                        )
+                }
+            );
         }
     }
+
 
     // ==================================================
     // ADMIN PIN SETUP - GET
@@ -918,13 +1649,18 @@ public class MyProfileController : Controller
         string? userId =
             GetCurrentUserId();
 
-        if (userId == null)
+
+        if (
+            userId ==
+            null
+        )
         {
             return RedirectToAction(
                 "Login",
                 "Account"
             );
         }
+
 
         User? user =
             await db.Users
@@ -935,10 +1671,15 @@ public class MyProfileController : Controller
                         userId
                 );
 
-        if (user == null)
+
+        if (
+            user ==
+            null
+        )
         {
             return NotFound();
         }
+
 
         bool isAdmin =
             string.Equals(
@@ -947,28 +1688,38 @@ public class MyProfileController : Controller
                 StringComparison.OrdinalIgnoreCase
             );
 
-        if (!isAdmin)
+
+        if (
+            !isAdmin
+        )
         {
             return Forbid();
         }
 
-        bool hasPasskey =
-            await db.UserPasskeys.AnyAsync(
-                p =>
-                    p.UserId ==
-                    user.UserId
-            );
 
-        if (!hasPasskey)
+        bool hasPasskey =
+            await db.UserPasskeys
+                .AnyAsync(
+                    p =>
+                        p.UserId ==
+                        user.UserId
+                );
+
+
+        if (
+            !hasPasskey
+        )
         {
             TempData["Error"] =
                 "Register at least one passkey " +
                 "before setting the Admin PIN.";
 
+
             return RedirectToAction(
                 nameof(Passkey)
             );
         }
+
 
         AdminSecurity? security =
             await db.AdminSecurities
@@ -979,17 +1730,24 @@ public class MyProfileController : Controller
                         user.UserId
                 );
 
+
         ViewBag.PinAlreadyEnabled =
-            security?.PinEnabled == true;
+            security
+                ?.PinEnabled ==
+            true;
+
 
         ViewBag.Error =
             TempData["Error"];
 
+
         ViewBag.Message =
             TempData["Message"];
 
+
         return View();
     }
+
 
     // ==================================================
     // ADMIN PIN SETUP - POST
@@ -1004,13 +1762,18 @@ public class MyProfileController : Controller
         string? userId =
             GetCurrentUserId();
 
-        if (userId == null)
+
+        if (
+            userId ==
+            null
+        )
         {
             return RedirectToAction(
                 "Login",
                 "Account"
             );
         }
+
 
         User? user =
             await db.Users
@@ -1020,10 +1783,15 @@ public class MyProfileController : Controller
                         userId
                 );
 
-        if (user == null)
+
+        if (
+            user ==
+            null
+        )
         {
             return NotFound();
         }
+
 
         bool isAdmin =
             string.Equals(
@@ -1032,69 +1800,105 @@ public class MyProfileController : Controller
                 StringComparison.OrdinalIgnoreCase
             );
 
-        if (!isAdmin)
+
+        if (
+            !isAdmin
+        )
         {
             return Forbid();
         }
 
-        bool hasPasskey =
-            await db.UserPasskeys.AnyAsync(
-                p =>
-                    p.UserId ==
-                    user.UserId
-            );
 
-        if (!hasPasskey)
+        bool hasPasskey =
+            await db.UserPasskeys
+                .AnyAsync(
+                    p =>
+                        p.UserId ==
+                        user.UserId
+                );
+
+
+        if (
+            !hasPasskey
+        )
         {
             ViewBag.Error =
                 "Register at least one passkey " +
                 "before setting the Admin PIN.";
 
+
             return View();
         }
 
+
         pin =
-            (pin ?? "").Trim();
+            (
+                pin ??
+                ""
+            )
+            .Trim();
+
 
         confirmPin =
-            (confirmPin ?? "").Trim();
+            (
+                confirmPin ??
+                ""
+            )
+            .Trim();
+
 
         bool validPin =
-            System.Text.RegularExpressions.Regex
+            System.Text
+                .RegularExpressions
+                .Regex
                 .IsMatch(
                     pin,
                     @"^\d{6}$"
                 );
 
-        if (!validPin)
+
+        if (
+            !validPin
+        )
         {
             ViewBag.Error =
                 "Admin PIN must contain " +
                 "exactly 6 digits.";
 
+
             return View();
         }
 
-        if (pin != confirmPin)
+
+        if (
+            pin !=
+            confirmPin
+        )
         {
             ViewBag.Error =
                 "PIN and Confirm PIN " +
                 "do not match.";
 
+
             return View();
         }
 
-        if (pin is
-            "000000" or
-            "111111" or
-            "123456" or
-            "654321")
+
+        if (
+            pin is
+                "000000" or
+                "111111" or
+                "123456" or
+                "654321"
+        )
         {
             ViewBag.Error =
                 "This PIN is too easy to guess.";
 
+
             return View();
         }
+
 
         AdminSecurity? security =
             await db.AdminSecurities
@@ -1104,49 +1908,75 @@ public class MyProfileController : Controller
                         user.UserId
                 );
 
-        if (security == null)
+
+        if (
+            security ==
+            null
+        )
         {
-            security = new AdminSecurity
-            {
-                AdminSecurityId = await FormattedIdGenerator.NextAsync(
-                    db.AdminSecurities,
-                    a => a.AdminSecurityId,
-                    "ADS"
-                ),
-                UserId =
-                    user.UserId,
+            security =
+                new AdminSecurity
+                {
+                    AdminSecurityId =
+                        await FormattedIdGenerator
+                            .NextAsync(
+                                db.AdminSecurities,
 
-                CreatedAt =
-                    DateTime.UtcNow
-            };
+                                a =>
+                                    a.AdminSecurityId,
 
-            db.AdminSecurities.Add(
-                security
-            );
+                                "ADS"
+                            ),
+
+                    UserId =
+                        user.UserId,
+
+                    CreatedAt =
+                        DateTime.UtcNow
+                };
+
+
+            db.AdminSecurities
+                .Add(
+                    security
+                );
         }
 
-        security.PinHash =
-            adminPinHasher.HashPassword(
-                security,
-                pin
-            );
 
-        security.PinEnabled = true;
-        security.FailedAttempts = 0;
-        security.LockoutEnd = null;
+        security.PinHash =
+            adminPinHasher
+                .HashPassword(
+                    security,
+                    pin
+                );
+
+
+        security.PinEnabled =
+            true;
+
+        security.FailedAttempts =
+            0;
+
+        security.LockoutEnd =
+            null;
+
         security.UpdatedAt =
             DateTime.UtcNow;
 
+
         await db.SaveChangesAsync();
+
 
         TempData["Message"] =
             "Admin Security PIN was saved " +
             "successfully.";
 
+
         return RedirectToAction(
             nameof(Passkey)
         );
     }
+
 
     // ==================================================
     // DELETE PASSKEY
@@ -1160,36 +1990,54 @@ public class MyProfileController : Controller
         string? userId =
             GetCurrentUserId();
 
-        if (userId == null)
+
+        if (
+            userId ==
+            null
+        )
         {
-            return Unauthorized(new
-            {
-                success = false,
-                message =
-                    "Your login session has expired."
-            });
+            return Unauthorized(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Your login session has expired."
+                }
+            );
         }
+
 
         UserPasskey? passkey =
             await db.UserPasskeys
                 .FirstOrDefaultAsync(
                     p =>
                         p.UserPasskeyId ==
-                        passkeyId &&
+                            passkeyId &&
 
                         p.UserId ==
-                        userId
+                            userId
                 );
 
-        if (passkey == null)
+
+        if (
+            passkey ==
+            null
+        )
         {
-            return NotFound(new
-            {
-                success = false,
-                message =
-                    "The selected passkey could not be found."
-            });
+            return NotFound(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "The selected passkey could not be found."
+                }
+            );
         }
+
 
         User? currentUser =
             await db.Users
@@ -1199,15 +2047,24 @@ public class MyProfileController : Controller
                         userId
                 );
 
-        if (currentUser == null)
+
+        if (
+            currentUser ==
+            null
+        )
         {
-            return NotFound(new
-            {
-                success = false,
-                message =
-                    "Your user account could not be found."
-            });
+            return NotFound(
+                new
+                {
+                    success =
+                        false,
+
+                    message =
+                        "Your user account could not be found."
+                }
+            );
         }
+
 
         int passkeyCount =
             await db.UserPasskeys
@@ -1217,6 +2074,7 @@ public class MyProfileController : Controller
                         userId
                 );
 
+
         bool isAdmin =
             string.Equals(
                 currentUser.Position,
@@ -1224,15 +2082,22 @@ public class MyProfileController : Controller
                 StringComparison.OrdinalIgnoreCase
             );
 
+
         bool deletingLastPasskey =
-            passkeyCount == 1;
+            passkeyCount ==
+            1;
 
-        db.UserPasskeys.Remove(
-            passkey
-        );
 
-        if (isAdmin &&
-            deletingLastPasskey)
+        db.UserPasskeys
+            .Remove(
+                passkey
+            );
+
+
+        if (
+            isAdmin &&
+            deletingLastPasskey
+        )
         {
             AdminSecurity? security =
                 await db.AdminSecurities
@@ -1242,15 +2107,22 @@ public class MyProfileController : Controller
                             currentUser.UserId
                     );
 
-            if (security != null)
+
+            if (
+                security !=
+                null
+            )
             {
-                db.AdminSecurities.Remove(
-                    security
-                );
+                db.AdminSecurities
+                    .Remove(
+                        security
+                    );
             }
         }
 
+
         await db.SaveChangesAsync();
+
 
         int remainingCount =
             await db.UserPasskeys
@@ -1260,24 +2132,39 @@ public class MyProfileController : Controller
                         userId
                 );
 
+
         string message =
-            isAdmin && deletingLastPasskey
+            isAdmin &&
+            deletingLastPasskey
+
                 ? "The final Admin passkey was deleted. " +
                   "The Admin Security PIN configuration " +
                   "was also removed."
+
                 : "Passkey deleted successfully.";
 
-        return Json(new
-        {
-            success = true,
-            message,
-            count = remainingCount,
-            maximum = MaximumPasskeys,
-            adminSecurityReset =
-                isAdmin &&
-                deletingLastPasskey
-        });
+
+        return Json(
+            new
+            {
+                success =
+                    true,
+
+                message,
+
+                count =
+                    remainingCount,
+
+                maximum =
+                    MaximumPasskeys,
+
+                adminSecurityReset =
+                    isAdmin &&
+                    deletingLastPasskey
+            }
+        );
     }
+
 
     // ==================================================
     // HELPERS
@@ -1290,29 +2177,42 @@ public class MyProfileController : Controller
         );
     }
 
+
     private string GetRequestDeviceIdentifier()
     {
         string? headerValue =
             Request.Headers[
                 "X-Passkey-Device-Id"
-            ].FirstOrDefault();
+            ]
+            .FirstOrDefault();
+
 
         string normalised =
             NormaliseDeviceIdentifier(
                 headerValue
             );
 
-        if (!string.IsNullOrWhiteSpace(
-                normalised))
+
+        if (
+            !string.IsNullOrWhiteSpace(
+                normalised
+            )
+        )
         {
-            SetDeviceCookie(normalised);
+            SetDeviceCookie(
+                normalised
+            );
+
             return normalised;
         }
 
+
         if (
-            Request.Cookies.TryGetValue(
-                DeviceCookieName,
-                out string? existing)
+            Request.Cookies
+                .TryGetValue(
+                    DeviceCookieName,
+                    out string? existing
+                )
         )
         {
             normalised =
@@ -1320,61 +2220,103 @@ public class MyProfileController : Controller
                     existing
                 );
 
-            if (!string.IsNullOrWhiteSpace(
-                    normalised))
+
+            if (
+                !string.IsNullOrWhiteSpace(
+                    normalised
+                )
+            )
             {
                 return normalised;
             }
         }
 
-        string generated =
-            Guid.NewGuid().ToString("N");
 
-        SetDeviceCookie(generated);
+        string generated =
+            Guid.NewGuid()
+                .ToString(
+                    "N"
+                );
+
+
+        SetDeviceCookie(
+            generated
+        );
+
 
         return generated;
     }
+
 
     private static string NormaliseDeviceIdentifier(
         string? value)
     {
         string cleaned =
-            (value ?? "")
-                .Trim()
-                .Replace("-", "")
-                .ToLowerInvariant();
+            (
+                value ??
+                ""
+            )
+            .Trim()
+            .Replace(
+                "-",
+                ""
+            )
+            .ToLowerInvariant();
+
 
         if (
-            cleaned.Length != 32 ||
+            cleaned.Length !=
+                32 ||
+
             !cleaned.All(
                 character =>
                     char.IsAsciiHexDigit(
-                        character))
+                        character
+                    )
+            )
         )
         {
             return "";
         }
 
+
         return cleaned;
     }
+
 
     private void SetDeviceCookie(
         string deviceIdentifier)
     {
-        Response.Cookies.Append(
-            DeviceCookieName,
-            deviceIdentifier,
-            new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Lax,
-                IsEssential = true,
-                Expires =
-                    DateTimeOffset.UtcNow
-                        .AddYears(2)
-            });
+        Response.Cookies
+            .Append(
+                DeviceCookieName,
+
+                deviceIdentifier,
+
+                new CookieOptions
+                {
+                    HttpOnly =
+                        true,
+
+                    Secure =
+                        Request.IsHttps,
+
+                    SameSite =
+                        SameSiteMode.Lax,
+
+                    IsEssential =
+                        true,
+
+                    Expires =
+                        DateTimeOffset
+                            .UtcNow
+                            .AddYears(
+                                2
+                            )
+                }
+            );
     }
+
 
     private Task<int> GetDeviceAccountCountAsync(
         string deviceIdentifier,
@@ -1386,41 +2328,66 @@ public class MyProfileController : Controller
             .Where(
                 p =>
                     p.DeviceIdentifier ==
-                    deviceIdentifier)
-            .Select(p => p.UserId)
+                    deviceIdentifier
+            )
+            .Select(
+                p =>
+                    p.UserId
+            )
             .Distinct()
-            .CountAsync(cancellationToken);
+            .CountAsync(
+                cancellationToken
+            );
     }
+
 
     private static string NormaliseDeviceType(
         string? value)
     {
         string type =
-            (value ?? "").Trim();
+            (
+                value ??
+                ""
+            )
+            .Trim();
 
-        if (type.Equals(
+
+        if (
+            type.Equals(
                 "Mobile",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "Mobile";
         }
 
-        if (type.Equals(
+
+        if (
+            type.Equals(
                 "Tablet",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "Tablet";
         }
 
-        if (type.Equals(
+
+        if (
+            type.Equals(
                 "Desktop",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "Desktop";
         }
 
+
         return "Unknown";
     }
+
 
     private static string CleanDeviceValue(
         string? value,
@@ -1428,73 +2395,115 @@ public class MyProfileController : Controller
         string fallback)
     {
         string cleaned =
-            (value ?? "").Trim();
+            (
+                value ??
+                ""
+            )
+            .Trim();
 
-        if (string.IsNullOrWhiteSpace(cleaned))
+
+        if (
+            string.IsNullOrWhiteSpace(
+                cleaned
+            )
+        )
         {
-            cleaned = fallback;
+            cleaned =
+                fallback;
         }
 
-        return cleaned.Length <= maximumLength
-            ? cleaned
-            : cleaned[..maximumLength];
+
+        return cleaned.Length <=
+            maximumLength
+
+                ? cleaned
+
+                : cleaned[
+                    ..maximumLength
+                ];
     }
+
 
     private static string GetDeviceDisplayName(
         string attachment,
         string transports)
     {
-        if (string.Equals(
+        if (
+            string.Equals(
                 attachment,
                 "Platform",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "This device";
         }
 
-        if (transports.Contains(
+
+        if (
+            transports.Contains(
                 "Hybrid",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "Phone passkey";
         }
 
-        if (transports.Contains(
+
+        if (
+            transports.Contains(
                 "Usb",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "USB security key";
         }
 
-        if (transports.Contains(
+
+        if (
+            transports.Contains(
                 "Nfc",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "NFC security key";
         }
 
-        if (transports.Contains(
+
+        if (
+            transports.Contains(
                 "Ble",
-                StringComparison.OrdinalIgnoreCase))
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return "Bluetooth security key";
         }
 
+
         return "Passkey Device";
     }
 
-    private static string
-        GetRealExceptionMessage(
-            Exception exception)
+
+    private static string GetRealExceptionMessage(
+        Exception exception)
     {
         Exception current =
             exception;
 
-        while (current.InnerException != null)
+
+        while (
+            current.InnerException !=
+            null
+        )
         {
             current =
                 current.InnerException;
         }
+
 
         return current.Message;
     }
