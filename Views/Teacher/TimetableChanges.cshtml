@@ -143,6 +143,9 @@
                             "TimeChanged" =>
                                 "Time Changed",
 
+                            "LessonRestored" =>
+                                "Lesson Restored",
+
                             _ =>
                                 type
                         };
@@ -155,6 +158,55 @@
                                 " ",
                                 "-"
                             );
+
+
+                    // ==================================================
+                    // DISPLAY MESSAGE
+                    // ==================================================
+
+                    string displayMessage =
+                        notification.Message;
+
+
+                    bool isCancelled =
+                        type.Contains(
+                            "cancel",
+                            StringComparison.OrdinalIgnoreCase
+                        );
+
+
+                    if (
+                        isCancelled &&
+                        notification.OccurrenceDate.HasValue
+                    )
+                    {
+                        string courseName =
+                            notification.Message;
+
+
+                        int onIndex =
+                            courseName.IndexOf(
+                                " on ",
+                                StringComparison.OrdinalIgnoreCase
+                            );
+
+
+                        if (onIndex > 0)
+                        {
+                            courseName =
+                                courseName.Substring(
+                                    0,
+                                    onIndex
+                                );
+                        }
+
+
+                        displayMessage =
+                            $"{courseName} on " +
+                            $"{notification.OccurrenceDate.Value.ToString("d/M/yyyy")} " +
+                            $"has been cancelled.";
+                    }
+
 
 
                     <article class="change-card">
@@ -179,7 +231,7 @@
 
                             <div class="change-message">
 
-                                @notification.Message
+                                @displayMessage
 
                             </div>
 
@@ -187,8 +239,7 @@
 
                             <!-- LESSON DATE -->
                             @if (
-                                                            notification.OccurrenceDate
-                                                                .HasValue
+                                                            notification.OccurrenceDate.HasValue
                                                         )
                             {
                                 <div class="change-lesson-date">
@@ -198,7 +249,7 @@
                                     </span>
 
                                     <strong>
-                                        @notification.OccurrenceDate.Value.ToString("d/MM/yyyy")
+                                        @notification.OccurrenceDate.Value.ToString("d/M/yyyy")
                                     </strong>
 
                                 </div>
@@ -214,7 +265,7 @@
                         <div class="change-time">
 
                             <span class="change-created-date">
-                                @notification.CreatedAt.ToString("d/MM/yyyy")
+                                @notification.CreatedAt.ToString("d/M/yyyy")
                             </span>
 
                             <small>

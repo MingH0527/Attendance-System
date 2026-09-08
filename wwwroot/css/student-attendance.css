@@ -6,6 +6,11 @@
     box-sizing: border-box;
 }
 
+
+/* ==========================================
+   PAGE HEADING
+   ========================================== */
+
 .attendance-heading {
     margin-bottom: 26px;
 }
@@ -31,6 +36,11 @@
         color: #7b8aa5;
     }
 
+
+/* ==========================================
+   ATTENDANCE CARD
+   ========================================== */
+
 .attendance-card {
     background: white;
     border: 1px solid #e0e7f0;
@@ -39,6 +49,11 @@
     margin-bottom: 24px;
     box-shadow: 0 8px 24px rgba(20, 50, 100, 0.05);
 }
+
+
+/* ==========================================
+   ATTENDANCE CODE
+   ========================================== */
 
 .code-card {
     display: flex;
@@ -86,6 +101,11 @@
         cursor: pointer;
     }
 
+
+/* ==========================================
+   SUCCESS / ERROR
+   ========================================== */
+
 .attendance-message {
     padding: 14px 18px;
     margin-bottom: 20px;
@@ -103,12 +123,192 @@
         color: #dc2626;
     }
 
+
+/* ==========================================
+   ATTENDANCE WARNING NOTIFICATION
+   ========================================== */
+
+.attendance-notifications {
+    margin-bottom: 24px;
+    background: #fffdf5;
+    border: 1px solid #f3e4b4;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+}
+
+
+/* HEADER */
+
+.attendance-notification-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px 20px;
+    background: #fff9e8;
+    border-bottom: 1px solid #f0e8d4;
+}
+
+.attendance-notification-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+    .attendance-notification-title > div:last-child {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .attendance-notification-title strong {
+        color: #3f3a2d;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .attendance-notification-title span {
+        color: #8a8068;
+        font-size: 12px;
+    }
+
+
+/* ICON */
+
+.attendance-notification-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 50%;
+    color: #b45309;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+
+/* COUNT */
+
+.attendance-notification-count {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fef3c7;
+    border-radius: 999px;
+    color: #92400e;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+
+/* LIST */
+
+.attendance-notification-list {
+    padding: 0 20px;
+}
+
+
+/* ITEM */
+
+.attendance-notification-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0e8d4;
+}
+
+    .attendance-notification-item:last-child {
+        border-bottom: none;
+    }
+
+
+/* MESSAGE */
+
+.attendance-notification-message {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .attendance-notification-message strong {
+        color: #3f3a2d;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .attendance-notification-message span {
+        color: #746b59;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+
+/* REQUIREMENT */
+
+.attendance-notification-requirement {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+    .attendance-notification-requirement span {
+        color: #9b927e;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .attendance-notification-requirement strong {
+        color: #b45309;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+
+/* FOOTER */
+
+.attendance-notification-footer {
+    padding: 11px 20px;
+    background: #fffcf2;
+    border-top: 1px solid #f0e8d4;
+    color: #8a8068;
+    font-size: 11px;
+}
+
+    .attendance-notification-footer strong {
+        color: #b45309;
+        font-weight: 700;
+    }
+
+
+/* ==========================================
+   SECTION HEADING
+   ========================================== */
+
 .section-heading {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 22px;
 }
+
+
+/* ==========================================
+   TODAY ATTENDANCE
+   ========================================== */
 
 .today-attendance-row {
     display: grid;
@@ -138,6 +338,11 @@
         color: #8390a6;
         font-size: 14px;
     }
+
+
+/* ==========================================
+   ATTENDANCE STATUS
+   ========================================== */
 
 .attendance-status {
     display: inline-flex;
@@ -169,6 +374,11 @@
         color: #64748b;
     }
 
+
+/* ==========================================
+   OVERALL
+   ========================================== */
+
 .overall-heading {
     margin-top: 35px;
 }
@@ -179,6 +389,11 @@
     gap: 18px;
     width: 100%;
 }
+
+
+/* ==========================================
+   SUBJECT CARD
+   ========================================== */
 
 .subject-attendance-card {
     display: flex;
@@ -218,6 +433,11 @@
     text-decoration: none;
 }
 
+
+/* ==========================================
+   SUBJECT COUNTS
+   ========================================== */
+
 .subject-counts {
     display: flex;
     gap: 14px;
@@ -232,6 +452,11 @@
         margin-left: 4px;
         color: #213655;
     }
+
+
+/* ==========================================
+   ATTENDANCE PERCENTAGE
+   ========================================== */
 
 .attendance-percentage {
     width: 82px;
@@ -261,6 +486,11 @@
         text-decoration: none;
     }
 
+
+/* ==========================================
+   DETAIL SUMMARY
+   ========================================== */
+
 .attendance-detail-summary {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -273,6 +503,11 @@
     gap: 50px;
     margin-top: 25px;
 }
+
+
+/* ==========================================
+   DONUT
+   ========================================== */
 
 .attendance-donut {
     width: 210px;
@@ -304,6 +539,11 @@
         color: #8693a8;
         font-size: 12px;
     }
+
+
+/* ==========================================
+   LEGEND
+   ========================================== */
 
 .attendance-legend {
     display: flex;
@@ -337,6 +577,11 @@
     background: #facc15;
 }
 
+
+/* ==========================================
+   OVERALL RATE
+   ========================================== */
+
 .overall-rate-card {
     text-align: center;
 }
@@ -358,6 +603,11 @@
 .rate-warning {
     color: #dc2626;
 }
+
+
+/* ==========================================
+   TABLE
+   ========================================== */
 
 .attendance-table-wrapper {
     overflow-x: auto;
@@ -385,11 +635,21 @@
         color: #233954;
     }
 
+
+/* ==========================================
+   EMPTY
+   ========================================== */
+
 .attendance-empty {
     padding: 35px;
     text-align: center;
     color: #8491a8;
 }
+
+
+/* ==========================================
+   BACK
+   ========================================== */
 
 .attendance-back {
     display: inline-block;
@@ -399,7 +659,13 @@
     font-weight: 700;
 }
 
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
 @media (max-width: 900px) {
+
     .code-card,
     .chart-area {
         flex-direction: column;
@@ -429,5 +695,30 @@
 
     .attendance-donut {
         margin: 0 auto;
+    }
+}
+
+
+/* ==========================================
+   MOBILE
+   ========================================== */
+
+@media (max-width: 700px) {
+
+    .attendance-notification-heading {
+        padding: 15px 16px;
+    }
+
+    .attendance-notification-list {
+        padding: 0 16px;
+    }
+
+    .attendance-notification-item {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .attendance-notification-footer {
+        padding: 10px 16px;
     }
 }

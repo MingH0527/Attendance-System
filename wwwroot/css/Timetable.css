@@ -1,48 +1,1148 @@
-.tt-page{padding:24px;font-family:Arial,sans-serif;color:#1f2937}.tt-head,.tt-context,.tt-term-card header,.tt-modal-head{display:flex;justify-content:space-between;align-items:center;gap:16px}.tt-head h2{margin:0}.tt-head p{margin:8px 0;color:#64748b}.tt-head-actions{display:flex;gap:8px}.tt-status-tabs{display:flex;gap:8px;margin:18px 0}.tt-status-tabs button,.tt-context-actions button,.tt-footer-actions button,.tt-program-card button,.tt-class-card button{border:1px solid #cbd5e1;background:#fff;padding:8px 12px;border-radius:8px;cursor:pointer}.tt-status-tabs .active,.tt-context-actions .active{background:#0f6cbd;color:#fff;border-color:#0f6cbd}.tt-term-card{border:1px solid #e2e8f0;border-radius:14px;padding:18px;margin:14px 0;background:#fff;box-shadow:0 3px 12px #0000000d}.tt-term-card h3{margin:0}.tt-program-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:16px}.tt-program-card{border:1px solid #dbe3ec;border-radius:12px;padding:16px;background:#f8fafc;display:flex;flex-direction:column;gap:8px}.tt-program-card strong{font-size:18px}.tt-program-card small{color:#64748b;min-height:34px}.tt-program-card button{align-self:flex-start}.tt-breadcrumb{padding:16px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin:14px 0;font-size:18px}.tt-class-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}.tt-class-card{border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:#fff}.tt-class-card strong{font-size:18px}.tt-class-card>div{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}.tt-pill{padding:5px 10px;border-radius:999px;background:#e2e8f0;font-size:12px}.tt-pill.active{background:#dcfce7;color:#166534}.tt-pill.upcoming{background:#dbeafe;color:#1d4ed8}.tt-pill.completed{background:#f1f5f9;color:#475569}.tt-inline-status{font-size:12px;padding:3px 8px;border-radius:999px;background:#dcfce7;color:#166534}.tt-context{padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:14px 0}.tt-context-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.tt-context-actions select{padding:8px;border:1px solid #cbd5e1;border-radius:8px;max-width:260px}.tt-week-notice{margin:-4px 0 10px;padding:10px 12px;border:1px solid #fde68a;background:#fffbeb;color:#854d0e;border-radius:8px;font-size:13px}.tt-legend{display:flex;gap:18px;margin:10px 0;font-size:13px;flex-wrap:wrap}.tt-legend .normal{color:#0891b2}.tt-legend .attention{color:#ca8a04}.tt-legend .cancelled{color:#dc2626}.tt-layout{display:flex;gap:16px}.tt-teacher-panel{width:245px;flex:none;border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}.tt-teacher-panel h3{margin:0 0 6px}.tt-teacher-panel input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:7px}.tt-hint,.tt-form-hint{font-size:12px;color:#64748b}.tt-form-hint{margin-top:5px;line-height:1.35}.tt-teacher-list{list-style:none;padding:0;margin-bottom:0}.tt-teacher-list li{padding:9px;margin:7px 0;border-radius:8px;background:#0f6cbd;color:#fff;cursor:grab;font-size:13px}.tt-grid-wrapper{overflow:auto;flex:1}.tt-grid{border-collapse:collapse;width:100%;min-width:900px;table-layout:fixed}.tt-grid th,.tt-grid td{border:1px solid #dbe3ec;text-align:center}.tt-grid th,.tt-day-label{background:#f1f5f9;padding:8px;font-size:12px}.tt-grid th:first-child{width:105px}.tt-cell{height:76px;min-width:105px;vertical-align:top;padding:0}.tt-cell.drag-over{background:#e0f2fe}.tt-lesson-block{height:100%;box-sizing:border-box;padding:7px;text-align:left;border-radius:4px;font-size:11px;display:flex;flex-direction:column;gap:3px;overflow:hidden}.tt-lesson-block.normal{background:#cffafe;border-left:4px solid #0891b2;color:#164e63}.tt-lesson-block.attention{background:#fef9c3;border-left:4px solid #ca8a04;color:#713f12}.tt-lesson-block.cancelled{background:#fee2e2;border-left:4px solid #dc2626;color:#7f1d1d}.tt-cell.has-overlap{padding:2px;background:#fff7ed}.tt-cell.has-overlap .tt-lesson-block{height:auto;min-height:50%;margin-bottom:2px;box-shadow:0 0 0 1px #f59e0b66 inset}.tt-cell.has-overlap .tt-lesson-block:last-child{margin-bottom:0}.tt-lesson-block strong{font-size:12px;white-space:normal;overflow-wrap:anywhere}.tt-lesson-block span,.tt-lesson-block small{white-space:normal;overflow-wrap:anywhere}.tt-lesson-block small{margin-top:auto}.tt-footer-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.tt-modal-overlay{position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}.tt-modal-overlay[hidden]{display:none}.tt-modal{background:#fff;padding:24px;border-radius:14px;width:480px;max-width:95vw;max-height:90vh;overflow:auto}.tt-modal-wide{width:720px}.tt-modal h3{margin:0 0 12px}.tt-modal label{display:block;font-weight:bold;font-size:13px;margin-top:11px}.tt-modal label small{font-weight:normal;color:#64748b}.tt-modal input,.tt-modal select{width:100%;box-sizing:border-box;padding:9px;margin-top:4px;border:1px solid #94a3b8;border-radius:5px}.tt-time-row{display:flex;gap:8px}.tt-modal-actions{display:flex;gap:8px;margin-top:18px;justify-content:flex-end}.tt-btn-primary{background:#0f6cbd;color:#fff;border:0;padding:9px 15px;border-radius:7px;cursor:pointer}.tt-btn-secondary{background:#e2e8f0;border:0;padding:9px 15px;border-radius:7px;cursor:pointer}.tt-btn-danger{background:#dc2626;color:#fff;border:0;padding:9px 15px;border-radius:7px;margin-right:auto;cursor:pointer}.tt-icon-btn{border:0;background:transparent;font-size:28px;line-height:1;cursor:pointer;color:#475569}.tt-error{background:#fee2e2;color:#991b1b;padding:9px;border-radius:7px;margin:8px 0;white-space:pre-wrap}.tt-empty{padding:30px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px}.tt-holiday-form{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;align-items:end}.tt-holiday-form label{margin-top:0}.tt-holiday-form button{height:38px;margin-top:4px}.tt-holiday-list{margin-top:18px;border-top:1px solid #e2e8f0;padding-top:10px}.tt-holiday-row{display:grid;grid-template-columns:110px 1fr 140px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9}.tt-holiday-row small{color:#64748b}.tt-holiday-row button{border:0;background:#fee2e2;color:#991b1b;border-radius:6px;padding:6px 9px;cursor:pointer}@media(max-width:850px){.tt-layout{display:block}.tt-teacher-panel{width:auto;margin-bottom:12px}.tt-context{align-items:flex-start;flex-direction:column}.tt-holiday-form{grid-template-columns:1fr}.tt-holiday-row{grid-template-columns:1fr auto}.tt-holiday-row span:nth-child(3){display:none}}
-.tt-history-panel{margin-top:18px;border:1px solid #dbe3ec;background:#fff;border-radius:14px;padding:18px;box-shadow:0 3px 12px #0000000d}.tt-history-head{display:flex;justify-content:space-between;align-items:center;gap:14px}.tt-history-head h3{margin:0}.tt-history-head p{margin:5px 0 0;color:#64748b;font-size:13px}.tt-history-head select{min-width:240px;padding:9px;border:1px solid #cbd5e1;border-radius:8px}.tt-holiday-tools{display:grid;grid-template-columns:1.6fr .8fr;gap:16px;margin-top:16px}.tt-drop-zone{border:2px dashed #b8c7d9;border-radius:12px;background:#f8fafc;min-height:128px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px;cursor:pointer}.tt-drop-zone span{font-size:12px;color:#64748b}.tt-drop-zone.drag-over{background:#eaf5ff;border-color:#0f6cbd}.tt-drop-zone.disabled{opacity:.55;cursor:not-allowed}.tt-import-result{margin-top:12px;padding:10px 12px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;border-radius:8px;font-size:13px}.tt-holiday-list-header{display:grid;grid-template-columns:110px 1fr 140px 1fr auto;gap:10px;padding:12px 0 8px;border-bottom:1px solid #cbd5e1;margin-top:14px;font-size:12px;color:#64748b;text-transform:uppercase}.tt-readonly{font-size:12px;color:#64748b;background:#f1f5f9;border-radius:999px;padding:5px 8px;justify-self:start}@media(max-width:900px){.tt-holiday-tools{grid-template-columns:1fr}.tt-history-head{align-items:flex-start;flex-direction:column}.tt-history-head select{min-width:0;width:100%}.tt-holiday-list-header{display:none}}
+.tt-page {
+    padding: 24px;
+    font-family: Arial,sans-serif;
+    color: #1f2937
+}
+
+.tt-head, .tt-context, .tt-term-card header, .tt-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px
+}
+
+    .tt-head h2 {
+        margin: 0
+    }
+
+    .tt-head p {
+        margin: 8px 0;
+        color: #64748b
+    }
+
+.tt-head-actions {
+    display: flex;
+    gap: 8px
+}
+
+.tt-status-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 18px 0
+}
+
+    .tt-status-tabs button, .tt-context-actions button, .tt-footer-actions button, .tt-program-card button, .tt-class-card button {
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer
+    }
+
+    .tt-status-tabs .active, .tt-context-actions .active {
+        background: #0f6cbd;
+        color: #fff;
+        border-color: #0f6cbd
+    }
+
+.tt-term-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 18px;
+    margin: 14px 0;
+    background: #fff;
+    box-shadow: 0 3px 12px #0000000d
+}
+
+    .tt-term-card h3 {
+        margin: 0
+    }
+
+.tt-program-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(230px,1fr));
+    gap: 12px;
+    margin-top: 16px
+}
+
+.tt-program-card {
+    border: 1px solid #dbe3ec;
+    border-radius: 12px;
+    padding: 16px;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 8px
+}
+
+    .tt-program-card strong {
+        font-size: 18px
+    }
+
+    .tt-program-card small {
+        color: #64748b;
+        min-height: 34px
+    }
+
+    .tt-program-card button {
+        align-self: flex-start
+    }
+
+.tt-breadcrumb {
+    padding: 16px 18px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin: 14px 0;
+    font-size: 18px
+}
+
+.tt-class-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(260px,1fr));
+    gap: 12px
+}
+
+.tt-class-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    background: #fff
+}
+
+    .tt-class-card strong {
+        font-size: 18px
+    }
+
+    .tt-class-card > div {
+        display: flex;
+        gap: 7px;
+        margin-top: 10px;
+        flex-wrap: wrap
+    }
+
+.tt-pill {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    font-size: 12px
+}
+
+    .tt-pill.active {
+        background: #dcfce7;
+        color: #166534
+    }
+
+    .tt-pill.upcoming {
+        background: #dbeafe;
+        color: #1d4ed8
+    }
+
+    .tt-pill.completed {
+        background: #f1f5f9;
+        color: #475569
+    }
+
+.tt-inline-status {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534
+}
+
+.tt-context {
+    padding: 14px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin: 14px 0
+}
+
+.tt-context-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap
+}
+
+    .tt-context-actions select {
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        max-width: 260px
+    }
+
+.tt-week-notice {
+    margin: -4px 0 10px;
+    padding: 10px 12px;
+    border: 1px solid #fde68a;
+    background: #fffbeb;
+    color: #854d0e;
+    border-radius: 8px;
+    font-size: 13px
+}
+
+.tt-legend {
+    display: flex;
+    gap: 18px;
+    margin: 10px 0;
+    font-size: 13px;
+    flex-wrap: wrap
+}
+
+    .tt-legend .normal {
+        color: #0891b2
+    }
+
+    .tt-legend .attention {
+        color: #ca8a04
+    }
+
+    .tt-legend .cancelled {
+        color: #dc2626
+    }
+
+.tt-layout {
+    display: flex;
+    gap: 16px
+}
+
+.tt-teacher-panel {
+    width: 245px;
+    flex: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fafc
+}
+
+    .tt-teacher-panel h3 {
+        margin: 0 0 6px
+    }
+
+    .tt-teacher-panel input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px
+    }
+
+.tt-hint, .tt-form-hint {
+    font-size: 12px;
+    color: #64748b
+}
+
+.tt-form-hint {
+    margin-top: 5px;
+    line-height: 1.35
+}
+
+.tt-teacher-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 0
+}
+
+    .tt-teacher-list li {
+        padding: 9px;
+        margin: 7px 0;
+        border-radius: 8px;
+        background: #0f6cbd;
+        color: #fff;
+        cursor: grab;
+        font-size: 13px
+    }
+
+.tt-grid-wrapper {
+    overflow: auto;
+    flex: 1
+}
+
+.tt-grid {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 900px;
+    table-layout: fixed
+}
+
+    .tt-grid th, .tt-grid td {
+        border: 1px solid #dbe3ec;
+        text-align: center
+    }
+
+    .tt-grid th, .tt-day-label {
+        background: #f1f5f9;
+        padding: 8px;
+        font-size: 12px
+    }
+
+        .tt-grid th:first-child {
+            width: 105px
+        }
+
+.tt-cell {
+    height: 76px;
+    min-width: 105px;
+    vertical-align: top;
+    padding: 0
+}
+
+    .tt-cell.drag-over {
+        background: #e0f2fe
+    }
+
+.tt-lesson-block {
+    height: 100%;
+    box-sizing: border-box;
+    padding: 7px;
+    text-align: left;
+    border-radius: 4px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow: hidden
+}
+
+    .tt-lesson-block.normal {
+        background: #cffafe;
+        border-left: 4px solid #0891b2;
+        color: #164e63
+    }
+
+    .tt-lesson-block.attention {
+        background: #fef9c3;
+        border-left: 4px solid #ca8a04;
+        color: #713f12
+    }
+
+    .tt-lesson-block.cancelled {
+        background: #fee2e2;
+        border-left: 4px solid #dc2626;
+        color: #7f1d1d
+    }
+
+.tt-cell.has-overlap {
+    padding: 2px;
+    background: #fff7ed
+}
+
+    .tt-cell.has-overlap .tt-lesson-block {
+        height: auto;
+        min-height: 50%;
+        margin-bottom: 2px;
+        box-shadow: 0 0 0 1px #f59e0b66 inset
+    }
+
+        .tt-cell.has-overlap .tt-lesson-block:last-child {
+            margin-bottom: 0
+        }
+
+.tt-lesson-block strong {
+    font-size: 12px;
+    white-space: normal;
+    overflow-wrap: anywhere
+}
+
+.tt-lesson-block span, .tt-lesson-block small {
+    white-space: normal;
+    overflow-wrap: anywhere
+}
+
+.tt-lesson-block small {
+    margin-top: auto
+}
+
+.tt-footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px
+}
+
+.tt-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: #0006;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px
+}
+
+    .tt-modal-overlay[hidden] {
+        display: none
+    }
+
+.tt-modal {
+    background: #fff;
+    padding: 24px;
+    border-radius: 14px;
+    width: 480px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow: auto
+}
+
+.tt-modal-wide {
+    width: 720px
+}
+
+.tt-modal h3 {
+    margin: 0 0 12px
+}
+
+.tt-modal label {
+    display: block;
+    font-weight: bold;
+    font-size: 13px;
+    margin-top: 11px
+}
+
+    .tt-modal label small {
+        font-weight: normal;
+        color: #64748b
+    }
+
+.tt-modal input, .tt-modal select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px;
+    margin-top: 4px;
+    border: 1px solid #94a3b8;
+    border-radius: 5px
+}
+
+.tt-time-row {
+    display: flex;
+    gap: 8px
+}
+
+.tt-modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    justify-content: flex-end
+}
+
+.tt-btn-primary {
+    background: #0f6cbd;
+    color: #fff;
+    border: 0;
+    padding: 9px 15px;
+    border-radius: 7px;
+    cursor: pointer
+}
+
+.tt-btn-secondary {
+    background: #e2e8f0;
+    border: 0;
+    padding: 9px 15px;
+    border-radius: 7px;
+    cursor: pointer
+}
+
+.tt-btn-danger {
+    background: #dc2626;
+    color: #fff;
+    border: 0;
+    padding: 9px 15px;
+    border-radius: 7px;
+    margin-right: auto;
+    cursor: pointer
+}
+
+.tt-icon-btn {
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    color: #475569
+}
+
+.tt-error {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 9px;
+    border-radius: 7px;
+    margin: 8px 0;
+    white-space: pre-wrap
+}
+
+.tt-empty {
+    padding: 30px;
+    text-align: center;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px
+}
+
+.tt-holiday-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    align-items: end
+}
+
+    .tt-holiday-form label {
+        margin-top: 0
+    }
+
+    .tt-holiday-form button {
+        height: 38px;
+        margin-top: 4px
+    }
+
+.tt-holiday-list {
+    margin-top: 18px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 10px
+}
+
+.tt-holiday-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 140px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid #f1f5f9
+}
+
+    .tt-holiday-row small {
+        color: #64748b
+    }
+
+    .tt-holiday-row button {
+        border: 0;
+        background: #fee2e2;
+        color: #991b1b;
+        border-radius: 6px;
+        padding: 6px 9px;
+        cursor: pointer
+    }
+
+@media(max-width:850px) {
+    .tt-layout {
+        display: block
+    }
+
+    .tt-teacher-panel {
+        width: auto;
+        margin-bottom: 12px
+    }
+
+    .tt-context {
+        align-items: flex-start;
+        flex-direction: column
+    }
+
+    .tt-holiday-form {
+        grid-template-columns: 1fr
+    }
+
+    .tt-holiday-row {
+        grid-template-columns: 1fr auto
+    }
+
+        .tt-holiday-row span:nth-child(3) {
+            display: none
+        }
+}
+
+.tt-history-panel {
+    margin-top: 18px;
+    border: 1px solid #dbe3ec;
+    background: #fff;
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 3px 12px #0000000d
+}
+
+.tt-history-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px
+}
+
+    .tt-history-head h3 {
+        margin: 0
+    }
+
+    .tt-history-head p {
+        margin: 5px 0 0;
+        color: #64748b;
+        font-size: 13px
+    }
+
+    .tt-history-head select {
+        min-width: 240px;
+        padding: 9px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px
+    }
+
+.tt-holiday-tools {
+    display: grid;
+    grid-template-columns: 1.6fr .8fr;
+    gap: 16px;
+    margin-top: 16px
+}
+
+.tt-drop-zone {
+    border: 2px dashed #b8c7d9;
+    border-radius: 12px;
+    background: #f8fafc;
+    min-height: 128px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 16px;
+    cursor: pointer
+}
+
+    .tt-drop-zone span {
+        font-size: 12px;
+        color: #64748b
+    }
+
+    .tt-drop-zone.drag-over {
+        background: #eaf5ff;
+        border-color: #0f6cbd
+    }
+
+    .tt-drop-zone.disabled {
+        opacity: .55;
+        cursor: not-allowed
+    }
+
+.tt-import-result {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #ecfdf5;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    font-size: 13px
+}
+
+.tt-holiday-list-header {
+    display: grid;
+    grid-template-columns: 110px 1fr 140px 1fr auto;
+    gap: 10px;
+    padding: 12px 0 8px;
+    border-bottom: 1px solid #cbd5e1;
+    margin-top: 14px;
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase
+}
+
+.tt-readonly {
+    font-size: 12px;
+    color: #64748b;
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 5px 8px;
+    justify-self: start
+}
+
+@media(max-width:900px) {
+    .tt-holiday-tools {
+        grid-template-columns: 1fr
+    }
+
+    .tt-history-head {
+        align-items: flex-start;
+        flex-direction: column
+    }
+
+        .tt-history-head select {
+            min-width: 0;
+            width: 100%
+        }
+
+    .tt-holiday-list-header {
+        display: none
+    }
+}
 
 /* Timetable navigation / validation layout */
-.tt-back-home{display:inline-flex;align-items:center;text-decoration:none;color:#1f2937}.tt-semester-row{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;align-items:end}.tt-semester-row label{margin-top:0}.tt-holiday-form{display:block}.tt-holiday-input-row{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:12px;align-items:end}.tt-holiday-input-row label{margin-top:0}.tt-holiday-action-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tt-holiday-action-row button{width:100%;height:40px}.tt-modal:has(#semesterForm){width:760px}.tt-history-panel{margin-top:0}
-@media(max-width:850px){.tt-semester-row,.tt-holiday-input-row,.tt-holiday-action-row{grid-template-columns:1fr}.tt-modal:has(#semesterForm){width:480px}}
 
+.tt-back-home {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    color: #1f2937
+}
+
+.tt-semester-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 12px;
+    align-items: end
+}
+
+    .tt-semester-row label {
+        margin-top: 0
+    }
+
+.tt-holiday-form {
+    display: block
+}
+
+.tt-holiday-input-row {
+    display: grid;
+    grid-template-columns: 1fr 1.7fr 1fr;
+    gap: 12px;
+    align-items: end
+}
+
+    .tt-holiday-input-row label {
+        margin-top: 0
+    }
+
+.tt-holiday-action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px
+}
+
+    .tt-holiday-action-row button {
+        width: 100%;
+        height: 40px
+    }
+
+.tt-modal:has(#semesterForm) {
+    width: 760px
+}
+
+.tt-history-panel {
+    margin-top: 0
+}
+
+@media(max-width:850px) {
+    .tt-semester-row, .tt-holiday-input-row, .tt-holiday-action-row {
+        grid-template-columns: 1fr
+    }
+
+    .tt-modal:has(#semesterForm) {
+        width: 480px
+    }
+}
 
 /* Semester lifecycle controls */
-.tt-pill.incoming{background:#dbeafe;color:#1d4ed8}.tt-pill.warning{background:#fee2e2;color:#b91c1c}.tt-term-warning{border-color:#fecaca;background:#fffafa}.tt-term-status-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.tt-term-actions{display:flex;gap:7px;flex-wrap:wrap}.tt-term-actions button{padding:7px 10px;font-size:12px}.tt-head-actions button:disabled{opacity:.5;cursor:not-allowed}
 
+.tt-pill.incoming {
+    background: #dbeafe;
+    color: #1d4ed8
+}
+
+.tt-pill.warning {
+    background: #fee2e2;
+    color: #b91c1c
+}
+
+.tt-term-warning {
+    border-color: #fecaca;
+    background: #fffafa
+}
+
+.tt-term-status-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end
+}
+
+.tt-term-actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap
+}
+
+    .tt-term-actions button {
+        padding: 7px 10px;
+        font-size: 12px
+    }
+
+.tt-head-actions button:disabled {
+    opacity: .5;
+    cursor: not-allowed
+}
 
 /* Force-active confirmation */
-.tt-force-active{margin-top:14px;padding:14px;border:1px solid #fca5a5;background:#fff7f7;border-radius:10px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;color:#7f1d1d}.tt-force-active[hidden]{display:none}.tt-force-active-icon{width:28px;height:28px;border-radius:50%;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}.tt-force-active strong{display:block;margin:1px 0 5px}.tt-force-active p{margin:0 0 5px;line-height:1.4}.tt-force-active small{color:#991b1b}.tt-force-active-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}.tt-btn-danger-confirm{background:#b91c1c;color:#fff;border:0;padding:9px 15px;border-radius:7px;cursor:pointer}.tt-btn-danger-confirm:disabled{opacity:.55;cursor:not-allowed}
+
+.tt-force-active {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid #fca5a5;
+    background: #fff7f7;
+    border-radius: 10px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: start;
+    color: #7f1d1d
+}
+
+    .tt-force-active[hidden] {
+        display: none
+    }
+
+.tt-force-active-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #dc2626;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700
+}
+
+.tt-force-active strong {
+    display: block;
+    margin: 1px 0 5px
+}
+
+.tt-force-active p {
+    margin: 0 0 5px;
+    line-height: 1.4
+}
+
+.tt-force-active small {
+    color: #991b1b
+}
+
+.tt-force-active-actions {
+    grid-column: 1/-1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px
+}
+
+.tt-btn-danger-confirm {
+    background: #b91c1c;
+    color: #fff;
+    border: 0;
+    padding: 9px 15px;
+    border-radius: 7px;
+    cursor: pointer
+}
+
+    .tt-btn-danger-confirm:disabled {
+        opacity: .55;
+        cursor: not-allowed
+    }
 
 /* Restored semester status selection */
-.tt-status-choice{display:inline-flex;align-items:center;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;background:#fff}.tt-status-choice-btn{border:0;border-right:1px solid #cbd5e1;background:#fff;padding:7px 10px;font-size:12px;cursor:pointer}.tt-status-choice-btn:last-child{border-right:0}.tt-status-choice-btn.selected{background:#dbeafe;color:#1d4ed8;font-weight:600;cursor:default}.tt-status-choice-btn.active-choice{color:#166534;background:#f0fdf4}.tt-status-choice-btn.active-choice:hover{background:#dcfce7}
+
+.tt-status-choice {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff
+}
+
+.tt-status-choice-btn {
+    border: 0;
+    border-right: 1px solid #cbd5e1;
+    background: #fff;
+    padding: 7px 10px;
+    font-size: 12px;
+    cursor: pointer
+}
+
+    .tt-status-choice-btn:last-child {
+        border-right: 0
+    }
+
+    .tt-status-choice-btn.selected {
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-weight: 600;
+        cursor: default
+    }
+
+    .tt-status-choice-btn.active-choice {
+        color: #166534;
+        background: #f0fdf4
+    }
+
+        .tt-status-choice-btn.active-choice:hover {
+            background: #dcfce7
+        }
 
 /* Abandoned semester: retained for history but ignored by date-overlap validation. */
-.tt-term-abandoned{border-color:#d1d5db;background:#f3f4f6;filter:grayscale(.18)}
-.tt-term-abandoned .tt-program-card{background:#eef0f2;border-color:#d1d5db}
-.tt-pill.abandoned{background:#d1d5db;color:#4b5563}
-.tt-btn-recover{background:#ccfbf1;color:#0f766e;border:1px solid #99f6e4;padding:9px 15px;border-radius:7px;cursor:pointer}
+
+.tt-term-abandoned {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+    filter: grayscale(.18)
+}
+
+    .tt-term-abandoned .tt-program-card {
+        background: #eef0f2;
+        border-color: #d1d5db
+    }
+
+.tt-pill.abandoned {
+    background: #d1d5db;
+    color: #4b5563
+}
+
+.tt-btn-recover {
+    background: #ccfbf1;
+    color: #0f766e;
+    border: 1px solid #99f6e4;
+    padding: 9px 15px;
+    border-radius: 7px;
+    cursor: pointer
+}
 
 /* Central holiday calendar has four columns: date, name, type, action. */
-.tt-holiday-list-header,.tt-holiday-row{grid-template-columns:110px 1fr 160px auto}
-.tt-drop-zone{cursor:copy}
-.tt-drop-zone.drag-over{cursor:copy}
+
+.tt-holiday-list-header, .tt-holiday-row {
+    grid-template-columns: 110px 1fr 160px auto
+}
+
+.tt-drop-zone {
+    cursor: copy
+}
+
+    .tt-drop-zone.drag-over {
+        cursor: copy
+    }
 
 /* Timetable audit, fixed-room availability and resolved-change marker */
-.tt-updated-badge{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:999px;background:#ecfeff;color:#0e7490;border:1px solid #67e8f9;font-size:9px;font-style:normal;vertical-align:middle}
-.tt-room-alert{color:#a16207;font-weight:600;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:7px;margin-top:7px}
-.tt-audit-summary{display:flex;gap:10px;margin:16px 0}.tt-audit-summary span{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600}.tt-audit-pending{background:#fef9c3;color:#854d0e}.tt-audit-resolved{background:#dcfce7;color:#166534}.tt-audit-list{display:grid;gap:10px}.tt-audit-item{display:grid;grid-template-columns:1fr auto;gap:6px 12px;border:1px solid #e2e8f0;border-left:4px solid #ca8a04;border-radius:10px;padding:12px;background:#fff}.tt-audit-item.resolved{border-left-color:#0891b2}.tt-audit-item div{display:flex;flex-direction:column}.tt-audit-item span,.tt-audit-item small{color:#64748b;font-size:12px}.tt-audit-item p{grid-column:1/-1;margin:3px 0;color:#334155}.tt-audit-item small{grid-column:1/-1}.tt-audit-state{align-self:start;padding:3px 7px;border-radius:999px;background:#fef9c3;color:#854d0e!important}.tt-audit-item.resolved .tt-audit-state{background:#dcfce7;color:#166534!important}
 
+.tt-updated-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0e7490;
+    border: 1px solid #67e8f9;
+    font-size: 9px;
+    font-style: normal;
+    vertical-align: middle
+}
+
+.tt-room-alert {
+    color: #a16207;
+    font-weight: 600;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 7px;
+    padding: 7px;
+    margin-top: 7px
+}
+
+.tt-audit-summary {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0
+}
+
+    .tt-audit-summary span {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600
+    }
+
+.tt-audit-pending {
+    background: #fef9c3;
+    color: #854d0e
+}
+
+.tt-audit-resolved {
+    background: #dcfce7;
+    color: #166534
+}
+
+.tt-audit-list {
+    display: grid;
+    gap: 10px
+}
+
+.tt-audit-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #ca8a04;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fff
+}
+
+    .tt-audit-item.resolved {
+        border-left-color: #0891b2
+    }
+
+    .tt-audit-item div {
+        display: flex;
+        flex-direction: column
+    }
+
+    .tt-audit-item span, .tt-audit-item small {
+        color: #64748b;
+        font-size: 12px
+    }
+
+    .tt-audit-item p {
+        grid-column: 1/-1;
+        margin: 3px 0;
+        color: #334155
+    }
+
+    .tt-audit-item small {
+        grid-column: 1/-1
+    }
+
+.tt-audit-state {
+    align-self: start;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #fef9c3;
+    color: #854d0e !important
+}
+
+.tt-audit-item.resolved .tt-audit-state {
+    background: #dcfce7;
+    color: #166534 !important
+}
 
 /* Replacement workflow */
-.tt-replacement-panel{margin:12px 0;padding:14px;border:1px solid #fde68a;background:#fffbeb;border-radius:14px}.tt-replacement-head strong{display:block;font-size:16px;color:#92400e}.tt-replacement-head span{display:block;margin-top:3px;color:#78716c}.tt-replacement-list{display:grid;gap:8px;margin-top:10px}.tt-replacement-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 12px;background:#fff;border:1px solid #fed7aa;border-radius:10px}.tt-replacement-card div{display:grid;gap:3px}.tt-replacement-card span{font-size:13px;color:#64748b}.tt-replacement-empty{padding:9px;color:#64748b}.tt-replacement-badge{display:inline-block;margin-left:7px;padding:2px 6px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10px;font-style:normal;vertical-align:middle}
-.tt-replacement-card.scheduled{border-color:#bfdbfe;background:#f8fbff}.tt-replacement-linked{color:#1d4ed8!important;font-weight:600}.tt-replacement-done{font-style:normal;font-size:12px;font-weight:700;color:#166534;background:#dcfce7;padding:5px 9px;border-radius:999px}
 
+.tt-replacement-panel {
+    margin: 12px 0;
+    padding: 14px;
+    border: 1px solid #fde68a;
+    background: #fffbeb;
+    border-radius: 14px
+}
+
+.tt-replacement-head strong {
+    display: block;
+    font-size: 16px;
+    color: #92400e
+}
+
+.tt-replacement-head span {
+    display: block;
+    margin-top: 3px;
+    color: #78716c
+}
+
+.tt-replacement-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px
+}
+
+.tt-replacement-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 12px;
+    background: #fff;
+    border: 1px solid #fed7aa;
+    border-radius: 10px
+}
+
+    .tt-replacement-card div {
+        display: grid;
+        gap: 3px
+    }
+
+    .tt-replacement-card span {
+        font-size: 13px;
+        color: #64748b
+    }
+
+.tt-replacement-empty {
+    padding: 9px;
+    color: #64748b
+}
+
+.tt-replacement-badge {
+    display: inline-block;
+    margin-left: 7px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 10px;
+    font-style: normal;
+    vertical-align: middle
+}
+
+.tt-replacement-card.scheduled {
+    border-color: #bfdbfe;
+    background: #f8fbff
+}
+
+.tt-replacement-linked {
+    color: #1d4ed8 !important;
+    font-weight: 600
+}
+
+.tt-replacement-done {
+    font-style: normal;
+    font-size: 12px;
+    font-weight: 700;
+    color: #166534;
+    background: #dcfce7;
+    padding: 5px 9px;
+    border-radius: 999px
+}
 
 /* Semester-boundary cells: dates outside the selected semester are read-only. */
-.tt-cell.tt-outside-semester{background:#e5e7eb!important;cursor:not-allowed!important;position:relative}
-.tt-cell.tt-outside-semester::after{content:"";position:absolute;inset:0;background:rgba(148,163,184,.10);pointer-events:none}
-.tt-cell.tt-outside-semester.drag-over{background:#e5e7eb!important;outline:none!important}
+
+.tt-cell.tt-outside-semester {
+    background: #e5e7eb !important;
+    cursor: not-allowed !important;
+    position: relative
+}
+
+    .tt-cell.tt-outside-semester::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(148,163,184,.10);
+        pointer-events: none
+    }
+
+    .tt-cell.tt-outside-semester.drag-over {
+        background: #e5e7eb !important;
+        outline: none !important
+    }
 
 /* Restored Incoming is a status pill, not a fake selectable button. Set Active remains a normal action. */
-.tt-set-active-btn{background:#e5e7eb;color:#334155;border:1px solid #cbd5e1}
-.tt-set-active-btn:hover{background:#dbe1e8}
+
+.tt-set-active-btn {
+    background: #e5e7eb;
+    color: #334155;
+    border: 1px solid #cbd5e1
+}
+
+    .tt-set-active-btn:hover {
+        background: #dbe1e8
+    }

@@ -38,6 +38,35 @@
          HEADER
          ========================================== -->
 
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+
+        <form asp-controller="Admin"
+              asp-action="CreateBarredTestData"
+              method="post">
+
+            @Html.AntiForgeryToken()
+
+            <button type="submit">
+                Create Test Data
+            </button>
+
+        </form>
+
+
+        <form asp-controller="Admin"
+              asp-action="AddTestPresent"
+              method="post">
+
+            @Html.AntiForgeryToken()
+
+            <button type="submit">
+                Add Test Present
+            </button>
+
+        </form>
+
+    </div>
+
     <div class="barred-header">
 
         <div>

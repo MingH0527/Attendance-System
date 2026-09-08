@@ -655,26 +655,35 @@ public class StudentController : Controller
 
             // Formula:
             // Attendance % =
-            // 100 - (Absent × 6.6667)
+            // (Present + 4) / (Present + Absent + 4) × 100
+            //
+            // Starting buffer = 4.
+            // Approved Leave is excluded from the calculation.
+            //
+            // Example:
+            // 0 Present + 1 Absent = 80%
+            // 1 Present + 1 Absent = 83.3%
 
-            const double AbsentPenalty =
-                6.6667;
+            const int AttendanceStartingBuffer =
+                4;
+
+            int countedClasses =
+                present +
+                absent;
 
             double percentage =
-                100 -
-                (
-                    absent *
-                    AbsentPenalty
-                );
-
-            if (
-                percentage <
-                0
-            )
-            {
-                percentage =
-                    0;
-            }
+                countedClasses == 0
+                    ? 100
+                    : Math.Round(
+                        (present + AttendanceStartingBuffer) *
+                        100.0 /
+                        (
+                            present +
+                            absent +
+                            AttendanceStartingBuffer
+                        ),
+                        1
+                    );
 
             model.Subjects.Add(
                 new SubjectAttendanceViewModel
@@ -716,6 +725,81 @@ public class StudentController : Controller
                     s.CourseName
                 )
                 .ToList();
+
+
+        // ==============================
+        // BARRED WARNING
+        // ==============================
+        //
+        // Show the warning only when:
+        // 1. Admin has barred the student for the subject, AND
+        // 2. Current attendance percentage is 80% or below.
+        //
+        // Once attendance improves above 80%,
+        // the warning automatically disappears.
+        // The BarredStudent database record is NOT deleted.
+
+        List<BarredStudent> barredRecords =
+            await db.BarredStudents
+                .AsNoTracking()
+                .Where(b =>
+                    b.UserId == studentId
+                )
+                .Include(b =>
+                    b.Course
+                )
+                .ToListAsync();
+
+        List<string> barredWarnings =
+            new();
+
+        foreach (
+            BarredStudent barred
+            in barredRecords
+        )
+        {
+            SubjectAttendanceViewModel? subject =
+                model.Subjects
+                    .FirstOrDefault(s =>
+                        s.CourseId ==
+                        barred.CourseId
+                    );
+
+            if (
+                subject == null
+            )
+            {
+                continue;
+            }
+
+            double currentPercentage =
+                Math.Round(
+                    subject.Percentage,
+                    1
+                );
+
+            // Attendance recovered above 80%.
+            // Do not show the barred warning anymore.
+            if (
+                currentPercentage >
+                80
+            )
+            {
+                continue;
+            }
+
+            string courseName =
+                barred.Course?.CourseName
+                ?? subject.CourseName;
+
+            barredWarnings.Add(
+                $"You are currently barred from {courseName}. "
+            );
+        }
+
+        ViewBag.BarredWarnings =
+            barredWarnings;
+
 
         return View(model);
     }
@@ -1231,26 +1315,34 @@ public class StudentController : Controller
 
         // Formula:
         // Attendance % =
-        // 100 - (Absent × 6.6667)
+        // (Present + 4) / (Present + Absent + 4) × 100
+        //
+        // Starting buffer = 4.
+        // Approved Leave is excluded from the calculation.
 
-        const double AbsentPenalty =
-            6.6667;
+        const int AttendanceStartingBuffer =
+            4;
+
+        int countedClasses =
+            model.PresentCount +
+            model.AbsentCount;
 
         model.Percentage =
-            100 -
-            (
-                model.AbsentCount *
-                AbsentPenalty
-            );
-
-        if (
-            model.Percentage <
-            0
-        )
-        {
-            model.Percentage =
-                0;
-        }
+            countedClasses == 0
+                ? 100
+                : Math.Round(
+                    (
+                        model.PresentCount +
+                        AttendanceStartingBuffer
+                    ) *
+                    100.0 /
+                    (
+                        model.PresentCount +
+                        model.AbsentCount +
+                        AttendanceStartingBuffer
+                    ),
+                    1
+                );
 
         // ==============================
         // DONUT CHART

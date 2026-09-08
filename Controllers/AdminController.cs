@@ -1175,6 +1175,9 @@ public class AdminController : Controller
                 )
                 .ToListAsync();
 
+        int present =
+            0;
+
         int absent =
             0;
 
@@ -1231,6 +1234,7 @@ public class AdminController : Controller
                 !record.IsRemoved
             )
             {
+                present++;
                 continue;
             }
 
@@ -1283,27 +1287,37 @@ public class AdminController : Controller
 
         // ==========================================
         // FORMULA
-        // Attendance % = 100 - (Absent × 6.6667)
+        // Attendance % =
+        // (Present + 4) / (Present + Absent + 4) × 100
+        //
+        // Starting buffer = 4.
+        // Approved Leave is excluded.
+        //
+        // Example:
+        // 0 Present + 1 Absent = 80%
+        // 1 Present + 1 Absent = 83.3%
         // ==========================================
 
-        const double AbsentPenalty =
-            6.6667;
+        const int AttendanceStartingBuffer =
+            4;
+
+        int countedClasses =
+            present +
+            absent;
 
         double percentage =
-            100 -
-            (
-                absent *
-                AbsentPenalty
-            );
-
-        if (
-            percentage <
-            0
-        )
-        {
-            percentage =
-                0;
-        }
+            countedClasses == 0
+                ? 100
+                : Math.Round(
+                    (present + AttendanceStartingBuffer) *
+                    100.0 /
+                    (
+                        present +
+                        absent +
+                        AttendanceStartingBuffer
+                    ),
+                    1
+                );
 
         return new AttendanceCalculationResult
         {
@@ -2582,7 +2596,9 @@ public class AdminController : Controller
         Timetable? entry =
             await _context
                 .Timetables
-                .FindAsync(id);
+                .FirstOrDefaultAsync(t =>
+                    t.TimetableId == id
+                );
 
         if (entry == null)
         {
@@ -2591,12 +2607,42 @@ public class AdminController : Controller
             );
         }
 
+
+        // Get the subject name before deleting the timetable.
+        string courseName =
+            await _context
+                .Courses
+                .AsNoTracking()
+                .Where(c =>
+                    c.CourseId ==
+                        entry.CourseId
+                )
+                .Select(c =>
+                    c.CourseName
+                )
+                .FirstOrDefaultAsync()
+            ?? entry.CourseId;
+
+
+        // Create a NEW latest notification first.
+        // The old LessonCancelled notification remains in history,
+        // but Teacher Recent Timetable Changes will no longer use it
+        // as the latest state after the timetable is deleted.
+        await CreateTimetableNotificationAsync(
+            entry,
+            "Deleted",
+            $"{courseName} has been removed from the timetable."
+        );
+
+
+        // Delete the timetable entry.
         _context
             .Timetables
             .Remove(entry);
 
         await _context
             .SaveChangesAsync();
+
 
         return Ok(new
         {

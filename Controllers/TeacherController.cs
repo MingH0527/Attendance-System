@@ -12,12 +12,10 @@ namespace WebAndMobile.Controllers;
 public class TeacherController : Controller
 {
     private readonly DB db;
-    private readonly IAvatarService avatarService;
 
-    public TeacherController(DB db, IAvatarService avatarService)
+    public TeacherController(DB db)
     {
         this.db = db;
-        this.avatarService = avatarService;
     }
 
     private string? GetCurrentUserId()
@@ -91,8 +89,6 @@ public class TeacherController : Controller
                     user.UserId
                 );
 
-
-        user.Avatar = avatarService.ResolveAvatar(user.UserId, user.Avatar);
 
         ViewBag.TimetableCount =
             await db.Timetables
@@ -753,8 +749,8 @@ public class TeacherController : Controller
             DateTime.Now.AddDays(-7);
 
 
-        IQueryable<TimetableNotification> recentNotificationQuery =
-            db.TimetableNotifications
+        List<TimetableNotification> recentNotifications =
+            await db.TimetableNotifications
                 .AsNoTracking()
                 .Where(n =>
                     n.UserId ==
@@ -767,21 +763,181 @@ public class TeacherController : Controller
                         n.TermId ==
                             null
                     )
-                );
-
-
-        ViewBag.RecentNotificationCount =
-            await recentNotificationQuery
-                .CountAsync();
-
-
-        model.Notifications =
-            await recentNotificationQuery
+                )
                 .OrderByDescending(n =>
                     n.CreatedAt
                 )
-                .Take(3)
                 .ToListAsync();
+
+
+        // Same timetable + same lesson date = same lesson change.
+        // Only the newest state is shown in Recent Timetable Changes.
+        // Example:
+        // LessonCancelled -> LessonRestored
+        // Recent shows only LessonRestored.
+        // View All still keeps both history records.
+        List<TimetableNotification> latestRecentNotifications =
+            recentNotifications
+                .GroupBy(n =>
+                    !string.IsNullOrWhiteSpace(
+                        n.TimetableId
+                    ) &&
+                    n.OccurrenceDate.HasValue
+
+                        ? $"{n.TimetableId}|{n.OccurrenceDate.Value:yyyyMMdd}"
+                        : n.NotificationId
+                )
+                .Select(g =>
+                    g.OrderByDescending(n =>
+                        n.CreatedAt
+                    )
+                    .First()
+                )
+                .OrderByDescending(n =>
+                    n.CreatedAt
+                )
+                .ToList();
+
+
+        // If an old cancellation notification is still in history
+        // but the cancellation exception has already been removed/restored,
+        // do not show that stale cancellation in the Recent box.
+        List<TimetableNotification> cancellationNotifications =
+            latestRecentNotifications
+                .Where(n =>
+                    (
+                        string.Equals(
+                            n.Type,
+                            "LessonCancelled",
+                            StringComparison.OrdinalIgnoreCase
+                        ) ||
+                        string.Equals(
+                            n.Type,
+                            "ClassCancelled",
+                            StringComparison.OrdinalIgnoreCase
+                        ) ||
+                        string.Equals(
+                            n.Type,
+                            "Cancelled",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    ) &&
+                    !string.IsNullOrWhiteSpace(
+                        n.TimetableId
+                    ) &&
+                    n.OccurrenceDate.HasValue
+                )
+                .ToList();
+
+
+        if (cancellationNotifications.Count > 0)
+        {
+            List<string> cancelledTimetableIds =
+                cancellationNotifications
+                    .Select(n =>
+                        n.TimetableId!
+                    )
+                    .Distinct()
+                    .ToList();
+
+
+            DateTime earliestCancellationDate =
+                cancellationNotifications
+                    .Min(n =>
+                        n.OccurrenceDate!.Value.Date
+                    );
+
+
+            List<TimetableException> activeCancellationExceptions =
+                await db.TimetableExceptions
+                    .AsNoTracking()
+                    .Where(e =>
+                        cancelledTimetableIds.Contains(
+                            e.TimetableId
+                        ) &&
+                        e.OccurrenceDate.Date >=
+                            earliestCancellationDate
+                    )
+                    .ToListAsync();
+
+
+            // Use the SAME cancelled-status rule as the timetable grid.
+            // This supports values such as:
+            // Cancelled, Canceled, LessonCancelled, Class Cancelled, etc.
+            activeCancellationExceptions =
+                activeCancellationExceptions
+                    .Where(e =>
+                        IsCancelledValue(
+                            e.Decision
+                        )
+                    )
+                    .ToList();
+
+
+            HashSet<string> activeCancellationKeys =
+                activeCancellationExceptions
+                    .Select(e =>
+                        $"{e.TimetableId}|{e.OccurrenceDate.Date:yyyyMMdd}"
+                    )
+                    .ToHashSet();
+
+
+            latestRecentNotifications =
+                latestRecentNotifications
+                    .Where(n =>
+                    {
+                        bool isCancellation =
+                            string.Equals(
+                                n.Type,
+                                "LessonCancelled",
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                n.Type,
+                                "ClassCancelled",
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                n.Type,
+                                "Cancelled",
+                                StringComparison.OrdinalIgnoreCase
+                            );
+
+
+                        if (
+                            !isCancellation ||
+                            string.IsNullOrWhiteSpace(
+                                n.TimetableId
+                            ) ||
+                            !n.OccurrenceDate.HasValue
+                        )
+                        {
+                            return true;
+                        }
+
+
+                        string key =
+                            $"{n.TimetableId}|{n.OccurrenceDate.Value.Date:yyyyMMdd}";
+
+
+                        return activeCancellationKeys
+                            .Contains(
+                                key
+                            );
+                    })
+                    .ToList();
+        }
+
+
+        ViewBag.RecentNotificationCount =
+            latestRecentNotifications
+                .Count;
+
+
+        model.Notifications =
+            latestRecentNotifications
+                .Take(3)
+                .ToList();
 
 
         model.Items =
