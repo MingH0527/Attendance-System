@@ -266,7 +266,8 @@
     "Monthly student hostel fee": "Yuran asrama pelajar bulanan",
     "Books and Materials": "Buku dan Bahan",
     "Purchase books and learning materials": "Beli buku dan bahan pembelajaran",
-    "from RM {0}": "dari RM {0}"
+    "from RM {0}": "dari RM {0}",
+    "Current Bill": "Bil Semasa"
   },
   "zh": {
     "Home": "主页",
@@ -534,6 +535,7 @@
     "Monthly student hostel fee": "每月学生住宿费",
     "Books and Materials": "书籍与教材",
     "Purchase books and learning materials": "购买书籍与学习材料",
-    "from RM {0}": "起价 RM {0}"
+    "from RM {0}": "起价 RM {0}",
+    "Current Bill": "当前账单"
   }
 }

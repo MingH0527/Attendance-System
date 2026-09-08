@@ -79,10 +79,50 @@ public class AdminController : Controller
     // DASHBOARD - overall payment overview
     // ==================================================
 
+    /// <summary>
+    /// Returns only the results table + pager, for the AJAX refresh.
+    /// Takes the same arguments as Dashboard and shares its builder, so
+    /// the two can never drift apart.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> PaymentsTable(
+        string? search,
+        string? status,
+        string? method,
+        DateTime? from,
+        DateTime? to,
+        int page = 1)
+    {
+        AdminDashboardViewModel model =
+            await BuildDashboardAsync(
+                search, status, method, from, to, page);
+
+        return PartialView("_PaymentsTable", model);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Dashboard(
         string? search,
-        string? status)
+        string? status,
+        string? method,
+        DateTime? from,
+        DateTime? to,
+        int page = 1)
+    {
+        AdminDashboardViewModel model =
+            await BuildDashboardAsync(
+                search, status, method, from, to, page);
+
+        return View(model);
+    }
+
+    private async Task<AdminDashboardViewModel> BuildDashboardAsync(
+        string? search,
+        string? status,
+        string? method,
+        DateTime? from,
+        DateTime? to,
+        int page)
     {
         IQueryable<PaymentTransaction> allPayments =
             _context.PaymentTransactions.AsNoTracking();
@@ -106,6 +146,15 @@ public class AdminController : Controller
                 string.IsNullOrWhiteSpace(status)
                     ? "All"
                     : status,
+
+            MethodFilter =
+                string.IsNullOrWhiteSpace(method)
+                    ? "All"
+                    : method,
+
+            FromDate = from,
+
+            ToDate = to,
 
             TotalCollected =
                 await allPayments
@@ -172,6 +221,14 @@ public class AdminController : Controller
                         r => r.TotalCollected)
                     .ToListAsync()
         };
+
+        model.AvailableMethods =
+            await allPayments
+                .Select(p => p.PaymentMethod)
+                .Where(m => m != null && m != "")
+                .Distinct()
+                .OrderBy(m => m)
+                .ToListAsync();
 
         // ---- Chart data -------------------------------------------------
         // Pulled into memory once. The paid set is small for a school, and
@@ -248,7 +305,7 @@ public class AdminController : Controller
                 Amount = g.Sum(r => r.Amount)
             })
             .OrderByDescending(s => s.Amount)
-            .Take(6)
+            .Take(10)
             .ToList();
 
         // Day of week, Monday first.
@@ -335,6 +392,49 @@ public class AdminController : Controller
                 );
         }
 
+        if (!string.Equals(
+                model.MethodFilter,
+                "All",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            filtered =
+                filtered.Where(
+                    p =>
+                        p.PaymentMethod ==
+                        model.MethodFilter
+                );
+        }
+
+        // Dates are stored in UTC but the admin picks local dates, so shift
+        // the boundaries before comparing. A row is dated by PaidAt when it
+        // exists, matching what the Date column shows.
+        if (model.FromDate.HasValue)
+        {
+            DateTime fromUtc =
+                DateTime.SpecifyKind(
+                    model.FromDate.Value.Date,
+                    DateTimeKind.Local)
+                .ToUniversalTime();
+
+            filtered =
+                filtered.Where(p =>
+                    (p.PaidAt ?? p.CreatedAt) >= fromUtc);
+        }
+
+        if (model.ToDate.HasValue)
+        {
+            // Add a day and use "<" so the end date itself is included.
+            DateTime toUtc =
+                DateTime.SpecifyKind(
+                    model.ToDate.Value.Date.AddDays(1),
+                    DateTimeKind.Local)
+                .ToUniversalTime();
+
+            filtered =
+                filtered.Where(p =>
+                    (p.PaidAt ?? p.CreatedAt) < toUtc);
+        }
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             string term =
@@ -348,10 +448,24 @@ public class AdminController : Controller
                     p.FeeName.Contains(term));
         }
 
+        // Paging: count the filtered set first, then fetch only this page.
+        model.TotalPayments = await filtered.CountAsync();
+
+        model.TotalPages =
+            Math.Max(
+                1,
+                (int)Math.Ceiling(
+                    model.TotalPayments / (double)model.PageSize));
+
+        // Clamp, so a stale or hand-typed ?page= never yields an empty table.
+        model.Page = Math.Clamp(page, 1, model.TotalPages);
+
         model.Payments =
             await filtered
                 .OrderByDescending(
                     p => p.CreatedAt)
+                .Skip((model.Page - 1) * model.PageSize)
+                .Take(model.PageSize)
                 .Select(p =>
                     new AdminPaymentRow
                     {
@@ -384,7 +498,7 @@ public class AdminController : Controller
                     })
                 .ToListAsync();
 
-        return View(model);
+        return model;
     }
 
     // ==================================================

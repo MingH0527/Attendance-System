@@ -5,18 +5,12 @@
     ViewData["Title"] = "Fee Payment";
 }
 
-<link rel="stylesheet" href="~/css/Payment.css" />
+<link rel="stylesheet" href="~/css/Payment.css" asp-append-version="true" />
 
 <div class="payment-page">
     <div class="fee-list-container">
 
-        <span class="eyebrow">
-            Attendance System
-        </span>
-
-        <h1>
-            What would you like to pay?
-        </h1>
+        @await Html.PartialAsync("_BillingTabs")
 
         <p class="subtitle">
             Select an item below. Your student

@@ -1,0 +1,160 @@
+﻿@model WebAndMobile.ViewModels.AdminDashboardViewModel
+
+        @if (Model.Payments.Count == 0)
+        {
+            <div class="apd-empty">
+                <div class="apd-empty-icon">💳</div>
+
+                <h3>No payments found</h3>
+
+                <p>
+                    No student payment records match
+                    the current filter.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="apd-table-wrapper">
+
+                <table class="apd-table">
+
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>Student</th>
+                            <th>Fee</th>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var payment in Model.Payments)
+                        {
+                            <tr>
+                                <td>#@payment.PaymentTransactionId</td>
+
+                                <td>
+                                    <span class="apd-student-name">
+                                        @payment.Username
+                                    </span>
+
+                                    <span class="apd-student-id">
+                                        @payment.UserId
+                                    </span>
+                                </td>
+
+                                <td>@payment.FeeName</td>
+
+                                <td>@payment.PaymentMethod</td>
+
+                                <td>
+                                    @if (payment.PaidAt.HasValue)
+                                    {
+                                        @(payment.PaidAt.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
+                                    }
+                                    else
+                                    {
+                                        @(payment.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
+                                    }
+                                </td>
+
+                                <td>RM @payment.Amount.ToString("N2")</td>
+
+                                <td>
+                                    <span class="apd-chip apd-chip--@payment.Status.ToLowerInvariant()">
+                                        @payment.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="apd-pager">
+
+                <span class="apd-pager-info">
+                    Showing @Model.FirstRowOnPage–@Model.LastRowOnPage
+                    of @Model.TotalPayments@(Model.HasActiveFilters ? " (filtered)" : "")
+                </span>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav class="apd-pager-controls">
+
+                        @* Previous *@
+                        @if (Model.Page > 1)
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="Dashboard"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.StatusFilter"
+                               asp-route-method="@Model.MethodFilter"
+                               asp-route-from="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-to="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-page="@(Model.Page - 1)"
+                               class="apd-page"
+                               aria-label="Previous page">‹</a>
+                        }
+                        else
+                        {
+                            <span class="apd-page is-disabled"
+                                  aria-hidden="true">‹</span>
+                        }
+
+                        @* Page numbers *@
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            if (i == Model.Page)
+                            {
+                                <span class="apd-page is-active"
+                                      aria-current="page">@i</span>
+                            }
+                            else
+                            {
+                                <a asp-controller="Admin"
+                                   asp-action="Dashboard"
+                                   asp-route-search="@Model.Search"
+                                   asp-route-status="@Model.StatusFilter"
+                                   asp-route-method="@Model.MethodFilter"
+                                   asp-route-from="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                   asp-route-to="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                                   asp-route-method="@Model.MethodFilter"
+                                   asp-route-from="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                   asp-route-to="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                                   asp-route-page="@i"
+                                   class="apd-page">@i</a>
+                            }
+                        }
+
+                        @* Next *@
+                        @if (Model.Page < Model.TotalPages)
+                        {
+                            <a asp-controller="Admin"
+                               asp-action="Dashboard"
+                               asp-route-search="@Model.Search"
+                               asp-route-status="@Model.StatusFilter"
+                               asp-route-method="@Model.MethodFilter"
+                               asp-route-from="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-to="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-page="@(Model.Page + 1)"
+                               class="apd-page"
+                               aria-label="Next page">›</a>
+                        }
+                        else
+                        {
+                            <span class="apd-page is-disabled"
+                                  aria-hidden="true">›</span>
+                        }
+
+                    </nav>
+                }
+
+            </div>
+        }

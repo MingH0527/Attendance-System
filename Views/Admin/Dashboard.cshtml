@@ -196,6 +196,8 @@
             <form asp-controller="Admin"
                   asp-action="Dashboard"
                   method="get"
+                  id="paymentsFilters"
+                  data-endpoint='@Url.Action("PaymentsTable", "Admin")'
                   class="apd-filters">
 
                 <input type="text"
@@ -227,6 +229,50 @@
 
                 </select>
 
+                <select name="method"
+                        class="apd-select">
+
+                    @if (Model.MethodFilter == "All")
+                    {
+                        <option value="All" selected>All methods</option>
+                    }
+                    else
+                    {
+                        <option value="All">All methods</option>
+                    }
+
+                    @foreach (string option in Model.AvailableMethods)
+                    {
+                        if (option == Model.MethodFilter)
+                        {
+                            <option value="@option" selected>@option</option>
+                        }
+                        else
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    }
+
+                </select>
+
+                <label class="apd-date-field">
+                    <span>From</span>
+
+                    <input type="date"
+                           name="from"
+                           value="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                           class="apd-input apd-input--date" />
+                </label>
+
+                <label class="apd-date-field">
+                    <span>To</span>
+
+                    <input type="date"
+                           name="to"
+                           value="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                           class="apd-input apd-input--date" />
+                </label>
+
                 <button type="submit"
                         class="apd-button">
                     Filter
@@ -242,90 +288,17 @@
 
         </div>
 
-        @if (Model.Payments.Count == 0)
-        {
-            <div class="apd-empty">
-                <div class="apd-empty-icon">💳</div>
-
-                <h3>No payments found</h3>
-
-                <p>
-                    No student payment records match
-                    the current filter.
-                </p>
-            </div>
-        }
-        else
-        {
-            <div class="apd-table-wrapper">
-
-                <table class="apd-table">
-
-                    <thead>
-                        <tr>
-                            <th>Transaction ID</th>
-                            <th>Student</th>
-                            <th>Fee</th>
-                            <th>Method</th>
-                            <th>Date</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @foreach (var payment in Model.Payments)
-                        {
-                            <tr>
-                                <td>#@payment.PaymentTransactionId</td>
-
-                                <td>
-                                    <span class="apd-student-name">
-                                        @payment.Username
-                                    </span>
-
-                                    <span class="apd-student-id">
-                                        @payment.UserId
-                                    </span>
-                                </td>
-
-                                <td>@payment.FeeName</td>
-
-                                <td>@payment.PaymentMethod</td>
-
-                                <td>
-                                    @if (payment.PaidAt.HasValue)
-                                    {
-                                        @(payment.PaidAt.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
-                                    }
-                                    else
-                                    {
-                                        @(payment.CreatedAt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt"))
-                                    }
-                                </td>
-
-                                <td>RM @payment.Amount.ToString("N2")</td>
-
-                                <td>
-                                    <span class="apd-chip apd-chip--@payment.Status.ToLowerInvariant()">
-                                        @payment.Status
-                                    </span>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-
-                </table>
-
-            </div>
-
-            <p class="apd-table-footer">
-                Showing @Model.Payments.Count record(s).
-            </p>
-        }
+        <div id="paymentsResults">
+            @await Html.PartialAsync("_PaymentsTable", Model)
+        </div>
 
     </section>
 
     @await Html.PartialAsync("_DashboardCharts", Model)
 
 </div>
+
+@section Scripts {
+    <script src="~/js/admin-payments-filter.js"
+            asp-append-version="true"></script>
+}

@@ -256,6 +256,7 @@ body {
         padding: 15px;
     }
 }
+
 .passkey-message {
     margin-bottom: 18px;
     padding: 14px 16px;
@@ -342,16 +343,162 @@ body {
     background: #ffffff;
 }
 
-.passkey-environment-box strong {
-    display: block;
-    margin-top: 3px;
-    color: #0f172a;
-    font-size: 14px;
+    .passkey-environment-box strong {
+        display: block;
+        margin-top: 3px;
+        color: #0f172a;
+        font-size: 14px;
+    }
+
+    .passkey-environment-box small {
+        color: #64748b;
+        font-size: 11px;
+        word-break: break-all;
+        text-align: right;
+    }
+
+/* =========================================================
+   Admin Security PIN row
+   Matches .passkey-limit / .passkey-environment-box so the
+   three cards on this page read as one set.
+   ========================================================= */
+
+.admin-security-box {
+    margin-top: 18px;
+    padding: 17px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 17px;
+    background: #f8fafc;
 }
 
-.passkey-environment-box small {
-    color: #64748b;
-    font-size: 11px;
-    word-break: break-all;
-    text-align: right;
+    .admin-security-box strong {
+        display: block;
+        margin-bottom: 7px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+.pin-enabled,
+.pin-not-enabled {
+    display: inline-block;
+    margin: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pin-enabled {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.pin-not-enabled {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.admin-pin-button {
+    flex: 0 0 auto;
+    padding: 11px 18px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+}
+
+    .admin-pin-button:hover {
+        border-color: #0284c7;
+        background: #f0f9ff;
+        color: #0369a1;
+    }
+
+    .admin-pin-button:focus-visible {
+        outline: 2px solid #0284c7;
+        outline-offset: 2px;
+    }
+
+@media (max-width: 480px) {
+    .admin-security-box {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .admin-pin-button {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* Every other card on this page carries margin-top: 18px, but the blue
+   note did not, so it sat flush against the PIN row above it. */
+.passkey-information {
+    margin-top: 18px;
+}
+
+/* =========================================================
+   Delete passkey button
+   ========================================================= */
+
+/* Let the details take the free space so the button lands on the
+   right edge instead of butting against the text. */
+.registered-passkey-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.delete-passkey-button {
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 9px 16px;
+    border: 1px solid #fecaca;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #b91c1c;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+}
+
+    .delete-passkey-button:hover {
+        border-color: #ef4444;
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+    .delete-passkey-button:focus-visible {
+        outline: 2px solid #ef4444;
+        outline-offset: 2px;
+    }
+
+    .delete-passkey-button:disabled {
+        border-color: #e2e8f0;
+        background: #f8fafc;
+        color: #cbd5e1;
+        cursor: not-allowed;
+    }
+
+@media (max-width: 480px) {
+    .registered-passkey-item {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .delete-passkey-button {
+        width: 100%;
+    }
 }
