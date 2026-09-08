@@ -470,33 +470,50 @@ public class StudentController : Controller
         // ==============================
         // OVERALL ATTENDANCE
         // ==============================
+        //
+        // Only show subjects that actually exist in the
+        // current Active semester timetable for this class.
+        //
+        // Example:
+        // Old semester had Java, but the new Active semester
+        // does not have Java -> Java will NOT appear here.
+        // Old attendance records remain in the database.
 
-        var programCourses =
-            await db.ProgramCourses
+        List<string> activeCourseIds =
+            await db.Timetables
                 .AsNoTracking()
-                .Where(pc =>
-                    pc.ProgramId ==
-                        studentClass.ProgramId
+                .Where(t =>
+                    t.ClassId ==
+                        studentClass.ClassId &&
+                    t.Term != null &&
+                    t.Term.Status ==
+                        "Active"
                 )
-                .Include(pc => pc.Course)
+                .Select(t =>
+                    t.CourseId
+                )
+                .Distinct()
+                .ToListAsync();
+
+        List<Course> activeCourses =
+            await db.Courses
+                .AsNoTracking()
+                .Where(c =>
+                    activeCourseIds.Contains(
+                        c.CourseId
+                    )
+                )
+                .OrderBy(c =>
+                    c.CourseName
+                )
                 .ToListAsync();
 
         foreach (
-            var programCourse
-            in programCourses)
+            Course course
+            in activeCourses)
         {
-            if (
-                programCourse.Course ==
-                null
-            )
-            {
-                continue;
-            }
-
             string courseId =
-                programCourse
-                    .Course
-                    .CourseId;
+                course.CourseId;
 
             List<Timetable> subjectTimetables =
                 await db.Timetables
@@ -689,20 +706,14 @@ public class StudentController : Controller
                 new SubjectAttendanceViewModel
                 {
                     CourseId =
-                        programCourse
-                            .Course
-                            .CourseId,
+                        course.CourseId,
 
                     CourseCode =
-                        programCourse
-                            .Course
-                            .CourseCode
+                        course.CourseCode
                         ?? "",
 
                     CourseName =
-                        programCourse
-                            .Course
-                            .CourseName,
+                        course.CourseName,
 
                     PresentCount =
                         present,
@@ -1082,6 +1093,14 @@ public class StudentController : Controller
                         "Active"
                 )
                 .ToListAsync();
+
+        if (
+            timetables.Count ==
+            0
+        )
+        {
+            return NotFound();
+        }
 
         List<string> timetableIds =
             timetables
