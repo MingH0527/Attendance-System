@@ -10,8 +10,8 @@
 
 <div class="payment-page">
     <div class="payment-history-container">
-        <span class="eyebrow">Attendance System</span>
-        <h1>Payment History</h1>
+        @await Html.PartialAsync("_BillingTabs")
+
         <p class="subtitle">View your previous payment transactions.</p>
 
         @if (Model == null || Model.Count == 0)

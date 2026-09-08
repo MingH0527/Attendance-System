@@ -1,0 +1,33 @@
+﻿@{
+    // Which tab is active is decided by the action being rendered, so the
+    // partial works from both SelectFee and History with no parameters.
+    string billingAction =
+        ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+
+    bool onHistory =
+        billingAction.Equals(
+            "History",
+            StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="billing-head">
+
+    <h1 class="billing-title">Payment</h1>
+
+    <nav class="billing-tabs">
+
+        <a asp-controller="Payment"
+           asp-action="SelectFee"
+           class="billing-tab @(onHistory ? "" : "is-active")">
+            Current Bill
+        </a>
+
+        <a asp-controller="Payment"
+           asp-action="History"
+           class="billing-tab @(onHistory ? "is-active" : "")">
+            Payment History
+        </a>
+
+    </nav>
+
+</div>
