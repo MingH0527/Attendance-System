@@ -11,10 +11,12 @@ namespace WebAndMobile.Hubs;
 public class ChatHub : Hub
 {
     private readonly DB db;
+    private readonly IAvatarService avatarService;
 
-    public ChatHub(DB db)
+    public ChatHub(DB db, IAvatarService avatarService)
     {
         this.db = db;
+        this.avatarService = avatarService;
     }
 
     // ==================================================
@@ -174,9 +176,10 @@ public class ChatHub : Hub
               currentUser.Username,
 
           SenderAvatar =
-              string.IsNullOrWhiteSpace(currentUser.Avatar)
-                  ? "default.png"
-                  : currentUser.Avatar,
+              avatarService.ResolveAvatar(
+                  currentUser.UserId,
+                  currentUser.Avatar
+              ),
 
           Content =
               message.Content,
@@ -388,9 +391,10 @@ public class ChatHub : Hub
             {
                 callerId = currentUserId,
                 callerName = currentUser.Username,
-                callerAvatar = string.IsNullOrWhiteSpace(currentUser.Avatar)
-                    ? "default.png"
-                    : currentUser.Avatar,
+                callerAvatar = avatarService.ResolveAvatar(
+                    currentUser.UserId,
+                    currentUser.Avatar
+                ),
                 callMessageId = callMessage.ChatMessageId
             });
 

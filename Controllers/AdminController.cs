@@ -15,13 +15,16 @@ public class AdminController : Controller
 
     private readonly ITimetableValidationService
         _validationService;
+    private readonly IAvatarService _avatarService;
 
     public AdminController(
         DB context,
-        ITimetableValidationService validationService)
+        ITimetableValidationService validationService,
+        IAvatarService avatarService)
     {
         _context = context;
         _validationService = validationService;
+        _avatarService = avatarService;
     }
 
     public async Task<IActionResult> Index()
@@ -61,6 +64,8 @@ public class AdminController : Controller
                 .FirstOrDefaultAsync(
                     a => a.UserId == user.UserId
                 );
+
+        user.Avatar = _avatarService.ResolveAvatar(user.UserId, user.Avatar);
 
         ViewBag.PasskeyCount = passkeyCount;
 

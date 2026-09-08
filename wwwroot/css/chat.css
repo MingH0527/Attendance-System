@@ -410,9 +410,24 @@
         height: 21px;
         fill: none;
         stroke: currentColor;
-        stroke-width: 19;
+        stroke-width: 1.9;
+        stroke-linecap: round;
         stroke-linejoin: round;
     }
+
+
+.header-icon-button:disabled {
+    color: #9aa6ba;
+    background: #eef1f5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.message-composer textarea:disabled {
+    color: #7a8496;
+    background: #f3f5f8;
+    cursor: not-allowed;
+}
 
 .message-area {
     min-height: 0;

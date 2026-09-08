@@ -41,12 +41,15 @@ public class MyProfileController : Controller
     private readonly IPasswordHasher<AdminSecurity>
         adminPinHasher;
 
+    private readonly IAvatarService avatarService;
+
 
     public MyProfileController(
         DB db,
         PasskeyFido2Factory passkeyFido2Factory,
         IPasswordHasher<AdminSecurity> adminPinHasher,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IAvatarService avatarService)
     {
         this.db =
             db;
@@ -59,6 +62,9 @@ public class MyProfileController : Controller
 
         this.environment =
             environment;
+
+        this.avatarService =
+            avatarService;
     }
 
 
@@ -107,7 +113,7 @@ public class MyProfileController : Controller
 
 
         ViewBag.Avatar =
-            user.Avatar;
+            avatarService.ResolveAvatar(user.UserId, user.Avatar);
 
         ViewBag.Username =
             user.Username;

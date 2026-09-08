@@ -1,4 +1,4 @@
-﻿@using WebAndMobile.Models
+@using WebAndMobile.Models
 
 @{
     Layout = "_Layout";
@@ -142,7 +142,7 @@
                     string avatarUrl =
                         studentAvatar.StartsWith("/")
                             ? studentAvatar
-                            : $"/image/{studentAvatar}";
+                            : $"/uploads/avatars/{studentAvatar}";
 
                     <img src="@avatarUrl"
                          alt="@studentUsername"

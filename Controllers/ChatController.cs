@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
 using WebAndMobile.Filters;
+using WebAndMobile.Services;
 
 namespace WebAndMobile.Controllers;
 
@@ -12,10 +13,12 @@ namespace WebAndMobile.Controllers;
 public class ChatController : Controller
 {
     private readonly DB db;
+    private readonly IAvatarService avatarService;
 
-    public ChatController(DB db)
+    public ChatController(DB db, IAvatarService avatarService)
     {
         this.db = db;
+        this.avatarService = avatarService;
     }
 
     [HttpGet]
@@ -27,6 +30,17 @@ public class ChatController : Controller
 
         string currentRole =
             GetCurrentRole();
+
+        User currentUser =
+            await db.Users
+                .AsNoTracking()
+                .SingleAsync(
+                    u => u.UserId == currentUserId
+                );
+
+        ViewBag.CurrentUserName = currentUser.Username;
+        ViewBag.CurrentUserAvatar =
+            avatarService.ResolveAvatar(currentUser.UserId, currentUser.Avatar);
 
         ChatIndexViewModel model =
             new()
@@ -75,49 +89,29 @@ public class ChatController : Controller
                 ? "Teacher"
                 : "Student";
 
-        var users =
+        List<User> users =
             await db.Users
                 .AsNoTracking()
                 .Where(
                     u =>
                         u.UserId != currentUserId &&
-
                         u.Position == requiredRole &&
-
                         u.Status == "Active" &&
-
-                        EF.Functions.Like(
-                            u.Username,
-                            $"%{query}%"
-                        )
+                        EF.Functions.Like(u.Username, $"%{query}%")
                 )
-                .OrderBy(
-                    u => u.Username
-                )
+                .OrderBy(u => u.Username)
                 .Take(10)
-                .Select(
-                    u => new
-                    {
-                        userId =
-                            u.UserId,
-
-                        username =
-                            u.Username,
-
-                        avatar =
-                            string.IsNullOrWhiteSpace(
-                                u.Avatar
-                            )
-                                ? "default.png"
-                                : u.Avatar,
-
-                        position =
-                            u.Position
-                    }
-                )
                 .ToListAsync();
 
-        return Json(users);
+        var results = users.Select(u => new
+        {
+            userId = u.UserId,
+            username = u.Username,
+            avatar = avatarService.ResolveAvatar(u.UserId, u.Avatar),
+            position = u.Position
+        });
+
+        return Json(results);
     }
 
     [HttpGet]
@@ -158,29 +152,42 @@ public class ChatController : Controller
             currentRole == "Teacher" &&
             otherUser.Position == "Student";
 
-        if (!allowed)
+        Conversation? conversation;
+
+        if (allowed)
         {
-            return Forbid();
+            string studentId =
+                currentRole == "Student"
+                    ? currentUserId
+                    : otherUserId;
+
+            string teacherId =
+                currentRole == "Teacher"
+                    ? currentUserId
+                    : otherUserId;
+
+            conversation =
+                await db.Conversations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        c =>
+                            c.StudentId == studentId &&
+                            c.TeacherId == teacherId
+                    );
         }
-
-        string studentId =
-            currentRole == "Student"
-                ? currentUserId
-                : otherUserId;
-
-        string teacherId =
-            currentRole == "Teacher"
-                ? currentUserId
-                : otherUserId;
-
-        Conversation? conversation =
-            await db.Conversations
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    c =>
-                        c.StudentId == studentId &&
-                        c.TeacherId == teacherId
-                );
+        else
+        {
+            // A legacy conversation can remain after an account role changes.
+            // Keep the history visible, but the client will lock messaging/calls.
+            conversation =
+                await db.Conversations
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(
+                        c =>
+                            (c.StudentId == currentUserId && c.TeacherId == otherUserId) ||
+                            (c.StudentId == otherUserId && c.TeacherId == currentUserId)
+                    );
+        }
 
         if (conversation == null)
         {
@@ -200,11 +207,10 @@ public class ChatController : Controller
                                 otherUser.Username,
 
                             avatar =
-                                string.IsNullOrWhiteSpace(
+                                avatarService.ResolveAvatar(
+                                    otherUser.UserId,
                                     otherUser.Avatar
-                                )
-                                    ? "default.png"
-                                    : otherUser.Avatar,
+                                ),
 
                             position =
                                 otherUser.Position
@@ -214,7 +220,10 @@ public class ChatController : Controller
                         Array.Empty<object>(),
 
                     hasMore =
-                        false
+                        false,
+
+                    canChat =
+                        allowed
                 }
             );
         }
@@ -272,9 +281,10 @@ public class ChatController : Controller
                         m.Sender.Username,
 
                         SenderAvatar =
-                        string.IsNullOrWhiteSpace(m.Sender.Avatar)
-                            ? "default.png"
-                            : m.Sender.Avatar,
+                        avatarService.ResolveAvatar(
+                            m.Sender.UserId,
+                            m.Sender.Avatar
+                        ),
 
                         Content =
                             m.Content,
@@ -324,11 +334,10 @@ public class ChatController : Controller
                             otherUser.Username,
 
                         avatar =
-                            string.IsNullOrWhiteSpace(
+                            avatarService.ResolveAvatar(
+                                otherUser.UserId,
                                 otherUser.Avatar
-                            )
-                                ? "default.png"
-                                : otherUser.Avatar,
+                            ),
 
                         position =
                             otherUser.Position
@@ -337,7 +346,10 @@ public class ChatController : Controller
                 messages,
 
                 hasMore =
-                    messages.Count == 30
+                    messages.Count == 30,
+
+                canChat =
+                    allowed
             }
         );
     }
@@ -368,6 +380,9 @@ public class ChatController : Controller
         BuildConversationList(
             string currentUserId)
     {
+        string currentRole =
+            GetCurrentRole();
+
         List<Conversation> conversations =
             await db.Conversations
                 .AsNoTracking()
@@ -491,11 +506,17 @@ public class ChatController : Controller
                             other.Username,
 
                         OtherAvatar =
-                            string.IsNullOrWhiteSpace(
+                            avatarService.ResolveAvatar(
+                                other.UserId,
                                 other.Avatar
-                            )
-                                ? "default.png"
-                                : other.Avatar,
+                            ),
+
+                        OtherPosition =
+                            other.Position,
+
+                        CanChat =
+                            (currentRole == "Student" && other.Position == "Teacher") ||
+                            (currentRole == "Teacher" && other.Position == "Student"),
 
                         LastMessage =
                             latest?.Content ??

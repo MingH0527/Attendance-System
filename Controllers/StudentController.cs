@@ -15,13 +15,16 @@ public class StudentController : Controller
 {
     private readonly DB db;
     private readonly IWebHostEnvironment environment;
+    private readonly IAvatarService avatarService;
 
     public StudentController(
         DB db,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IAvatarService avatarService)
     {
         this.db = db;
         this.environment = environment;
+        this.avatarService = avatarService;
     }
 
     // ==============================
@@ -61,7 +64,9 @@ public class StudentController : Controller
             currentUser?.Username ?? "Student";
 
         ViewBag.StudentAvatar =
-            currentUser?.Avatar ?? "";
+            currentUser == null
+                ? "/image/default.png"
+                : avatarService.ResolveAvatar(currentUser.UserId, currentUser.Avatar);
 
 
         // ==========================================

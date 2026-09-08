@@ -14,6 +14,8 @@ public class ConversationListItemViewModel
     public string OtherUserId { get; set; } = string.Empty;
     public string OtherUsername { get; set; } = string.Empty;
     public string OtherAvatar { get; set; } = "default.png";
+    public string OtherPosition { get; set; } = string.Empty;
+    public bool CanChat { get; set; }
     public string LastMessage { get; set; } = string.Empty;
     public DateTime LastMessageAtUtc { get; set; }
     public int UnreadCount { get; set; }

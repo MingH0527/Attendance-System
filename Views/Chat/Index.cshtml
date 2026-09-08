@@ -118,9 +118,11 @@
                         @if (hasCustomAvatar)
                         {
                             string avatarUrl =
-                                storedAvatar!.StartsWith("/")
+                                storedAvatar!.StartsWith("/") ||
+                                storedAvatar.StartsWith("http://") ||
+                                storedAvatar.StartsWith("https://")
                                     ? storedAvatar
-                                    : $"/image/{storedAvatar}";
+                                    : $"/uploads/avatars/{storedAvatar}";
 
                             <img src="@avatarUrl"
                                  class="chat-avatar-image"

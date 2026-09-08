@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
     "use strict";
 
     const app =
@@ -14,6 +14,10 @@
     const currentUserName =
         app.dataset.currentUserName ||
         "User";
+
+    const currentUserAvatar =
+        app.dataset.currentUserAvatar ||
+        "";
 
     const searchInput =
         document.getElementById(
@@ -192,6 +196,9 @@
     let selectedUserAvatar =
         "";
 
+    let selectedCanChat =
+        false;
+
     let oldestMessageId =
         "";
 
@@ -313,7 +320,7 @@
             return avatar;
         }
 
-        return `/image/${avatar}`;
+        return `/uploads/avatars/${encodeURIComponent(avatar)}`;
     }
 
     function getInitial(username) {
@@ -594,6 +601,7 @@
             );
 
         sendButton.disabled =
+            !selectedCanChat ||
             length === 0 ||
 
             messageInput
@@ -643,8 +651,8 @@
      
         const senderAvatarValue =
             mine
-                ? (message.senderAvatar || "")
-                : (selectedUserAvatar || "");
+                ? (message.senderAvatar || currentUserAvatar || "")
+                : (selectedUserAvatar || message.senderAvatar || "");
 
         let contentHtml = "";
 
@@ -948,6 +956,9 @@
         selectedUserAvatar =
             "";
 
+        selectedCanChat =
+            false;
+
         oldestMessageId =
             "";
 
@@ -1005,12 +1016,32 @@
                 data.otherUser?.avatar ||
                 "";
 
+            selectedCanChat =
+                data.canChat !== false;
+
             activeChatName.textContent =
                 selectedUserName;
 
             activeChatInfo.textContent =
                 data.otherUser?.position ||
                 "";
+
+            messageInput.disabled =
+                !selectedCanChat;
+
+            startVideoCallButton.disabled =
+                !selectedCanChat;
+
+            messageInput.placeholder =
+                selectedCanChat
+                    ? "Type a message"
+                    : "Messaging is unavailable for this conversation";
+
+            if (!selectedCanChat) {
+                showError(
+                    "This conversation is read-only. Real-time chat is only available between a student and a teacher."
+                );
+            }
 
             setAvatarElements(
                 activeChatAvatar,
@@ -1063,7 +1094,11 @@
 
             await refreshConversationList();
 
-            messageInput.focus();
+            updateComposer();
+
+            if (selectedCanChat) {
+                messageInput.focus();
+            }
         }
         catch (error) {
             showError(
@@ -1128,6 +1163,13 @@
 
     async function sendMessage() {
         clearError();
+
+        if (!selectedCanChat) {
+            showError(
+                "This conversation is read-only. Students can only chat with teachers, and teachers can only chat with students."
+            );
+            return;
+        }
 
         const content =
             messageInput.value;
@@ -1685,6 +1727,13 @@
 
     async function startOutgoingVideoCall() {
         clearError();
+
+        if (!selectedCanChat) {
+            showError(
+                "Video calls are only available between a student and a teacher."
+            );
+            return;
+        }
 
         if (!selectedUserId) {
             showError(

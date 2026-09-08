@@ -108,6 +108,7 @@ builder.Services.AddScoped<GmailServiceHelper>();
 builder.Services.AddScoped<ReceiptPdfService>();
 builder.Services.AddScoped<TimetablePdfService>();
 builder.Services.AddScoped<ITimetableValidationService, TimetableValidationService>();
+builder.Services.AddSingleton<IAvatarService, AvatarService>();
 
 var app = builder.Build();
 

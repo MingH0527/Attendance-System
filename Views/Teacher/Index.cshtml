@@ -1,4 +1,4 @@
-﻿@model WebAndMobile.Models.User
+@model WebAndMobile.Models.User
 
 @{
     ViewData["Title"] = "Teacher Home";
@@ -48,7 +48,7 @@
                         ? "/image/default.png"
                         : Model.Avatar.StartsWith("/")
                             ? Model.Avatar
-                            : $"/image/{Model.Avatar}";
+                            : $"/uploads/avatars/{Model.Avatar}";
             }
 
             <img src="@teacherAvatar"

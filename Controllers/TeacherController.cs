@@ -12,10 +12,12 @@ namespace WebAndMobile.Controllers;
 public class TeacherController : Controller
 {
     private readonly DB db;
+    private readonly IAvatarService avatarService;
 
-    public TeacherController(DB db)
+    public TeacherController(DB db, IAvatarService avatarService)
     {
         this.db = db;
+        this.avatarService = avatarService;
     }
 
     private string? GetCurrentUserId()
@@ -89,6 +91,8 @@ public class TeacherController : Controller
                     user.UserId
                 );
 
+
+        user.Avatar = avatarService.ResolveAvatar(user.UserId, user.Avatar);
 
         ViewBag.TimetableCount =
             await db.Timetables

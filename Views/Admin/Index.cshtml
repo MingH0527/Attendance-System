@@ -35,17 +35,25 @@
 
         <div class="avatar-box">
             @{
-                string avatar =
-                    string.IsNullOrWhiteSpace(
-                        Model.Avatar
-                    )
+                string storedAvatar =
+                    string.IsNullOrWhiteSpace(Model.Avatar)
                         ? "default.png"
-                        : Model.Avatar;
+                        : Model.Avatar.Trim();
+
+                string avatarUrl =
+                    storedAvatar == "default.png" ||
+                    storedAvatar == "default-avatar.png"
+                        ? "/image/default.png"
+                        : storedAvatar.StartsWith("/") ||
+                          storedAvatar.StartsWith("http://") ||
+                          storedAvatar.StartsWith("https://")
+                            ? storedAvatar
+                            : $"/uploads/avatars/{storedAvatar}";
             }
 
-            <img src="~/image/@avatar"
+            <img src="@avatarUrl"
                  alt="Admin profile picture"
-                 onerror="this.src='/image/default.png'" />
+                 onerror="this.onerror=null; this.src='/image/default.png';" />
         </div>
     </header>
 
