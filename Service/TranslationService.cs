@@ -91,21 +91,87 @@ public class DictionaryTranslationService : ITranslationService
 
         for (int i = 0; i < results.Count; i++)
         {
-            string key = (texts[i] ?? "").Trim();
+            string key = Normalise(texts[i]);
 
             if (key.Length == 0)
             {
                 continue;
             }
 
-            if (table.TryGetValue(key, out string? value) &&
-                !string.IsNullOrWhiteSpace(value))
+            string? value = Lookup(table, key);
+
+            if (!string.IsNullOrWhiteSpace(value))
             {
                 results[i] = value;
             }
         }
 
         return Task.FromResult(results);
+    }
+
+    /// <summary>
+    /// Collapses newlines and repeated spaces so a phrase written across
+    /// several lines in a .cshtml still matches a single dictionary key.
+    /// </summary>
+    private static string Normalise(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "";
+        }
+
+        return string.Join(
+            ' ',
+            text.Split(
+                (char[]?)null,
+                StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string? Lookup(
+        Dictionary<string, string> table,
+        string key)
+    {
+        // 1. Exact match (case-insensitive, so "PROGRAM" finds "Program").
+        if (table.TryGetValue(key, out string? exact))
+        {
+            return exact;
+        }
+
+        // 2. Placeholder entries such as "Welcome back, {0}", where the
+        //    captured part is a name or number that must not be translated.
+        foreach ((string pattern, string replacement) in table)
+        {
+            int marker = pattern.IndexOf("{0}", StringComparison.Ordinal);
+
+            if (marker < 0)
+            {
+                continue;
+            }
+
+            string prefix = pattern[..marker];
+            string suffix = pattern[(marker + 3)..];
+
+            if (key.Length < prefix.Length + suffix.Length)
+            {
+                continue;
+            }
+
+            bool matches =
+                key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+                key.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
+
+            if (!matches)
+            {
+                continue;
+            }
+
+            string captured =
+                key[prefix.Length..(key.Length - suffix.Length)];
+
+            return replacement.Replace("{0}", captured);
+        }
+
+        return null;
     }
 
     private Dictionary<string, string>? GetTable(string language)
@@ -179,8 +245,10 @@ public class DictionaryTranslationService : ITranslationService
                             continue;
                         }
 
+                        // Case-insensitive so a label styled with
+                        // text-transform: uppercase still matches.
                         Dictionary<string, string> table =
-                            new(StringComparer.Ordinal);
+                            new(StringComparer.OrdinalIgnoreCase);
 
                         foreach (JsonProperty entry in value.EnumerateObject())
                         {

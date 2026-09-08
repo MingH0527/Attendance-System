@@ -1,5 +1,44 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using WebAndMobile.Models
+
+@inject DB AuthLayoutDb
+
+@{
+    // Pages such as Program/RegisterProgram use this bare layout, but a
+    // signed-in student should still see them in their chosen language.
+    bool authIsStudent =
+        string.Equals(
+            User.FindFirstValue(ClaimTypes.Role),
+            "Student",
+            StringComparison.OrdinalIgnoreCase);
+
+    string authLanguage = "en";
+
+    if (authIsStudent)
+    {
+        string? authUserId =
+            User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!string.IsNullOrWhiteSpace(authUserId))
+        {
+            string? authSaved =
+                await AuthLayoutDb.Users
+                    .AsNoTracking()
+                    .Where(u => u.UserId == authUserId)
+                    .Select(u => u.PreferredLanguage)
+                    .FirstOrDefaultAsync();
+
+            if (!string.IsNullOrWhiteSpace(authSaved))
+            {
+                authLanguage = authSaved;
+            }
+        }
+    }
+}
+
+<!DOCTYPE html>
+<html lang="@authLanguage">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,6 +55,27 @@
 <body>
 
     @RenderBody()
+
+    @if (authIsStudent)
+    {
+        @* Token source for the language fetch calls. *@
+        <form id="languageTokenForm"
+              data-no-translate
+              style="display:none">
+            @Html.AntiForgeryToken()
+        </form>
+
+        <script data-no-translate>
+            window.appTranslation = {
+                current: '@authLanguage',
+                setUrl: '@Url.Action("Set", "Language")',
+                translateUrl: '@Url.Action("Translate", "Language")'
+            };
+        </script>
+
+        <script src="~/js/translate.js"
+                asp-append-version="true"></script>
+    }
 
     @await RenderSectionAsync("Scripts", required: false)
 

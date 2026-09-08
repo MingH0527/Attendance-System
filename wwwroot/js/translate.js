@@ -40,6 +40,13 @@
         return field ? field.value : '';
     }
 
+    // Collapse newlines / repeated spaces. A phrase written across several
+    // lines in a .cshtml arrives here with the line breaks intact, so the
+    // dictionary key must be built from the normalised form.
+    function normalise(text) {
+        return (text || '').trim().replace(/\s+/g, ' ');
+    }
+
     function isTranslatable(text) {
         var trimmed = (text || '').trim();
 
@@ -179,7 +186,7 @@
 
         items.textNodes.forEach(function (node) {
             var original = node.nodeValue.trim();
-            var replacement = map[original];
+            var replacement = map[normalise(node.nodeValue)];
 
             if (!replacement) {
                 return;
@@ -194,7 +201,7 @@
         });
 
         items.attributes.forEach(function (target) {
-            var replacement = map[target.value.trim()];
+            var replacement = map[normalise(target.value)];
 
             if (!replacement) {
                 return;
@@ -243,7 +250,7 @@
         var missing = [];
 
         function consider(text) {
-            var key = text.trim();
+            var key = normalise(text);
 
             if (map[key] !== undefined ||
                 missing.indexOf(key) !== -1) {
@@ -376,7 +383,8 @@
         style.textContent =
             '.tr-pending .topbar,' +
             '.tr-pending .sidebar,' +
-            '.tr-pending .content { visibility: hidden; }';
+            '.tr-pending .content,' +
+            '.tr-pending .program-page { visibility: hidden; }';
 
         document.head.appendChild(style);
         document.documentElement.classList.add('tr-pending');
@@ -387,6 +395,98 @@
 
     function reveal() {
         document.documentElement.classList.remove('tr-pending');
+    }
+
+    /* ---------------- cooldown notice ---------------- */
+
+    var COOLDOWN_MS = 10000;
+    var COOLDOWN_KEY = 'langSwitchedAt';
+
+    function ensureToastStyles() {
+        if (document.getElementById('langToastStyles')) {
+            return;
+        }
+
+        var style = document.createElement('style');
+        style.id = 'langToastStyles';
+
+        style.textContent =
+            '.lang-toast{position:fixed;left:50%;bottom:32px;z-index:9999;' +
+            'transform:translateX(-50%) translateY(14px);opacity:0;' +
+            'display:flex;align-items:center;gap:12px;max-width:min(420px,92vw);' +
+            'padding:14px 18px;border-radius:14px;background:#12233d;color:#fff;' +
+            'font-family:inherit;font-size:14px;line-height:1.5;' +
+            'box-shadow:0 14px 40px rgba(10,25,50,.32);' +
+            'transition:opacity .22s ease,transform .22s ease;pointer-events:none}' +
+            '.lang-toast.is-open{opacity:1;transform:translateX(-50%) translateY(0)}' +
+            '.lang-toast-icon{flex:0 0 26px;height:26px;display:grid;' +
+            'place-items:center;border-radius:50%;background:rgba(255,255,255,.16);' +
+            'font-size:14px}' +
+            '.lang-toast-count{font-variant-numeric:tabular-nums;font-weight:700}';
+
+        document.head.appendChild(style);
+    }
+
+    function showToast(message, durationMs) {
+        ensureToastStyles();
+
+        var existing = document.getElementById('langToast');
+
+        if (existing) {
+            existing.remove();
+        }
+
+        var toast = document.createElement('div');
+        toast.id = 'langToast';
+        toast.className = 'lang-toast';
+        toast.setAttribute('data-no-translate', '');
+        toast.setAttribute('role', 'status');
+
+        var icon = document.createElement('span');
+        icon.className = 'lang-toast-icon';
+        icon.textContent = '\u23F3';
+
+        var body = document.createElement('span');
+        body.innerHTML = message;
+
+        toast.appendChild(icon);
+        toast.appendChild(body);
+        document.body.appendChild(toast);
+
+        // Next frame, so the opening transition actually runs.
+        requestAnimationFrame(function () {
+            toast.classList.add('is-open');
+        });
+
+        setTimeout(function () {
+            toast.classList.remove('is-open');
+            setTimeout(function () { toast.remove(); }, 260);
+        }, durationMs || 4000);
+
+        return toast;
+    }
+
+    function remainingCooldown() {
+        var last = 0;
+
+        try {
+            last = parseInt(
+                localStorage.getItem(COOLDOWN_KEY) || '0', 10) || 0;
+        } catch (e) {
+            return 0;
+        }
+
+        var elapsed = Date.now() - last;
+
+        return elapsed >= COOLDOWN_MS ? 0 : COOLDOWN_MS - elapsed;
+    }
+
+    function markSwitched() {
+        try {
+            localStorage.setItem(COOLDOWN_KEY, String(Date.now()));
+        } catch (e) {
+            /* private mode - cooldown just won't persist */
+        }
     }
 
     /* ---------------- language dropdown ---------------- */
@@ -400,10 +500,40 @@
 
         select.value = config.current;
 
+        // Re-arm the lock if the page was reloaded mid-cooldown.
+        var pending = remainingCooldown();
+
+        if (pending > 0) {
+            lockSelect(select, pending, true);
+        }
+
         select.addEventListener('change', function () {
             var chosen = select.value;
 
+            if (chosen === config.current) {
+                return;
+            }
+
+            var wait = remainingCooldown();
+
+            if (wait > 0) {
+                select.value = config.current;
+
+                showToast(
+                    'Please wait <span class="lang-toast-count">' +
+                    Math.ceil(wait / 1000) +
+                    's</span> before switching language again.',
+                    2600);
+
+                return;
+            }
+
             select.disabled = true;
+
+            showToast(
+                'Switching language\u2026 please do not change it again ' +
+                'for 10 seconds.',
+                3200);
 
             fetch(config.setUrl, {
                 method: 'POST',
@@ -417,6 +547,7 @@
                     throw new Error('Set failed: ' + response.status);
                 }
 
+                markSwitched();
                 window.location.reload();
             }).catch(function (error) {
                 select.disabled = false;
@@ -426,10 +557,45 @@
                     console.warn(error);
                 }
 
-                alert('Sorry, the language could not be changed. ' +
-                    'Please try again.');
+                showToast(
+                    'Sorry, the language could not be changed. ' +
+                    'Please try again.',
+                    4000);
             });
         });
+    }
+
+    /// Disables the dropdown and counts down, so the cooldown is visible
+    /// rather than a silent rejection.
+    function lockSelect(select, durationMs, announce) {
+        var seconds = Math.ceil(durationMs / 1000);
+
+        select.disabled = true;
+
+        var toast = announce
+            ? showToast('', durationMs)
+            : null;
+
+        var timer = setInterval(function () {
+            seconds -= 1;
+
+            if (toast) {
+                toast.lastChild.innerHTML =
+                    'Language updated. You can switch again in ' +
+                    '<span class="lang-toast-count">' + seconds +
+                    's</span>.';
+            }
+
+            if (seconds <= 0) {
+                clearInterval(timer);
+                select.disabled = false;
+            }
+        }, 1000);
+
+        setTimeout(function () {
+            clearInterval(timer);
+            select.disabled = false;
+        }, durationMs + 200);
     }
 
     /* ---------------- start ---------------- */
