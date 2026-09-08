@@ -305,7 +305,7 @@ public class AdminController : Controller
                 Amount = g.Sum(r => r.Amount)
             })
             .OrderByDescending(s => s.Amount)
-            .Take(6)
+            .Take(10)
             .ToList();
 
         // Day of week, Monday first.
