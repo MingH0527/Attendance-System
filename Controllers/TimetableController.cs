@@ -187,8 +187,10 @@ public class TimetableController : Controller
             ? await _db.ReplacementSessions.AsNoTracking()
                 .Include(r => r.SourceTimetable)!.ThenInclude(t => t!.Course)
                 .Include(r => r.SourceTimetable)!.ThenInclude(t => t!.Teacher)
+                .Include(r => r.SourceTimetable)!.ThenInclude(t => t!.ClassGroup)
                 .Where(r => r.Status != "Cancelled" && r.TargetClassType == type && r.SourceTimetable != null &&
-                            r.SourceTimetable.TermId == termId && r.SourceTimetable.ClassId == classId &&
+                            (r.SourceTimetable.TermId == termId || r.SourceTimetable.TermId == null) &&
+                            r.SourceTimetable.ClassId == classId &&
                             r.ReplacementDate >= weekStart.Value && r.ReplacementDate < weekStart.Value.AddDays(7))
                 .ToListAsync()
             : new List<ReplacementSession>();

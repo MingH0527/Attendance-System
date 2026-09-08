@@ -62,9 +62,11 @@ public class TeacherController : Controller
         }
 
 
-        await TryLinkLegacyProfileAsync(
-            userId
-        );
+        bool hasTeacherProgram =
+            await db.TeacherPrograms
+                .AnyAsync(tp =>
+                    tp.UserId == userId
+                );
 
 
         bool hasTeacherCourse =
@@ -74,7 +76,10 @@ public class TeacherController : Controller
                 );
 
 
-        if (!hasTeacherCourse)
+        if (
+            !hasTeacherProgram ||
+            !hasTeacherCourse
+        )
         {
             return RedirectToAction(
                 nameof(Create)
@@ -95,11 +100,9 @@ public class TeacherController : Controller
                 .CountAsync(t =>
                     t.TeacherId ==
                         user.UserId &&
-                    (
-                        t.Term == null ||
-                        t.Term.Status ==
-                            "Active"
-                    )
+                    t.Term != null &&
+                    t.Term.Status ==
+                        "Active"
                 );
 
 
@@ -128,9 +131,11 @@ public class TeacherController : Controller
         }
 
 
-        await TryLinkLegacyProfileAsync(
-            userId
-        );
+        bool hasTeacherProgram =
+            await db.TeacherPrograms
+                .AnyAsync(tp =>
+                    tp.UserId == userId
+                );
 
 
         bool hasTeacherCourse =
@@ -140,7 +145,10 @@ public class TeacherController : Controller
                 );
 
 
-        if (!hasTeacherCourse)
+        if (
+            !hasTeacherProgram ||
+            !hasTeacherCourse
+        )
         {
             return RedirectToAction(
                 nameof(Create)
@@ -276,9 +284,9 @@ public class TeacherController : Controller
         // GET TEACHER TIMETABLE
         //
         // IMPORTANT:
-        // Old timetable may have TermId = NULL.
-        // New timetable uses Active TermId.
-        // Both are accepted.
+        // Only timetable rows that belong to the current
+        // Active semester are shown.
+        // Old / legacy TermId = NULL rows are NOT included.
         // ==================================================
 
         List<Timetable> entries =
@@ -287,12 +295,8 @@ public class TeacherController : Controller
                 .Where(t =>
                     t.TeacherId ==
                         userId &&
-                    (
-                        t.TermId ==
-                            activeTerm.TermId ||
-                        t.TermId ==
-                            null
-                    )
+                    t.TermId ==
+                        activeTerm.TermId
                 )
                 .Include(t =>
                     t.Term
@@ -432,6 +436,10 @@ public class TeacherController : Controller
                     .Where(r =>
                         r.TeacherId ==
                             userId &&
+                        r.SourceTimetable !=
+                            null &&
+                        r.SourceTimetable.TermId ==
+                            activeTerm.TermId &&
                         r.ReplacementDate.Date >=
                             weekStart &&
                         r.ReplacementDate.Date <=
@@ -757,12 +765,8 @@ public class TeacherController : Controller
                         userId &&
                     n.CreatedAt >=
                         notificationCutOff &&
-                    (
-                        n.TermId ==
-                            activeTerm.TermId ||
-                        n.TermId ==
-                            null
-                    )
+                    n.TermId ==
+                        activeTerm.TermId
                 )
                 .OrderByDescending(n =>
                     n.CreatedAt
@@ -1072,16 +1076,23 @@ public class TeacherController : Controller
         }
 
 
-        await TryLinkLegacyProfileAsync(
-            userId
-        );
+        bool hasTeacherProgram =
+            await db.TeacherPrograms
+                .AnyAsync(tp =>
+                    tp.UserId == userId
+                );
+
+
+        bool hasTeacherCourse =
+            await db.TeacherCourses
+                .AnyAsync(tc =>
+                    tc.UserId == userId
+                );
 
 
         if (
-            !await db.TeacherCourses
-                .AnyAsync(tc =>
-                    tc.UserId == userId
-                )
+            !hasTeacherProgram ||
+            !hasTeacherCourse
         )
         {
             return RedirectToAction(
@@ -1130,7 +1141,7 @@ public class TeacherController : Controller
         // ==================================================
         // TODAY NORMAL CLASSES
         //
-        // Also accept old TermId = NULL records.
+        // Only classes from the current Active semester.
         // ==================================================
 
         List<Timetable> normalClasses =
@@ -1141,12 +1152,8 @@ public class TeacherController : Controller
                         userId &&
                     t.DayOfWeek ==
                         today.DayOfWeek &&
-                    (
-                        t.TermId ==
-                            activeTerm.TermId ||
-                        t.TermId ==
-                            null
-                    )
+                    t.TermId ==
+                        activeTerm.TermId
                 )
                 .Include(t =>
                     t.Course
@@ -1198,6 +1205,10 @@ public class TeacherController : Controller
                 .Where(r =>
                     r.TeacherId ==
                         userId &&
+                    r.SourceTimetable !=
+                        null &&
+                    r.SourceTimetable.TermId ==
+                        activeTerm.TermId &&
                     r.ReplacementDate.Date ==
                         today
                 )
@@ -1578,11 +1589,6 @@ public class TeacherController : Controller
                 "Account"
             );
         }
-
-
-        await TryLinkLegacyProfileAsync(
-            userId
-        );
 
 
         List<string> selectedProgramIds =
@@ -2208,17 +2214,25 @@ public class TeacherController : Controller
         }
 
 
-        await TryLinkLegacyProfileAsync(
-            userId
-        );
+        bool hasTeacherProgram =
+            await db.TeacherPrograms
+                .AnyAsync(tp =>
+                    tp.UserId ==
+                    userId
+                );
 
 
-        if (
-            !await db.TeacherCourses
+        bool hasTeacherCourse =
+            await db.TeacherCourses
                 .AnyAsync(tc =>
                     tc.UserId ==
                     userId
-                )
+                );
+
+
+        if (
+            !hasTeacherProgram ||
+            !hasTeacherCourse
         )
         {
             return RedirectToAction(
@@ -2228,117 +2242,6 @@ public class TeacherController : Controller
 
 
         return View(teacher);
-    }
-
-
-    // ==================================================
-    // LEGACY PROFILE LINK
-    // ==================================================
-
-    private async Task TryLinkLegacyProfileAsync(
-        string userId)
-    {
-        if (
-            await db.TeacherCourses
-                .AnyAsync(tc =>
-                    tc.UserId ==
-                    userId
-                )
-        )
-        {
-            return;
-        }
-
-
-        Teacher? teacher =
-            await db.Teacher
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t =>
-                    t.UserId ==
-                    userId
-                );
-
-
-        if (
-            teacher == null ||
-            string.IsNullOrWhiteSpace(
-                teacher.Program
-            ) ||
-            string.IsNullOrWhiteSpace(
-                teacher.Subject
-            )
-        )
-        {
-            return;
-        }
-
-
-        AcademicProgram? program =
-            await db.AcademicPrograms
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p =>
-                    p.ProgramCode
-                        .ToLower() ==
-                    teacher.Program
-                        .ToLower()
-                );
-
-
-        if (program == null)
-        {
-            return;
-        }
-
-
-        ProgramCourse? mapping =
-            await db.ProgramCourses
-                .AsNoTracking()
-                .Include(pc =>
-                    pc.Course
-                )
-                .FirstOrDefaultAsync(pc =>
-                    pc.ProgramId ==
-                        program.ProgramId &&
-                    pc.Course !=
-                        null &&
-                    pc.Course.CourseName
-                        .ToLower() ==
-                    teacher.Subject
-                        .ToLower()
-                );
-
-
-        if (mapping == null)
-        {
-            return;
-        }
-
-
-        db.TeacherCourses.Add(
-            new TeacherCourse
-            {
-                TeacherCourseId =
-                    await FormattedIdGenerator
-                        .NextAsync(
-                            db.TeacherCourses,
-                            x =>
-                                x.TeacherCourseId,
-                            "TCR"
-                        ),
-
-                UserId =
-                    userId,
-
-                CourseId =
-                    mapping.CourseId,
-
-                RegisteredDate =
-                    DateTime.Now
-            }
-        );
-
-
-        await db.SaveChangesAsync();
     }
 
 
