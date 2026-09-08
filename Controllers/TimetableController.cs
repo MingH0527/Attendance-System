@@ -218,6 +218,8 @@ public class TimetableController : Controller
             if (weekStart.HasValue)
             {
                 occurrence = OccurrenceDate(weekStart.Value, t.DayOfWeek);
+                if (occurrence.Value.Date < term.StartDate.Date || occurrence.Value.Date > term.EndDate.Date)
+                    continue;
                 ex = exceptions.FirstOrDefault(e => e.TimetableId == t.TimetableId && e.OccurrenceDate.Date == occurrence.Value.Date);
                 if (ex != null)
                 {
@@ -629,30 +631,45 @@ public class TimetableController : Controller
     [HttpGet]
     public async Task<IActionResult> ReplacementRequired(string termId, string classId, DateTime weekDate)
     {
-        var from = weekDate.Date;
-        var to = from.AddDays(7);
+        var term = await _db.AcademicTerms.AsNoTracking().FirstOrDefaultAsync(t => t.TermId == termId);
+        if (term is null) return NotFound("Semester not found.");
+
+        var currentWeekStart = StartOfCalendarWeek(weekDate.Date);
+        var currentWeekEnd = currentWeekStart.AddDays(6);
+
+        // Keep unresolved cancellations from previous weeks visible. Current-week
+        // items are sorted first, followed by older unresolved items.
         var rows = await _db.TimetableExceptions.AsNoTracking()
             .Include(e => e.Timetable)!.ThenInclude(t => t!.Course)
             .Include(e => e.Timetable)!.ThenInclude(t => t!.Teacher)
             .Include(e => e.Timetable)!.ThenInclude(t => t!.Classroom)
-            .Where(e => e.Decision == "Cancel" && e.OccurrenceDate >= from && e.OccurrenceDate < to &&
+            .Where(e => e.Decision == "Cancel" &&
+                        e.OccurrenceDate >= term.StartDate.Date &&
+                        e.OccurrenceDate <= currentWeekEnd &&
                         e.Timetable != null && e.Timetable.TermId == termId && e.Timetable.ClassId == classId)
             .OrderBy(e => e.OccurrenceDate).ThenBy(e => e.Timetable!.StartTime)
+            .ToListAsync();
+
+        var waivedKeys = await _db.TimetableAudits.AsNoTracking()
+            .Where(a => a.TermId == termId && a.IssueType == "Replacement Required" && a.Status == "Resolved" &&
+                        a.Reason != null && a.Reason.StartsWith("Replacement waived"))
+            .Select(a => new { a.TimetableId, a.OccurrenceDate })
             .ToListAsync();
 
         var result = new List<ReplacementRequiredDto>();
         foreach (var ex in rows)
         {
             var t = ex.Timetable!;
+            if (waivedKeys.Any(x => x.TimetableId == t.TimetableId && x.OccurrenceDate.Date == ex.OccurrenceDate.Date))
+                continue;
+
             var scheduled = await _db.ReplacementSessions.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.SourceTimetableId == t.TimetableId && r.SourceOccurrenceDate == ex.OccurrenceDate.Date && r.Status != "Cancelled");
 
-            // This endpoint is a work queue, not history. Once a replacement has been
-            // scheduled, the cancelled lesson leaves this panel and the replacement
-            // is shown directly in the Tuition timetable grid for its new date.
             if (scheduled != null)
                 continue;
 
+            var nextTuitionDate = FindNextValidTuitionDate(ex.OccurrenceDate.Date, term.EndDate.Date);
             result.Add(new ReplacementRequiredDto
             {
                 TimetableId = t.TimetableId,
@@ -664,14 +681,69 @@ public class TimetableController : Controller
                 RoomName = ex.OverrideClassroomId != null ? await RoomNameAsync(ex.OverrideClassroomId) : t.Classroom?.RoomName,
                 StartTime = (ex.OverrideStartTime ?? t.StartTime).ToString(@"hh\:mm"),
                 EndTime = (ex.OverrideEndTime ?? t.EndTime).ToString(@"hh\:mm"),
-                HasReplacement = scheduled != null,
-                ReplacementDate = scheduled?.ReplacementDate,
-                ReplacementStartTime = scheduled?.StartTime.ToString(@"hh\:mm"),
-                ReplacementEndTime = scheduled?.EndTime.ToString(@"hh\:mm"),
-                ReplacementRoomName = scheduled?.ClassroomId == null ? null : await RoomNameAsync(scheduled.ClassroomId)
+                HasReplacement = false,
+                IsCurrentWeek = ex.OccurrenceDate.Date >= currentWeekStart && ex.OccurrenceDate.Date <= currentWeekEnd,
+                CanScheduleReplacement = nextTuitionDate.HasValue,
+                NextValidTuitionDate = nextTuitionDate
             });
         }
-        return Json(result.OrderBy(x => x.HasReplacement).ThenBy(x => x.OccurrenceDate).ThenBy(x => x.StartTime));
+
+        return Json(result
+            .OrderByDescending(x => x.IsCurrentWeek)
+            .ThenBy(x => x.OccurrenceDate)
+            .ThenBy(x => x.StartTime));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> WaiveReplacement([FromBody] WaiveReplacementRequest r)
+    {
+        var source = await _db.Timetables.FirstOrDefaultAsync(t => t.TimetableId == r.SourceTimetableId);
+        if (source is null) return NotFound("Original lesson not found.");
+
+        var term = await _db.AcademicTerms.FindAsync(source.TermId);
+        if (term is null) return BadRequest("Academic term not found.");
+        if (term.Status is "Warning" or "Abandoned") return BadRequest("History semesters are read-only.");
+
+        var cancelled = await _db.TimetableExceptions.AsNoTracking().FirstOrDefaultAsync(e =>
+            e.TimetableId == source.TimetableId && e.OccurrenceDate == r.SourceOccurrenceDate.Date && e.Decision == "Cancel");
+        if (cancelled is null) return BadRequest("Only a cancelled lesson can have its replacement requirement waived.");
+
+        if (await _db.ReplacementSessions.AnyAsync(x => x.SourceTimetableId == source.TimetableId &&
+                                                        x.SourceOccurrenceDate == r.SourceOccurrenceDate.Date &&
+                                                        x.Status != "Cancelled"))
+            return BadRequest("A replacement has already been scheduled. Cancel or remove it before waiving the requirement.");
+
+        if (FindNextValidTuitionDate(r.SourceOccurrenceDate.Date, term.EndDate.Date).HasValue)
+            return BadRequest("A valid Saturday/Sunday Tuition date still exists before the semester ends. Schedule the replacement instead of waiving it.");
+
+        var audit = await _db.TimetableAudits.FirstOrDefaultAsync(a =>
+            a.TimetableId == source.TimetableId && a.OccurrenceDate == r.SourceOccurrenceDate.Date &&
+            a.IssueType == "Replacement Required" && a.Status == "Pending");
+
+        if (audit is null)
+        {
+            audit = new TimetableAudit
+            {
+                AuditId = await FormattedIdGenerator.NextAsync(_db.TimetableAudits, x => x.AuditId, "AUD"),
+                TermId = source.TermId,
+                TimetableId = source.TimetableId,
+                OccurrenceDate = r.SourceOccurrenceDate.Date,
+                IssueType = "Replacement Required",
+                CreatedAt = DateTime.Now
+            };
+            _db.TimetableAudits.Add(audit);
+        }
+
+        audit.Status = "Resolved";
+        audit.AfterValue = "Replacement waived";
+        audit.Reason = "Replacement waived - no valid Tuition Saturday/Sunday remains before semester end.";
+        if (!string.IsNullOrWhiteSpace(r.Reason))
+            audit.Reason += $" Admin note: {r.Reason.Trim()}";
+        audit.ChangedBy = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        audit.ResolvedAt = DateTime.Now;
+
+        await _db.SaveChangesAsync();
+        return Ok();
     }
 
     [HttpGet]
@@ -786,21 +858,27 @@ public class TimetableController : Controller
         await _db.SaveChangesAsync();
         await NotifyReplacementScheduledAsync(source, r.SourceOccurrenceDate.Date, r.Date.Date, s, e, replacementRoom);
 
-        // Tell the client exactly which academic Week owns the new replacement date.
-        // Do not make the browser guess the Week from a 7-day calculation because
-        // semester weeks can be partial at the start/end of a term.
-        var replacementWeek = await _db.AcademicWeeks.AsNoTracking()
-            .Where(w => w.TermId == source.TermId && w.StartDate <= r.Date.Date && w.EndDate >= r.Date.Date)
-            .OrderBy(w => w.WeekNumber)
-            .FirstOrDefaultAsync();
+        // Use the same Monday-Sunday calendar-week rule as the dropdown.
+        // This does not depend on persisted AcademicWeek rows, so the client always
+        // returns to the same Week that the dropdown displays.
+        var replacementTerm = await _db.AcademicTerms.AsNoTracking().FirstOrDefaultAsync(t => t.TermId == source.TermId);
+        DateTime? replacementWeekStart = null;
+        int? replacementWeekNumber = null;
+        if (replacementTerm is not null)
+        {
+            var firstMonday = StartOfCalendarWeek(replacementTerm.StartDate.Date);
+            replacementWeekStart = StartOfCalendarWeek(r.Date.Date);
+            replacementWeekNumber =
+                ((replacementWeekStart.Value - firstMonday).Days / 7) + 1;
+        }
 
         return Json(new
         {
             rep.ReplacementId,
             session.SessionId,
             ReplacementDate = r.Date.Date,
-            ReplacementWeekStart = replacementWeek?.StartDate.Date,
-            ReplacementWeekNumber = replacementWeek?.WeekNumber
+            ReplacementWeekStart = replacementWeekStart,
+            ReplacementWeekNumber = replacementWeekNumber
         });
     }
 
@@ -1008,18 +1086,21 @@ public class TimetableController : Controller
         if (teachingWeeks < 1 || teachingWeeks > 30) return BadRequest("Teaching weeks must be between 1 and 30.");
         var old = await _db.AcademicWeeks.Where(w => w.TermId == termId).ToListAsync();
         _db.AcademicWeeks.RemoveRange(old);
-        for (int i = 1; i <= teachingWeeks; i++)
+
+        // Academic weeks are calendar weeks (Monday-Sunday). The semester itself
+        // may begin or end in the middle of a calendar week; those outside-semester
+        // dates are still represented in the UI and are disabled there.
+        var firstMonday = StartOfCalendarWeek(t.StartDate.Date);
+        var weekNumber = 1;
+        for (var start = firstMonday; start <= t.EndDate.Date && weekNumber <= teachingWeeks; start = start.AddDays(7), weekNumber++)
         {
-            var start = t.StartDate.Date.AddDays((i - 1) * 7);
-            var end = start.AddDays(6) > t.EndDate.Date ? t.EndDate.Date : start.AddDays(6);
-            if (start > t.EndDate.Date) break;
             _db.AcademicWeeks.Add(new AcademicWeek
             {
                 AcademicWeekId = await FormattedIdGenerator.NextAsync(_db.AcademicWeeks, x => x.AcademicWeekId, "AWK"),
                 TermId = termId,
-                WeekNumber = i,
+                WeekNumber = weekNumber,
                 StartDate = start,
-                EndDate = end,
+                EndDate = start.AddDays(6),
                 WeekType = "Teaching"
             });
         }
@@ -1028,8 +1109,29 @@ public class TimetableController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Weeks(string termId) => Json(await _db.AcademicWeeks.AsNoTracking()
-        .Where(w => w.TermId == termId).OrderBy(w => w.StartDate).ToListAsync());
+    public async Task<IActionResult> Weeks(string termId)
+    {
+        var term = await _db.AcademicTerms.AsNoTracking().FirstOrDefaultAsync(t => t.TermId == termId);
+        if (term is null) return NotFound("Semester not found.");
+
+        // The dropdown is a view of calendar weeks, not a database-maintenance action.
+        // Build it from the semester dates so opening Timetable never deletes/recreates
+        // AcademicWeek rows and old/legacy semesters cannot make the dropdown disappear.
+        var firstMonday = StartOfCalendarWeek(term.StartDate.Date);
+        var totalWeeks = ((term.EndDate.Date - firstMonday).Days / 7) + 1;
+
+        var weeks = Enumerable.Range(0, totalWeeks)
+            .Select(i => new
+            {
+                WeekNumber = i + 1,
+                StartDate = firstMonday.AddDays(i * 7),
+                EndDate = firstMonday.AddDays(i * 7 + 6),
+                WeekType = "Teaching"
+            })
+            .ToList();
+
+        return Json(weeks);
+    }
 
     [HttpPost]
     public async Task<IActionResult> AddCalendarEvent([FromBody] AcademicCalendarEvent e)
@@ -1681,6 +1783,19 @@ public class TimetableController : Controller
         return File(pdf, "application/pdf", $"timetable-{className}.pdf");
     }
 
+    private static DateTime? FindNextValidTuitionDate(DateTime sourceDate, DateTime termEndDate)
+    {
+        var now = MalaysiaNow();
+        var d = sourceDate.Date > now.Date ? sourceDate.Date : now.Date;
+        for (; d <= termEndDate.Date; d = d.AddDays(1))
+        {
+            if (d.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)) continue;
+            if (d == now.Date && d.AddHours(18) <= now) continue;
+            return d;
+        }
+        return null;
+    }
+
     private static DateTime OccurrenceDate(DateTime weekStart, DayOfWeek day)
     {
         int delta = ((int)day - (int)weekStart.DayOfWeek + 7) % 7;
@@ -1782,7 +1897,8 @@ public class TimetableController : Controller
         if (oldWeeks.Count > 0) _db.AcademicWeeks.RemoveRange(oldWeeks);
 
         var weekNo = 1;
-        for (var start = term.StartDate.Date; start <= term.EndDate.Date; start = start.AddDays(7), weekNo++)
+        var firstMonday = StartOfCalendarWeek(term.StartDate.Date);
+        for (var start = firstMonday; start <= term.EndDate.Date; start = start.AddDays(7), weekNo++)
         {
             _db.AcademicWeeks.Add(new AcademicWeek
             {
@@ -1790,10 +1906,16 @@ public class TimetableController : Controller
                 TermId = term.TermId,
                 WeekNumber = weekNo,
                 StartDate = start,
-                EndDate = start.AddDays(6) > term.EndDate.Date ? term.EndDate.Date : start.AddDays(6),
+                EndDate = start.AddDays(6),
                 WeekType = "Teaching"
             });
         }
+    }
+
+    private static DateTime StartOfCalendarWeek(DateTime date)
+    {
+        var daysSinceMonday = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
+        return date.Date.AddDays(-daysSinceMonday);
     }
 
 }

@@ -114,6 +114,7 @@ public class ClassDashboardDto { public string ClassId {get;set;}=string.Empty; 
 public class TeacherCourseLookupDto { public string TeacherId {get;set;}=string.Empty; public string TeacherName {get;set;}=string.Empty; public string CourseId {get;set;}=string.Empty; public string CourseName {get;set;}=string.Empty; }
 public class HolidayDecisionRequest { public string TimetableId {get;set;}=string.Empty; public DateTime Date {get;set;} public string Decision {get;set;}=string.Empty; public string? Note {get;set;} }
 public class ReplacementRequest { public string SourceTimetableId {get;set;}=string.Empty; public DateTime SourceOccurrenceDate {get;set;} public DateTime Date {get;set;} public string StartTime {get;set;}=string.Empty; public string EndTime {get;set;}=string.Empty; public string? ClassroomId {get;set;} }
+public class WaiveReplacementRequest { public string SourceTimetableId {get;set;}=string.Empty; public DateTime SourceOccurrenceDate {get;set;} public string? Reason {get;set;} }
 
 public class ReplacementRequiredDto
 {
@@ -127,6 +128,9 @@ public class ReplacementRequiredDto
     public string StartTime { get; set; } = string.Empty;
     public string EndTime { get; set; } = string.Empty;
     public bool HasReplacement { get; set; }
+    public bool IsCurrentWeek { get; set; }
+    public bool CanScheduleReplacement { get; set; }
+    public DateTime? NextValidTuitionDate { get; set; }
     public DateTime? ReplacementDate { get; set; }
     public string? ReplacementStartTime { get; set; }
     public string? ReplacementEndTime { get; set; }

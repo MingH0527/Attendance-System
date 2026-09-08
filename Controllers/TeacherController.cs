@@ -524,7 +524,11 @@ public class TeacherController : Controller
                     occurrenceDate <
                         weekStart ||
                     occurrenceDate >
-                        weekEnd
+                        weekEnd ||
+                    occurrenceDate <
+                        activeTerm.StartDate.Date ||
+                    occurrenceDate >
+                        activeTerm.EndDate.Date
                 )
                 {
                     continue;

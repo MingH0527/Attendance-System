@@ -172,11 +172,12 @@ function renderSkeleton(){
  const hr=$("gridHeaderRow");hr.innerHTML="<th>Day / Time</th>";HOURS.forEach(h=>hr.insertAdjacentHTML("beforeend",`<th>${fmt(h)} - ${fmt(h+1)}</th>`));
  const body=$("gridBody");body.innerHTML="";
  DAYS[S.type].forEach(day=>{
-  const tr=document.createElement("tr");tr.dataset.day=day;tr.innerHTML=`<td class="tt-day-label">${DAY_NAME[day]}</td>`;
+  const selectedWeek=$("weekDate").value;
+  const occurrence=selectedWeek?occurrenceDate(selectedWeek,+day):null;
+  const outside=occurrence&&!isDateInsideSemester(occurrence);
+  const tr=document.createElement("tr");tr.dataset.day=day;
+  tr.innerHTML=`<td class="tt-day-label ${outside?"tt-day-outside":""}"><strong>${DAY_NAME[day]}</strong>${occurrence?`<span>${dateDayShort(occurrence)}</span>`:""}${outside?'<small>Outside Semester</small>':""}</td>`;
   HOURS.forEach(h=>{const td=document.createElement("td");td.className="tt-cell";td.dataset.hour=h;td.dataset.day=day;
-   const selectedWeek=$("weekDate").value;
-   const occurrence=selectedWeek?occurrenceDate(selectedWeek,+day):null;
-   const outside=occurrence&&!isDateInsideSemester(occurrence);
    if(outside){
     td.classList.add("tt-outside-semester");
     td.dataset.outsideSemester="true";
@@ -235,11 +236,17 @@ async function openEdit(e){
  configureStatus(e.dayOfWeek,e.status,e.statusReason,e.hasReplacement);showLessonModal();
 }
 function configureStatus(day,status,reason,hasReplacement=false){
- const selected=$("weekDate").value,sel=$("fStatus"),label=$("statusDateLabel"),hint=$("statusHint");
- sel.disabled=false;
+ const selected=$("weekDate").value,sel=$("fStatus"),label=$("statusDateLabel"),hint=$("statusHint"),saveBtn=$("lessonForm").querySelector('button[type="submit"]');
+ sel.disabled=false;$("fClassroomId").disabled=false;saveBtn.disabled=false;
  [...sel.options].forEach(o=>o.disabled=false);
  if(!selected){sel.value="Normal";label.textContent="";hint.textContent="Weekly template is the parent schedule. To change lesson status, select the specific Week first.";return;}
  const d=occurrenceDate(selected,+day);label.textContent=`· ${dateShort(d)}`;sel.value=status==="Cancelled"?"Cancelled":"Normal";
+ const lessonStart=new Date(`${d}T${$("fStartTime").value}:00`);
+ if(lessonStart<=new Date()){
+  sel.disabled=true;$("fClassroomId").disabled=true;$("fStartTime").readOnly=true;$("fEndTime").readOnly=true;saveBtn.disabled=true;
+  hint.textContent=`This lesson started or passed on ${dateShort(d)} and is now read-only. Its classroom, time and status can no longer be changed.`;
+  return;
+ }
  if(status==="Cancelled"&&hasReplacement){
   const normalOption=[...sel.options].find(o=>o.value==="Normal");if(normalOption)normalOption.disabled=true;
   sel.value="Cancelled";
@@ -302,26 +309,37 @@ async function updateReplacementPanel(){
  panel.hidden=!show;if(!show){host.innerHTML="";return;}
  const r=await fetch(`/Timetable/ReplacementRequired?termId=${encodeURIComponent(S.term.termId)}&classId=${encodeURIComponent(S.cls.classId)}&weekDate=${encodeURIComponent(week)}`);
  S.replacementRequired=r.ok?await r.json():[];
- if(!S.replacementRequired.length){host.innerHTML='<div class="tt-replacement-empty">No cancelled lesson is recorded for this Week.</div>';return;}
+ if(!S.replacementRequired.length){host.innerHTML='<div class="tt-replacement-empty">No unresolved replacement is waiting for this class.</div>';return;}
  host.innerHTML="";
  S.replacementRequired.forEach(x=>{
-  const card=document.createElement("article");card.className=`tt-replacement-card ${x.hasReplacement?"scheduled":"pending"}`;
-  const replacement=x.hasReplacement?`<span class="tt-replacement-linked">↪ Replacement Scheduled: ${dateShort(x.replacementDate)} · ${esc(x.replacementStartTime)}-${esc(x.replacementEndTime)}${x.replacementRoomName?" · "+esc(x.replacementRoomName):""}</span>`:"";
-  card.innerHTML=`<div><strong>${esc(x.courseName)} · ${esc(x.teacherName)}</strong><span>🟥 Cancelled ${dateShort(x.occurrenceDate)} · ${esc(x.startTime)}-${esc(x.endTime)}${x.roomName?" · "+esc(x.roomName):""}</span>${replacement}</div>${x.hasReplacement?'<em class="tt-replacement-done">Scheduled</em>':'<button type="button" class="tt-btn-primary">Schedule Replacement</button>'}`;
-  if(!x.hasReplacement)card.querySelector("button").onclick=()=>openReplacementModal(x);host.appendChild(card);
+  const card=document.createElement("article");card.className="tt-replacement-card pending";
+  const scope=x.isCurrentWeek?'<em class="tt-replacement-scope current">This Week</em>':'<em class="tt-replacement-scope previous">Previous Pending</em>';
+  const availability=x.canScheduleReplacement
+   ? `<span class="tt-replacement-available">Next valid Tuition date: ${dateShort(x.nextValidTuitionDate)}</span>`
+   : '<span class="tt-replacement-unavailable">No Saturday/Sunday Tuition date remains before semester end. Admin may confirm that this cancelled lesson will not have a replacement class.</span>';
+  const action=x.canScheduleReplacement
+   ? '<button type="button" class="tt-btn-primary" data-action="schedule">Schedule Replacement</button>'
+   : '<button type="button" class="tt-btn-secondary" data-action="waive">Confirm Cancellation — No Replacement</button>';
+  card.innerHTML=`<div>${scope}<strong>${esc(x.courseName)} · ${esc(x.teacherName)}</strong><span>🟥 Cancelled ${dateShort(x.occurrenceDate)} · ${esc(x.startTime)}-${esc(x.endTime)}${x.roomName?" · "+esc(x.roomName):""}</span>${availability}</div>${action}`;
+  const button=card.querySelector("button");
+  if(x.canScheduleReplacement)button.onclick=()=>openReplacementModal(x);else button.onclick=()=>waiveReplacement(x);
+  host.appendChild(card);
  });
 }
 function openReplacementModal(x){
  $("replacementError").hidden=true;$("rTimetableId").value=x.timetableId;$("rSourceDate").value=x.occurrenceDate.slice(0,10);$("rTeacherId").value=x.teacherId;
  $("rOriginal").value=`${x.courseName} · ${x.teacherName} · ${dateShort(x.occurrenceDate)} · ${x.startTime}-${x.endTime}`;
  $("rDate").min=x.occurrenceDate.slice(0,10);$("rDate").max=S.term.endDate.slice(0,10);
- const weekStart=new Date($("weekDate").value+"T00:00:00");let d=new Date(weekStart);while(d<new Date(x.occurrenceDate)&&d<=new Date(S.term.endDate)){d.setDate(d.getDate()+1)}
- while(d.getDay()!==6&&d.getDay()!==0)d.setDate(d.getDate()+1);
- if(d<new Date(x.occurrenceDate))d=new Date(x.occurrenceDate);
- const termEnd=new Date(S.term.endDate);
- $("rDate").value=d<=termEnd?localIso(d):"";$("rStart").value=x.startTime;$("rEnd").value=x.endTime;$("replacementModal").hidden=false;
- if(d>termEnd){$("replacementError").textContent="No valid Tuition date remains on or after this cancelled lesson before the semester ends.";$("replacementError").hidden=false;$("rClassroom").innerHTML='<option value="">-- No valid replacement date --</option>';return;}
+ const next=x.nextValidTuitionDate?String(x.nextValidTuitionDate).slice(0,10):"";
+ $("rDate").value=next;$("rStart").value=x.startTime;$("rEnd").value=x.endTime;$("replacementModal").hidden=false;
+ if(!next){$("replacementError").textContent="No valid Tuition Saturday/Sunday remains before the semester ends.";$("replacementError").hidden=false;$("rClassroom").innerHTML='<option value="">-- No valid replacement date --</option>';return;}
  refreshReplacementRooms();
+}
+async function waiveReplacement(x){
+ if(!confirm(`No valid Tuition weekend remains for the cancelled lesson on ${dateShort(x.occurrenceDate)}. I confirm this lesson is cancelled and no replacement class will be scheduled. Continue?`))return;
+ const r=await fetch("/Timetable/WaiveReplacement",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sourceTimetableId:x.timetableId,sourceOccurrenceDate:x.occurrenceDate,reason:"No valid Tuition weekend remains before semester end."})});
+ if(!r.ok){alert(await r.text());return;}
+ await updateReplacementPanel();
 }
 function closeReplacementModal(){$("replacementModal").hidden=true;}
 async function refreshReplacementRooms(){
@@ -581,5 +599,6 @@ function isDateInsideSemester(date){
 function localIso(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}
 function dateText(v){return new Date(v).toLocaleDateString();}
 function dateShort(v){return new Date(v).toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"});}
+function dateDayShort(v){return new Date(v).toLocaleDateString(undefined,{day:"2-digit",month:"short"});}
 function fmt(h){const p=h>=12?"PM":"AM",d=h>12?h-12:h;return `${d}:00 ${p}`;}
 })();

@@ -1146,3 +1146,15 @@
     .tt-set-active-btn:hover {
         background: #dbe1e8
     }
+
+
+/* Actual-date labels for specific academic weeks. */
+.tt-day-label strong { display:block; }
+.tt-day-label span { display:block; margin-top:3px; font-size:12px; font-weight:600; color:#64748b; }
+.tt-day-label small { display:block; margin-top:4px; font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.03em; }
+.tt-day-label.tt-day-outside { background:#e5e7eb !important; color:#64748b !important; }
+.tt-replacement-scope { display:inline-block; width:max-content; margin-bottom:5px; padding:3px 7px; border-radius:999px; font-size:11px; font-style:normal; font-weight:700; }
+.tt-replacement-scope.current { background:#dbeafe; color:#1d4ed8; }
+.tt-replacement-scope.previous { background:#f1f5f9; color:#475569; }
+.tt-replacement-available { color:#166534 !important; font-weight:600; }
+.tt-replacement-unavailable { color:#9a3412 !important; font-weight:600; }
