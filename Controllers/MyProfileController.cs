@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
 using Microsoft.AspNetCore.Hosting;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 
 namespace WebAndMobile.Controllers;
 
@@ -42,6 +44,7 @@ public class MyProfileController : Controller
         adminPinHasher;
 
     private readonly IAvatarService avatarService;
+    private readonly IConfiguration configuration;
 
 
     public MyProfileController(
@@ -49,7 +52,8 @@ public class MyProfileController : Controller
         PasskeyFido2Factory passkeyFido2Factory,
         IPasswordHasher<AdminSecurity> adminPinHasher,
         IWebHostEnvironment environment,
-        IAvatarService avatarService)
+        IAvatarService avatarService,
+        IConfiguration configuration)
     {
         this.db =
             db;
@@ -65,6 +69,9 @@ public class MyProfileController : Controller
 
         this.avatarService =
             avatarService;
+
+        this.configuration =
+            configuration;
     }
 
 
@@ -543,6 +550,216 @@ public class MyProfileController : Controller
         return RedirectToAction(
             nameof(Index)
         );
+    }
+
+
+    // ==================================================
+    // CLOUDINARY PHOTO STUDIO AI
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ProcessPhotoWithCloudinary(
+        IFormFile photo,
+        string operation)
+    {
+        if (photo == null || photo.Length == 0)
+        {
+            return BadRequest(new { message = "Please choose a photo first." });
+        }
+
+        if (photo.Length > 8 * 1024 * 1024)
+        {
+            return BadRequest(new { message = "The photo must be smaller than 8MB." });
+        }
+
+        string[] allowedContentTypes = { "image/jpeg", "image/png", "image/webp" };
+        if (!allowedContentTypes.Contains(photo.ContentType.ToLowerInvariant()))
+        {
+            return BadRequest(new { message = "Only JPG, PNG and WEBP images are supported." });
+        }
+
+        string? cloudName = configuration["Cloudinary:CloudName"];
+        string? apiKey = configuration["Cloudinary:ApiKey"];
+        string? apiSecret = configuration["Cloudinary:ApiSecret"];
+
+        if (string.IsNullOrWhiteSpace(cloudName) ||
+            string.IsNullOrWhiteSpace(apiKey) ||
+            string.IsNullOrWhiteSpace(apiSecret))
+        {
+            return StatusCode(503, new { message = "Cloudinary is not configured on the server." });
+        }
+
+        Transformation transformation;
+        string format;
+
+        switch ((operation ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            case "enhance":
+                transformation = new Transformation().Effect("auto_enhance");
+                format = "jpg";
+                break;
+
+            case "remove-background":
+                transformation = new Transformation().Effect("background_removal");
+                format = "png";
+                break;
+
+            default:
+                return BadRequest(new { message = "Unknown photo operation." });
+        }
+
+        Cloudinary cloudinary = new Cloudinary(
+            new Account(cloudName, apiKey, apiSecret));
+        cloudinary.Api.Secure = true;
+
+        string publicId = $"profile-studio-{Guid.NewGuid():N}";
+
+        try
+        {
+            await using Stream input = photo.OpenReadStream();
+
+            ImageUploadParams uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(photo.FileName, input),
+                PublicId = publicId,
+                Folder = "webandmobile/profile-photo-studio-temp",
+                Transformation = transformation,
+                Format = format,
+                Overwrite = true
+            };
+
+            ImageUploadResult result = await cloudinary.UploadAsync(uploadParams);
+
+            if (result.Error != null || result.SecureUrl == null)
+            {
+                string message = result.Error?.Message ?? "Cloudinary could not process the photo.";
+                return StatusCode(502, new { message });
+            }
+
+            using HttpClient client = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(35)
+            };
+
+            byte[]? bytes = null;
+            Exception? lastError = null;
+
+            // Background removal can finish asynchronously on some Cloudinary plans.
+            // Retry briefly so the editor gets the processed image instead of a broken URL.
+            for (int attempt = 0; attempt < 6; attempt++)
+            {
+                try
+                {
+                    using HttpResponseMessage response =
+                        await client.GetAsync(result.SecureUrl.ToString());
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        bytes = await response.Content.ReadAsByteArrayAsync();
+                        break;
+                    }
+
+                    lastError = new InvalidOperationException(
+                        $"Cloudinary returned {(int)response.StatusCode} while preparing the image.");
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                }
+
+                await Task.Delay(1500);
+            }
+
+            if (bytes == null || bytes.Length == 0)
+            {
+                return StatusCode(502, new
+                {
+                    message = lastError?.Message ??
+                              "Cloudinary is still processing the photo. Please try again in a moment."
+                });
+            }
+
+            _ = cloudinary.DestroyAsync(new DeletionParams(
+                $"webandmobile/profile-photo-studio-temp/{publicId}"));
+
+            string contentType = format == "png" ? "image/png" : "image/jpeg";
+            return File(bytes, contentType);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(502, new
+            {
+                message = $"Cloudinary processing failed: {ex.Message}"
+            });
+        }
+    }
+
+
+    // ==================================================
+    // REMOVE PROFILE PICTURE
+    // ==================================================
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveAvatar()
+    {
+        string? userId = GetCurrentUserId();
+
+        if (userId == null)
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        User? user =
+            await db.Users
+                .FirstOrDefaultAsync(
+                    u => u.UserId == userId
+                );
+
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        // Only delete files from the existing local avatar folder.
+        // Never construct a path from an external Cloudinary/HTTP URL.
+        if (!string.IsNullOrWhiteSpace(user.Avatar) &&
+            user.Avatar.StartsWith(
+                "/uploads/avatars/",
+                StringComparison.OrdinalIgnoreCase
+            ))
+        {
+            string relativeAvatarPath =
+                user.Avatar
+                    .TrimStart('/')
+                    .Replace(
+                        '/',
+                        Path.DirectorySeparatorChar
+                    );
+
+            string oldAvatarPath =
+                Path.Combine(
+                    environment.WebRootPath,
+                    relativeAvatarPath
+                );
+
+            if (System.IO.File.Exists(oldAvatarPath))
+            {
+                System.IO.File.Delete(oldAvatarPath);
+            }
+        }
+
+        user.Avatar = "default.png";
+        await db.SaveChangesAsync();
+
+        TempData["AvatarSuccess"] =
+            "Profile picture removed successfully.";
+
+        return RedirectToAction(nameof(Index));
     }
 
 
