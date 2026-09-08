@@ -1,5 +1,4 @@
-﻿
-Payment · CSS
+﻿Payment · CSS
 * {
     box-sizing: border-box;
 }
@@ -256,8 +255,10 @@ select {
 /* ---------- Fee list (SelectFee page) ---------- */
 
 .fee-list-container {
-    width: 100%;
-    max-width: 560px;
+    /* Same box as .payment-history-container so the "Payment" heading and
+       the tab bar sit in exactly the same place on both tabs. */
+    width: min(1100px, calc(100% - 40px));
+    margin: 0 auto;
 }
 
     .fee-list-container .eyebrow {
@@ -273,6 +274,9 @@ select {
     }
 
 .fee-list {
+    /* The container is wide for alignment; the cards themselves stay narrow. */
+    max-width: 620px;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -495,8 +499,10 @@ select {
 }
 
 .payment-history-container {
+    /* margin-top removed: .payment-page already supplies the top padding,
+       and the extra 70px pushed this tab lower than the other one. */
     width: min(1100px, calc(100% - 40px));
-    margin: 70px auto;
+    margin: 0 auto;
 }
 
 .payment-history-table-wrapper {
@@ -606,12 +612,15 @@ select {
     margin-bottom: 26px;
 }
 
-.billing-title {
-    margin: 0 0 18px;
-    color: #16233a;
-    font-size: 30px;
-    line-height: 1.2;
-}
+    /* Two selectors deep so this wins over ".fee-list-container h1", which is
+   more specific than a bare class and was shrinking the heading to 26px on
+   the Current Bill tab only. */
+    .billing-head .billing-title {
+        margin: 0 0 18px;
+        color: #16233a;
+        font-size: 30px;
+        line-height: 1.2;
+    }
 
 .billing-tabs {
     display: flex;
