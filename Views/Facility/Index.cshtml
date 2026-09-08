@@ -25,6 +25,22 @@
     @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
     @if (TempData["FacilitySuccess"] != null) { <div class="facility-alert success">@TempData["FacilitySuccess"]</div> }
 
+    @{ int activeBookingCount = ViewBag.ActiveBookingCount is int count ? count : 0; }
+    <section class="booking-limit-card @(activeBookingCount >= 2 ? "reached" : "")">
+        <div>
+            <span class="facility-kicker">@(activeBookingCount >= 2 ? "BOOKING LIMIT REACHED" : "FACILITY BOOKING LIMIT")</span>
+            <h2>@activeBookingCount / 2 Active Bookings</h2>
+            @if (activeBookingCount >= 2)
+            {
+                <p>You currently have 2 active facility bookings.<br/>Complete or cancel an existing booking before making another booking.</p>
+            }
+            else
+            {
+                <p>You can have a maximum of 2 active facility bookings at a time.<br/>Pending, Approved and ongoing Checked-In bookings count toward the limit.<br/>Cancelled and completed bookings do not count.</p>
+            }
+        </div>
+    </section>
+
     <div class="facility-grid five-cards">
         @foreach (var facility in Model)
         {
@@ -39,7 +55,14 @@
                     <h2>@facility.FacilityName</h2>
                     <p class="facility-location">📍 @facility.Location</p>
                     <p>@facility.Description</p>
-                    <a asp-action="Details" asp-route-id="@facility.FacilityId" class="facility-primary-btn">View &amp; Book</a>
+                    @if (activeBookingCount >= 2)
+                    {
+                        <span class="facility-primary-btn disabled" aria-disabled="true">Book Facility</span>
+                    }
+                    else
+                    {
+                        <a asp-action="Details" asp-route-id="@facility.FacilityId" class="facility-primary-btn">View &amp; Book</a>
+                    }
                 </div>
             </article>
         }

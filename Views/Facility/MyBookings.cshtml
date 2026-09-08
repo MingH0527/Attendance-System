@@ -24,6 +24,12 @@
 
     @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
     @if (TempData["FacilitySuccess"] != null) { <div class="facility-alert success">@TempData["FacilitySuccess"]</div> }
+    @{ int activeBookingCount = ViewBag.ActiveBookingCount is int count ? count : 0; }
+    <section class="booking-limit-card compact @(activeBookingCount >= 2 ? "reached" : "")">
+        <span class="facility-kicker">@(activeBookingCount >= 2 ? "BOOKING LIMIT REACHED" : "FACILITY BOOKING LIMIT")</span>
+        <h2>@activeBookingCount / 2 Active Bookings</h2>
+        <p>@(activeBookingCount >= 2 ? "Complete or cancel an existing booking before making another booking." : "Pending, Approved and ongoing Checked-In bookings count. Cancelled and completed bookings do not count.")</p>
+    </section>
     <div class="booking-list">
         @if (!Model.Any()) { <div class="empty-state">No facility bookings yet.</div> }
         @foreach (var b in Model)

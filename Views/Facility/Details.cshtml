@@ -2,7 +2,7 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = Model.Facility.FacilityName;
-    var today = DateTime.Now.Date;
+    var today = Model.Today.Date;
     var first = new DateTime(Model.SelectedDate.Year, Model.SelectedDate.Month, 1);
     var days = DateTime.DaysInMonth(first.Year, first.Month);
     var offset = (int)first.DayOfWeek;
@@ -25,15 +25,25 @@
             <div class="facility-meta"><span><strong>Location</strong>@Model.Facility.Location</span><span><strong>Capacity</strong>@Model.Facility.Capacity students</span><span><strong>Availability</strong>24 Hours</span></div>
             <div class="facility-description"><strong>Description</strong><p>@Model.Facility.Description</p></div>
         </section>
-        <section class="booking-panel" id="bookingPanel" data-facility="@Model.Facility.FacilityId" data-daily-booked-hours="@Model.DailyBookedHours" data-daily-remaining-hours="@Model.DailyRemainingHours">
+        <section class="booking-panel" id="bookingPanel" data-facility="@Model.Facility.FacilityId" data-active-bookings="@Model.ActiveBookingCount" data-booking-limit="@Model.ActiveBookingLimit">
             <h2>Book Facility</h2>
             <p class="panel-note">Bookings are available from today up to 7 days in advance.</p>
+            <div class="booking-limit-card compact @(Model.BookingLimitReached ? "reached" : "")">
+                <span class="facility-kicker">@(Model.BookingLimitReached ? "BOOKING LIMIT REACHED" : "FACILITY BOOKING LIMIT")</span>
+                <h3>@Model.ActiveBookingCount / @Model.ActiveBookingLimit Active Bookings</h3>
+                @if (Model.BookingLimitReached)
+                {
+                    <p>You currently have 2 active facility bookings.<br/>Complete or cancel an existing booking before making another booking.</p>
+                }
+                else
+                {
+                    <p>You can have a maximum of 2 active facility bookings at a time.<br/>Pending, Approved and ongoing Checked-In bookings count toward the limit.<br/>Cancelled and completed bookings do not count.</p>
+                }
+            </div>
             <div class="booking-rules">
                 <strong>Booking Rules</strong>
                 <span>Maximum 6 hours per booking</span>
-                <span>Maximum 8 hours per student per day</span>
-                <span>Cooldown applies after a 6-hour booking and does not count toward the 8-hour daily limit</span>
-                <span>Booked today: @Model.DailyBookedHours hour(s) · Remaining: @Model.DailyRemainingHours hour(s)</span>
+                <span>Maximum 2 active bookings per student at a time</span>
             </div>
             <div class="calendar-card">
                 <div class="calendar-title">@first.ToString("MMMM yyyy")</div>
@@ -57,20 +67,18 @@
                 {
                     bool ownBooking = Model.OwnBookingStartHours.Contains(hour);
                     bool unavailable = !ownBooking && Model.UnavailableStartHours.Contains(hour);
-                    bool cooldown = !ownBooking && !unavailable && Model.CooldownStartHours.Contains(hour);
-                    bool dailyLimit = Model.DailyBookedHours >= 8 && !ownBooking && !unavailable;
+                    bool bookingLimit = Model.BookingLimitReached && !ownBooking && !unavailable;
                     string end = hour + 2 == 24 ? "00:00" : $"{hour + 2:00}:00";
-                    string slotClass = ownBooking ? "own-booking" : unavailable ? "unavailable" : dailyLimit ? "daily-limit" : cooldown ? "cooldown" : "available";
-                    string title = ownBooking ? "Your existing booking. This time counts toward your daily booked hours."
+                    string slotClass = ownBooking ? "own-booking" : unavailable ? "unavailable" : bookingLimit ? "booking-limit" : "available";
+                    string title = ownBooking ? "Your active booking."
                         : unavailable ? "Already booked by another student or unavailable."
-                        : dailyLimit ? "Daily limit reached. You already have 8 booked hours for this date."
-                        : cooldown ? "Cooldown after a 6-hour booking. This time does not count toward your 8-hour daily limit."
+                        : bookingLimit ? "Booking limit reached. Complete or cancel an active booking first."
                         : "Available";
-                    bool disabled = ownBooking || unavailable || dailyLimit || cooldown;
+                    bool disabled = ownBooking || unavailable || bookingLimit;
                     <button type="button" class="time-slot @slotClass" data-hour="@hour" disabled="@disabled" title="@title">@($"{hour:00}:00")–@end</button>
                 }
             </div>
-            <div class="legend time-legend"><span><i class="legend-box slot-available"></i>Available</span><span><i class="legend-box slot-range"></i>Selected Range</span><span><i class="legend-box slot-boundary"></i>Selected Start / End</span><span><i class="legend-box slot-own-booking"></i>Your Booking</span><span><i class="legend-box slot-cooldown"></i>Cooldown (not counted in 8h)</span><span><i class="legend-box slot-unavailable"></i>Unavailable</span><span><i class="legend-box slot-daily-limit"></i>Daily Limit</span></div>
+            <div class="legend time-legend"><span><i class="legend-box slot-available"></i>Available</span><span><i class="legend-box slot-range"></i>Selected Range</span><span><i class="legend-box slot-boundary"></i>Selected Start / End</span><span><i class="legend-box slot-own-booking"></i>Your Booking</span><span><i class="legend-box slot-unavailable"></i>Unavailable</span><span><i class="legend-box slot-booking-limit"></i>Booking Limit</span></div>
             <div class="booking-client-error" id="bookingClientError" role="alert" hidden></div>
             <div class="booking-summary"><span>Selected Date<strong>@Model.SelectedDate.ToString("dd MMMM yyyy")</strong></span><span>Selected Time<strong id="selectedTime">Not selected</strong></span><span>Duration<strong id="selectedDuration">0 Hours</strong></span></div>
             <form asp-action="Book" method="post" id="bookingForm">

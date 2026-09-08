@@ -4,11 +4,12 @@ public class FacilityBookingPageViewModel
 {
     public Facility Facility { get; set; } = new();
     public DateTime SelectedDate { get; set; }
+    public DateTime Today { get; set; }
     public HashSet<int> UnavailableStartHours { get; set; } = new();
     public HashSet<int> OwnBookingStartHours { get; set; } = new();
-    public HashSet<int> CooldownStartHours { get; set; } = new();
-    public int DailyBookedHours { get; set; }
-    public int DailyRemainingHours => Math.Max(0, 8 - DailyBookedHours);
+    public int ActiveBookingCount { get; set; }
+    public int ActiveBookingLimit { get; set; } = 2;
+    public bool BookingLimitReached => ActiveBookingCount >= ActiveBookingLimit;
 }
 
 public class FacilityBookingRequestViewModel

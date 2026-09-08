@@ -28,14 +28,15 @@ public class ActivityCheckInController : Controller
         FacilityBooking? booking = await GetBooking(token);
         if (booking == null) return View("InvalidQr");
 
-        if (booking.Status == "Checked In" && booking.Attendance != null)
+        if (booking.Attendance != null && booking.Status is ("Checked In" or "Completed"))
         {
             return View("AlreadyCheckedIn", booking);
         }
 
-        if (booking.Status != "Approved")
+        DateTime now = MalaysiaNow();
+        if (booking.Status != "Approved" || now < GetStartDateTime(booking) || now >= GetEndDateTime(booking))
         {
-            ViewBag.Message = "This booking is not available for Activity Check-In.";
+            ViewBag.Message = "This booking is not currently available for Activity Check-In. QR check-in is only valid from the booking start time until, but not including, the end time.";
             return View("InvalidQr");
         }
 
@@ -54,14 +55,15 @@ public class ActivityCheckInController : Controller
             return View("InvalidQr");
         }
 
-        if (booking.Status == "Checked In" && booking.Attendance != null)
+        if (booking.Attendance != null && booking.Status is ("Checked In" or "Completed"))
         {
             return View("AlreadyCheckedIn", booking);
         }
 
-        if (booking.Status != "Approved")
+        DateTime now = MalaysiaNow();
+        if (booking.Status != "Approved" || now < GetStartDateTime(booking) || now >= GetEndDateTime(booking))
         {
-            ViewBag.Message = "This booking is not available for Activity Check-In.";
+            ViewBag.Message = "This booking is not currently available for Activity Check-In. QR check-in is only valid during the approved booking time.";
             return View("InvalidQr");
         }
 
@@ -138,15 +140,17 @@ public class ActivityCheckInController : Controller
             return View("InvalidQr");
         }
 
-        if (booking.Status == "Checked In" && booking.Attendance != null)
+        if (booking.Attendance != null && booking.Status is ("Checked In" or "Completed"))
         {
             ClearPending();
             return View("AlreadyCheckedIn", booking);
         }
 
-        if (booking.Status != "Approved")
+        DateTime now = MalaysiaNow();
+        if (booking.Status != "Approved" || now < GetStartDateTime(booking) || now >= GetEndDateTime(booking))
         {
-            ViewBag.Message = "This booking is no longer available for Activity Check-In.";
+            ViewBag.Message = "This booking is no longer available for Activity Check-In. The QR is valid only during the approved booking time.";
+            ClearPending();
             return View("InvalidQr");
         }
 
@@ -213,6 +217,12 @@ public class ActivityCheckInController : Controller
         HttpContext.Session.Remove("ActivityCheckIn.Token");
         HttpContext.Session.Remove("ActivityCheckIn.UserId");
     }
+
+    private static DateTime GetStartDateTime(FacilityBooking booking) =>
+        booking.BookingDate.Date.AddHours(booking.StartHour);
+
+    private static DateTime GetEndDateTime(FacilityBooking booking) =>
+        booking.BookingDate.Date.AddHours(booking.EndHour);
 
     private static DateTime MalaysiaNow()
     {

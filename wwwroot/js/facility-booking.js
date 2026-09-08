@@ -11,8 +11,8 @@
     const bookButton = document.getElementById("bookButton");
     const clientError = document.getElementById("bookingClientError");
 
-    const dailyBookedHours = Number(panel?.dataset.dailyBookedHours || 0);
-    const dailyRemainingHours = Number(panel?.dataset.dailyRemainingHours || 0);
+    const activeBookings = Number(panel?.dataset.activeBookings || 0);
+    const bookingLimit = Number(panel?.dataset.bookingLimit || 2);
     const maxSingleBookingHours = 6;
 
     let firstHour = null;
@@ -50,22 +50,22 @@
         clearSelection();
         if (clearMessage) setError("");
 
+        if (activeBookings >= bookingLimit) {
+            startInput.value = "";
+            endInput.value = "";
+            selectedTime.textContent = "Booking limit reached";
+            selectedDuration.textContent = `${activeBookings} / ${bookingLimit} Active`;
+            bookButton.disabled = true;
+            setError("You currently have 2 active facility bookings. Complete or cancel an existing booking before making another booking.");
+            return;
+        }
+
         if (firstHour === null) {
             startInput.value = "";
             endInput.value = "";
             selectedTime.textContent = "Not selected";
             selectedDuration.textContent = "0 Hours";
             bookButton.disabled = true;
-            return;
-        }
-
-        if (dailyRemainingHours < 2) {
-            startInput.value = "";
-            endInput.value = "";
-            selectedTime.textContent = "Daily limit reached";
-            selectedDuration.textContent = `${dailyBookedHours} / 8 Hours`;
-            bookButton.disabled = true;
-            setError("You have reached the maximum of 8 facility booking hours for this date.");
             return;
         }
 
@@ -85,17 +85,12 @@
         const duration = end - start;
 
         if (rangeContainsBlocked(start, end)) {
-            resetToFirstSelection("The selected range contains a blocked time slot (your booking, cooldown, daily limit, or unavailable time).");
+            resetToFirstSelection("The selected range contains an unavailable or already-booked time slot.");
             return;
         }
 
         if (duration > maxSingleBookingHours) {
             resetToFirstSelection("A single facility booking can be a maximum of 6 hours (3 continuous slots).");
-            return;
-        }
-
-        if (duration > dailyRemainingHours) {
-            resetToFirstSelection(`You have ${dailyRemainingHours} booking hour(s) remaining for this date. The daily maximum is 8 hours.`);
             return;
         }
 

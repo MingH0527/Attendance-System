@@ -3,6 +3,7 @@
     Layout = "_Layout";
     ViewData["Title"] = "Facility Booking Requests";
     var facilities = Model.Where(x => x.Facility != null).Select(x => x.Facility!.FacilityName).Distinct().OrderBy(x => x).ToList();
+    DateTime malaysiaNow = ViewBag.MalaysiaNow is DateTime dt ? dt : DateTime.Now;
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
@@ -47,6 +48,7 @@
                         <option value="Rejected">Rejected</option>
                         <option value="Cancelled">Cancelled</option>
                         <option value="Checked In">Checked In</option>
+                        <option value="Completed">Completed</option>
                     </select>
                 </label>
                 <label>Facility
@@ -87,12 +89,44 @@
                             <td>@($"{b.StartHour:00}:00")–@(b.EndHour == 24 ? "00:00" : $"{b.EndHour:00}:00")<br/><small>@(b.EndHour-b.StartHour) Hours</small></td>
                             <td><span class="status-pill status-@b.Status.Replace(" ", "").ToLowerInvariant()">@b.Status</span></td>
                             <td class="actions-cell">
+                                @{
+                                    DateTime startDateTime = b.BookingDate.Date.AddHours(b.StartHour);
+                                    DateTime endDateTime = b.BookingDate.Date.AddHours(b.EndHour);
+                                    bool canGenerateQr = b.Status == "Approved" && malaysiaNow >= startDateTime && malaysiaNow < endDateTime;
+                                    bool beforeStart = b.Status == "Approved" && malaysiaNow < startDateTime;
+                                }
                                 @if (b.Status == "Pending")
                                 {
                                     <form asp-action="Approve" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId"/><button class="mini-btn approve" type="submit">Approve</button></form>
-                                    <form asp-action="Reject" method="post" class="reject-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId"/><input name="reason" placeholder="Rejection reason" maxlength="300"/><button class="mini-btn reject" type="submit">Reject</button></form>
+                                    <form asp-action="AdminCancel" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId"/><button class="mini-btn cancel" type="submit">Cancel</button></form>
                                 }
-                                else if (b.Status is "Approved" or "Checked In") { <a asp-action="Qr" asp-route-id="@b.BookingId" class="mini-btn qr">Activity QR</a> }
+                                else if (b.Status == "Approved")
+                                {
+                                    @if (canGenerateQr)
+                                    {
+                                        <a asp-action="Qr" asp-route-id="@b.BookingId" class="mini-btn qr">Generate QR</a>
+                                    }
+                                    else if (beforeStart)
+                                    {
+                                        <button type="button" class="mini-btn qr disabled" disabled>Generate QR</button><small class="action-note">Available at @startDateTime.ToString("hh:mm tt")</small>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="mini-btn qr disabled" disabled>Generate QR</button><small class="action-note">Expired</small>
+                                    }
+                                    @if (malaysiaNow < endDateTime)
+                                    {
+                                        <form asp-action="AdminCancel" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId"/><button class="mini-btn cancel" type="submit">Cancel</button></form>
+                                    }
+                                }
+                                else if (b.Status == "Checked In")
+                                {
+                                    <small class="verify-ok">Checked In · Cancel disabled</small>
+                                }
+                                else if (b.Status == "Completed")
+                                {
+                                    <small class="muted-text">Completed · Slot released</small>
+                                }
                                 else if (b.Status == "Rejected") { <small>@b.RejectionReason</small> }
                             </td>
                         </tr>

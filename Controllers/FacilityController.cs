@@ -26,6 +26,11 @@ public class FacilityController : Controller
     [HttpGet]
     public async Task<IActionResult> Index()
     {
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
+        string currentUserId = GetCurrentUserId();
+        ViewBag.ActiveBookingCount = await GetActiveBookingCount(currentUserId, now);
+
         List<Facility> facilities = await db.Facilities
             .AsNoTracking()
             .Include(f => f.Images.OrderByDescending(i => i.IsCover).ThenBy(i => i.UploadedAt))
@@ -39,6 +44,9 @@ public class FacilityController : Controller
     [HttpGet]
     public async Task<IActionResult> Details(string id, DateTime? date = null)
     {
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
+
         Facility? facility = await db.Facilities
             .AsNoTracking()
             .Include(f => f.Images.OrderByDescending(i => i.IsCover).ThenBy(i => i.UploadedAt))
@@ -46,7 +54,7 @@ public class FacilityController : Controller
 
         if (facility == null) return NotFound();
 
-        DateTime today = MalaysiaNow().Date;
+        DateTime today = now.Date;
         DateTime selected = (date ?? today).Date;
         if (selected < today || selected > today.AddDays(7)) selected = today;
 
@@ -57,49 +65,35 @@ public class FacilityController : Controller
                         (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In"))
             .ToListAsync();
 
+        occupiedBookings = occupiedBookings
+            .Where(b => GetEndDateTime(b) > now)
+            .ToList();
+
         HashSet<int> unavailable = occupiedBookings
             .SelectMany(b => Enumerable.Range(b.StartHour / 2, (b.EndHour - b.StartHour) / 2))
             .Select(x => x * 2)
             .ToHashSet();
 
         string currentUserId = GetCurrentUserId();
-        List<FacilityBooking> ownBookings = await db.FacilityBookings
-            .AsNoTracking()
-            .Where(b => b.UserId == currentUserId &&
-                        b.BookingDate == selected &&
-                        (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In"))
-            .ToListAsync();
-
-        int dailyBookedHours = ownBookings.Sum(b => b.EndHour - b.StartHour);
+        List<FacilityBooking> ownBookings = occupiedBookings
+            .Where(b => b.UserId == currentUserId)
+            .ToList();
 
         HashSet<int> ownBookingStartHours = ownBookings
             .SelectMany(b => Enumerable.Range(b.StartHour / 2, (b.EndHour - b.StartHour) / 2))
             .Select(x => x * 2)
             .ToHashSet();
 
-        HashSet<int> cooldownStartHours = new();
-        if (dailyBookedHours < 8)
-        {
-            foreach (FacilityBooking booking in ownBookings.Where(b => b.EndHour - b.StartHour >= 6))
-            {
-                // Cooldown is only required after a booking that already reaches the 6-hour single-booking maximum.
-                // It blocks the next selectable time slot but never contributes to the 8-hour daily booked total.
-                int after = booking.EndHour;
-                if (after <= 22) cooldownStartHours.Add(after);
-            }
-        }
-
-        cooldownStartHours.ExceptWith(ownBookingStartHours);
-        cooldownStartHours.ExceptWith(unavailable);
+        int activeBookingCount = await GetActiveBookingCount(currentUserId, now);
 
         return View(new FacilityBookingPageViewModel
         {
             Facility = facility,
             SelectedDate = selected,
+            Today = today,
             UnavailableStartHours = unavailable,
             OwnBookingStartHours = ownBookingStartHours,
-            CooldownStartHours = cooldownStartHours,
-            DailyBookedHours = dailyBookedHours
+            ActiveBookingCount = activeBookingCount
         });
     }
 
@@ -137,36 +131,33 @@ public class FacilityController : Controller
             return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
         }
 
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
+
+        DateTime requestedStartDateTime = date.AddHours(model.StartHour);
+        if (requestedStartDateTime <= now)
+        {
+            TempData["FacilityError"] = "The selected booking start time has already passed. Please choose a future time slot.";
+            return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
+        }
+
         string currentUserId = GetCurrentUserId();
-        List<FacilityBooking> ownBookings = await db.FacilityBookings
+        int activeBookingCount = await GetActiveBookingCount(currentUserId, now);
+        if (activeBookingCount >= 2)
+        {
+            TempData["FacilityError"] = "Booking Limit Reached. You currently have 2 active facility bookings. Complete or cancel an existing booking before making another booking.";
+            return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
+        }
+
+        List<FacilityBooking> possibleCollisions = await db.FacilityBookings
             .AsNoTracking()
-            .Where(b => b.UserId == currentUserId &&
+            .Where(b => b.FacilityId == model.FacilityId &&
                         b.BookingDate == date &&
-                        (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In"))
+                        (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In") &&
+                        model.StartHour < b.EndHour && model.EndHour > b.StartHour)
             .ToListAsync();
 
-        int existingDailyHours = ownBookings.Sum(b => b.EndHour - b.StartHour);
-        if (existingDailyHours + requestedHours > 8)
-        {
-            TempData["FacilityError"] = $"Daily booking limit exceeded. You already have {existingDailyHours} booked hour(s) on this date and the daily maximum is 8 hours.";
-            return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
-        }
-
-        bool cooldownConflict = ownBookings
-            .Where(b => b.EndHour - b.StartHour >= 6)
-            .Any(b => model.StartHour >= b.EndHour && model.StartHour < b.EndHour + 2);
-
-        if (cooldownConflict)
-        {
-            TempData["FacilityError"] = "After a 6-hour booking, the next time slot is reserved as cooldown. Cooldown does not count toward the 8-hour daily limit.";
-            return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
-        }
-
-        bool collision = await db.FacilityBookings.AnyAsync(b =>
-            b.FacilityId == model.FacilityId &&
-            b.BookingDate == date &&
-            (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In") &&
-            model.StartHour < b.EndHour && model.EndHour > b.StartHour);
+        bool collision = possibleCollisions.Any(b => GetEndDateTime(b) > now);
 
         if (collision)
         {
@@ -208,7 +199,10 @@ public class FacilityController : Controller
     [HttpGet]
     public async Task<IActionResult> MyBookings()
     {
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
         string userId = GetCurrentUserId();
+        ViewBag.ActiveBookingCount = await GetActiveBookingCount(userId, now);
         List<FacilityBooking> bookings = await db.FacilityBookings
             .AsNoTracking()
             .Include(b => b.Facility)
@@ -232,9 +226,9 @@ public class FacilityController : Controller
 
         if (booking == null) return NotFound();
 
-        if (booking.Status is not ("Pending" or "Approved"))
+        if (booking.Status is not ("Pending" or "Approved") || GetEndDateTime(booking) <= MalaysiaNow())
         {
-            TempData["FacilityError"] = "Only pending or approved bookings can be cancelled before activity check-in.";
+            TempData["FacilityError"] = "Only active pending or approved bookings can be cancelled before activity check-in.";
             return RedirectToAction(nameof(MyBookings));
         }
 
@@ -395,6 +389,10 @@ public class FacilityController : Controller
     [HttpGet]
     public async Task<IActionResult> BookingRequests(string? status = null)
     {
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
+        ViewBag.MalaysiaNow = now;
+
         IQueryable<FacilityBooking> query = db.FacilityBookings
             .AsNoTracking()
             .Include(b => b.Facility)
@@ -447,6 +445,28 @@ public class FacilityController : Controller
     }
 
     [Authorize(Roles = "Admin")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminCancel(string id)
+    {
+        FacilityBooking? booking = await db.FacilityBookings.FirstOrDefaultAsync(b => b.BookingId == id);
+        if (booking == null) return NotFound();
+
+        DateTime now = MalaysiaNow();
+        if (booking.Status is not ("Pending" or "Approved") || GetEndDateTime(booking) <= now)
+        {
+            TempData["FacilityError"] = "Only active Pending or Approved bookings can be cancelled before the student checks in.";
+            return RedirectToAction(nameof(BookingRequests));
+        }
+
+        booking.Status = "Cancelled";
+        booking.QrToken = null;
+        await db.SaveChangesAsync();
+        TempData["FacilitySuccess"] = $"Booking {id} cancelled. The facility slot and the student's active-booking quota were released immediately.";
+        return RedirectToAction(nameof(BookingRequests));
+    }
+
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<IActionResult> Qr(string id)
     {
@@ -455,9 +475,15 @@ public class FacilityController : Controller
             .Include(b => b.User)
             .FirstOrDefaultAsync(b => b.BookingId == id);
         if (booking == null) return NotFound();
-        if (booking.Status != "Approved" && booking.Status != "Checked In")
+        DateTime now = MalaysiaNow();
+        DateTime startDateTime = GetStartDateTime(booking);
+        DateTime endDateTime = GetEndDateTime(booking);
+
+        if (booking.Status != "Approved" || now < startDateTime || now >= endDateTime)
         {
-            TempData["FacilityError"] = "Only approved bookings can generate an Activity Check-In QR.";
+            TempData["FacilityError"] = now < startDateTime
+                ? $"Activity QR is not available yet. It becomes available at {startDateTime:dd MMM yyyy hh:mm tt}."
+                : "Activity QR has expired because the booking end time has been reached.";
             return RedirectToAction(nameof(BookingRequests));
         }
 
@@ -480,17 +506,54 @@ public class FacilityController : Controller
     [HttpGet]
     public async Task<IActionResult> ActivityAttendance()
     {
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
+
         List<FacilityBooking> bookings = await db.FacilityBookings
             .AsNoTracking()
             .Include(b => b.Facility)
             .Include(b => b.User)
             .Include(b => b.Attendance)
-            .Where(b => b.Status == "Approved" || b.Status == "Checked In")
+            .Where(b => b.Status == "Approved" || b.Status == "Checked In" || b.Status == "Completed")
             .OrderByDescending(b => b.BookingDate)
             .ThenBy(b => b.StartHour)
             .ToListAsync();
         return View(bookings);
     }
+
+    private async Task<int> GetActiveBookingCount(string userId, DateTime now)
+    {
+        List<FacilityBooking> candidates = await db.FacilityBookings
+            .AsNoTracking()
+            .Where(b => b.UserId == userId &&
+                        (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In"))
+            .ToListAsync();
+
+        return candidates.Count(b => GetEndDateTime(b) > now);
+    }
+
+    private async Task CompleteEndedActiveBookings(DateTime now)
+    {
+        List<FacilityBooking> ended = await db.FacilityBookings
+            .Where(b => b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In")
+            .ToListAsync();
+
+        ended = ended.Where(b => GetEndDateTime(b) <= now).ToList();
+        if (ended.Count == 0) return;
+
+        foreach (FacilityBooking booking in ended)
+        {
+            booking.Status = "Completed";
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static DateTime GetStartDateTime(FacilityBooking booking) =>
+        booking.BookingDate.Date.AddHours(booking.StartHour);
+
+    private static DateTime GetEndDateTime(FacilityBooking booking) =>
+        booking.BookingDate.Date.AddHours(booking.EndHour);
 
     private string GetCurrentUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? throw new UnauthorizedAccessException("The login session is invalid.");

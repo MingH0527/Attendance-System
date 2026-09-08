@@ -13,7 +13,7 @@ public static class Cloudflare
     //
 
     public const string PublicUrl =
-        "https://chelsea-poet-collectibles-documented.trycloudflare.com";
+        "https://observation-diet-calculated-brunette.trycloudflare.com";
 
     // ==================================================
     // CONFIGURATION CHECK
