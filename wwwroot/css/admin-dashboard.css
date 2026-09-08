@@ -656,3 +656,97 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ================= Pagination ================= */
+
+.apd-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #eef1f6;
+}
+
+.apd-pager-info {
+    color: #8a94a6;
+    font-size: 13px;
+}
+
+.apd-pager-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.apd-page {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dae1ea;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #2c3648;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: 0.16s ease;
+}
+
+    .apd-page:hover {
+        border-color: #7bd4d8;
+        background: #f2fbfb;
+        color: #10606a;
+    }
+
+    .apd-page.is-active {
+        border-color: #008c95;
+        background: #008c95;
+        color: #ffffff;
+        cursor: default;
+    }
+
+    .apd-page.is-disabled {
+        border-color: #eef1f6;
+        background: #f7f9fc;
+        color: #c3cbd8;
+        cursor: not-allowed;
+    }
+
+    .apd-page:focus-visible {
+        outline: 2px solid #008c95;
+        outline-offset: 2px;
+    }
+
+/* ---------- date range inputs ---------- */
+
+.apd-date-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #6c7789;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.apd-input--date {
+    min-width: 0;
+    padding: 9px 12px;
+    color-scheme: light;
+}
+
+/* ---------- live filtering ---------- */
+
+#paymentsResults {
+    transition: opacity .15s ease;
+}
+
+    #paymentsResults.is-loading {
+        opacity: .45;
+        pointer-events: none;
+    }

@@ -114,9 +114,48 @@ public class AdminDashboardViewModel
 
     public string TopMethod { get; set; } = "";
 
+    // Paging for the Overall Student Payments table
+
+    public int Page { get; set; } = 1;
+
+    public int PageSize { get; set; } = 10;
+
+    /// Row count after filters, before paging.
+    public int TotalPayments { get; set; }
+
+    public int TotalPages { get; set; } = 1;
+
+    /// 1-based index of the first row on this page (0 when empty).
+    public int FirstRowOnPage =>
+        TotalPayments == 0
+            ? 0
+            : ((Page - 1) * PageSize) + 1;
+
+    public int LastRowOnPage =>
+        Math.Min(Page * PageSize, TotalPayments);
+
     // Active filters (echoed back to the form)
 
     public string? Search { get; set; }
 
     public string StatusFilter { get; set; } = "All";
+
+    public string MethodFilter { get; set; } = "All";
+
+    /// Inclusive: payments made on this local date or later.
+    public DateTime? FromDate { get; set; }
+
+    /// Inclusive: payments made on this local date or earlier.
+    public DateTime? ToDate { get; set; }
+
+    /// Every payment method that appears in the data, for the dropdown.
+    public List<string> AvailableMethods { get; set; } = [];
+
+    /// True when anything other than the defaults is applied.
+    public bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(Search) ||
+        StatusFilter != "All" ||
+        MethodFilter != "All" ||
+        FromDate.HasValue ||
+        ToDate.HasValue;
 }
