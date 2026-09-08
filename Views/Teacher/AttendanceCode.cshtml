@@ -34,8 +34,7 @@
             </h1>
 
             <p>
-                Generate attendance codes for
-                today's classes.
+                Generate attendance codes for today's classes.
             </p>
 
         </div>
@@ -77,10 +76,11 @@
                 </h2>
 
                 <p>
-                    @(Model.Date.ToString("dddd, dd MMMM yyyy"))
+                    @Model.Date.ToString("dddd, dd MMMM yyyy")
                 </p>
 
             </div>
+
 
             <span class="attendance-count">
                 @Model.Classes.Count
@@ -102,8 +102,7 @@
                 </strong>
 
                 <p>
-                    You do not have any classes
-                    scheduled today.
+                    You do not have any classes scheduled today.
                 </p>
 
             </div>
@@ -119,16 +118,18 @@
                             ? "replacement"
                             : "";
 
+
                     <div class="attendance-class-item @classStyle">
+
 
                         <div class="attendance-class-time">
 
                             <strong>
-                                @(item.StartTime.ToString(@"hh\:mm"))
+                                @item.StartTime.ToString(@"hh\:mm")
                             </strong>
 
                             <span>
-                                @(item.EndTime.ToString(@"hh\:mm"))
+                                @item.EndTime.ToString(@"hh\:mm")
                             </span>
 
                         </div>
@@ -158,10 +159,30 @@
                                 @item.RoomName
                             </span>
 
+
+                            @if (item.NeedsManualAttendance)
+                            {
+                                <div class="manual-attendance-warning">
+
+                                    <strong>
+                                        ⚠ Attendance code was not generated
+                                    </strong>
+
+                                    <span>
+                                        The class has ended.
+                                        Please complete the attendance manually.
+                                    </span>
+
+                                </div>
+                            }
+
                         </div>
 
 
                         <div class="attendance-code-action">
+
+
+                            @* ACTIVE CODE / GENERATE CODE *@
 
                             @if (!string.IsNullOrWhiteSpace(item.ActiveCode))
                             {
@@ -179,7 +200,7 @@
                                     {
                                         <span>
                                             Expires
-                                            @(item.ExpiresAt.Value.ToString("HH:mm"))
+                                            @item.ExpiresAt.Value.ToString("HH:mm")
                                         </span>
                                     }
 
@@ -193,9 +214,11 @@
 
                                     @Html.AntiForgeryToken()
 
+
                                     <input type="hidden"
                                            name="timetableId"
                                            value="@item.TimetableId" />
+
 
                                     @if (!string.IsNullOrWhiteSpace(item.ReplacementId))
                                     {
@@ -204,11 +227,14 @@
                                                value="@item.ReplacementId" />
                                     }
 
+
                                     @if (item.CanGenerate)
                                     {
                                         <button type="submit"
                                                 class="generate-code-button">
+
                                             Generate Code
+
                                         </button>
                                     }
                                     else
@@ -216,19 +242,74 @@
                                         <button type="button"
                                                 class="generate-code-button disabled"
                                                 disabled>
+
                                             Generate Code
+
                                         </button>
+
 
                                         @if (!string.IsNullOrWhiteSpace(item.DisabledReason))
                                         {
                                             <small class="generate-disabled-reason">
+
                                                 @item.DisabledReason
+
                                             </small>
                                         }
                                     }
 
                                 </form>
                             }
+
+
+                            @* VIEW STUDENTS *@
+
+                            @if (item.CanViewStudents)
+                            {
+                                <a asp-controller="Attendance"
+                                   asp-action="Manage"
+                                   asp-route-timetableId="@item.TimetableId"
+                                   asp-route-date="@Model.Date.ToString("yyyy-MM-dd")"
+                                   asp-route-replacementId="@item.ReplacementId"
+                                   class="view-students-button">
+
+                                    👥 View Students
+
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button"
+                                        class="view-students-button disabled"
+                                        disabled>
+
+                                    👥 View Students
+
+                                </button>
+
+
+                                @if (DateTime.Now.TimeOfDay < item.StartTime)
+                                {
+                                    <small class="generate-disabled-reason">
+
+                                        Available at
+                                        @item.StartTime.ToString(@"hh\:mm").
+
+                                    </small>
+                                }
+                                else if (!item.HasGeneratedCode)
+                                {
+                                    <small class="generate-disabled-reason">
+
+                                        Generate the attendance code first.
+                                        If no code is generated,
+                                        View Students will be available after the class ends.
+
+                                    </small>
+                                }
+
+                            }
+
 
                         </div>
 

@@ -1,33 +1,354 @@
+@model WebAndMobile.Models.TeacherManageAttendanceViewModel
+
 @{
-    ViewData["Title"] = "Payment Face ID";
-    bool hasFace = ViewBag.HasFaceProfile ?? false;
-    int? returnFeeId = ViewBag.ReturnFeeId;
+    ViewData["Title"] = "Manage Attendance";
 }
-<link rel="stylesheet" href="~/css/face-payment.css" asp-append-version="true" />
-<div class="security-shell">
-    <section class="security-card compact-card">
-        <div class="security-icon">🙂</div>
-        <p class="eyebrow">Payment Security</p>
-        <h1>Payment Face ID</h1>
-        <p class="muted">This face is checked before the system displays a QR payment code.</p>
 
-        @if (ViewBag.Message != null) { <div class="message success">@ViewBag.Message</div> }
-        @if (ViewBag.Error != null) { <div class="message error">@ViewBag.Error</div> }
+<link rel="stylesheet"
+      href="~/css/teacherhome.css"
+      asp-append-version="true" />
 
-        <div class="status-panel @(hasFace ? "ready" : "missing")">
-            <strong>@(hasFace ? "Face ID registered" : "Face ID not registered")</strong>
-            <span>@(hasFace ? "Your account is ready for face verification." : "Register your face before using QR payment.")</span>
+<link rel="stylesheet"
+      href="~/css/teacher-manage-attendance.css"
+      asp-append-version="true" />
+
+
+<div class="teacher-dashboard">
+
+    <header class="teacher-header">
+
+        <div>
+
+            <a asp-controller="Teacher"
+               asp-action="AttendanceCode"
+               class="attendance-back">
+                ← Back to Attendance Code
+            </a>
+
+            <p class="teacher-role">
+                Teacher Portal
+            </p>
+
+            <h1>
+                Student Attendance
+            </h1>
+
+            <p>
+                @Model.CourseName
+                ·
+                @Model.ClassName
+            </p>
+
         </div>
 
-        @if (!hasFace)
+
+        <div class="manage-lesson-summary">
+
+            <strong>
+                @Model.Date.ToString("dd MMM yyyy")
+            </strong>
+
+            <span>
+                @Model.StartTime.ToString(@"hh\:mm")
+                -
+                @Model.EndTime.ToString(@"hh\:mm")
+            </span>
+
+            <span>
+                @Model.RoomName
+            </span>
+
+        </div>
+
+    </header>
+
+
+    @if (TempData["AttendanceError"] != null)
+    {
+        <div class="attendance-message error">
+            ⚠ @TempData["AttendanceError"]
+        </div>
+    }
+
+
+    @if (TempData["AttendanceSuccess"] != null)
+    {
+        <div class="attendance-message success">
+            ✓ @TempData["AttendanceSuccess"]
+        </div>
+    }
+
+
+    @if (!Model.HasGeneratedCode)
+    {
+        <div class="manual-attendance-alert">
+
+            <div class="manual-attendance-alert-icon">
+                ⚠
+            </div>
+
+            <div>
+
+                <strong>
+                    Attendance code was not generated
+                </strong>
+
+                <p>
+                    Please complete the attendance manually
+                    by checking every student's status.
+                </p>
+
+            </div>
+
+        </div>
+    }
+
+
+    <section class="manage-attendance-card">
+
+        <div class="manage-attendance-heading">
+
+            <div>
+
+                <h2>
+                    Student Attendance
+                </h2>
+
+
+                <p>
+                    @if (!Model.HasGeneratedCode)
+                    {
+                        <text>
+                            Manual attendance is required for this class.
+                        </text>
+                    }
+                    else if (Model.ClassEnded)
+                    {
+                        <text>
+                            Students without a valid Present record
+                            or approved leave are counted as Absent.
+                        </text>
+                    }
+                    else
+                    {
+                        <text>
+                            You may review and correct student attendance.
+                        </text>
+                    }
+                </p>
+
+            </div>
+
+
+            <span class="attendance-count">
+                @Model.Students.Count
+            </span>
+
+        </div>
+
+
+        @if (Model.Students.Count == 0)
         {
-            <a class="primary-action" asp-action="Register" asp-route-returnFeeId="@returnFeeId">Register Face ID</a>
+            <div class="manage-attendance-empty">
+
+                No students are registered in this class.
+
+            </div>
         }
-        else if (returnFeeId.HasValue)
+        else
         {
-            <a class="primary-action" asp-action="Verify" asp-route-feeId="@returnFeeId">Continue Face Verification</a>
+            <div class="manage-attendance-table-wrap">
+
+                <table class="manage-attendance-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Student ID
+                            </th>
+
+                            <th>
+                                Username
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th>
+                                Description
+                            </th>
+
+                            <th>
+                                Action
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (var student in Model.Students)
+                        {
+                            string statusClass =
+                                student.Status
+                                    .ToLowerInvariant()
+                                    .Replace(" ", "-");
+
+
+                            <tr>
+
+
+                                <td>
+                                    @student.StudentId
+                                </td>
+
+
+                                <td>
+                                    @student.Username
+                                </td>
+
+
+                                <td>
+
+                                    <span class="attendance-status @statusClass">
+
+                                        @student.Status
+
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    @(string.IsNullOrWhiteSpace(student.Description)
+                                        ? "-"
+                                        : student.Description)
+
+                                </td>
+
+
+                                <td>
+
+                                    @if (!student.CanEdit)
+                                    {
+                                        <span class="attendance-locked">
+
+                                            🔒 Approved Leave
+
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <div class="attendance-row-actions">
+
+
+                                            @if (student.Status != "Present")
+                                            {
+                                                <form asp-controller="Attendance"
+                                                      asp-action="MarkPresent"
+                                                      method="post">
+
+                                                    @Html.AntiForgeryToken()
+
+
+                                                    <input type="hidden"
+                                                           name="timetableId"
+                                                           value="@Model.TimetableId" />
+
+
+                                                    <input type="hidden"
+                                                           name="date"
+                                                           value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+
+                                                    <input type="hidden"
+                                                           name="studentClassId"
+                                                           value="@student.StudentClassId" />
+
+
+                                                    @if (!string.IsNullOrWhiteSpace(Model.ReplacementId))
+                                                    {
+                                                        <input type="hidden"
+                                                               name="replacementId"
+                                                               value="@Model.ReplacementId" />
+                                                    }
+
+
+                                                    <button type="submit"
+                                                            class="mark-present-button">
+
+                                                        ✓ Mark Present
+
+                                                    </button>
+
+                                                </form>
+                                            }
+
+
+                                            @if (student.Status == "Present")
+                                            {
+                                                <form asp-controller="Attendance"
+                                                      asp-action="MarkAbsent"
+                                                      method="post">
+
+                                                    @Html.AntiForgeryToken()
+
+
+                                                    <input type="hidden"
+                                                           name="timetableId"
+                                                           value="@Model.TimetableId" />
+
+
+                                                    <input type="hidden"
+                                                           name="date"
+                                                           value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+
+                                                    <input type="hidden"
+                                                           name="studentClassId"
+                                                           value="@student.StudentClassId" />
+
+
+                                                    @if (!string.IsNullOrWhiteSpace(Model.ReplacementId))
+                                                    {
+                                                        <input type="hidden"
+                                                               name="replacementId"
+                                                               value="@Model.ReplacementId" />
+                                                    }
+
+
+                                                    <button type="submit"
+                                                            class="mark-absent-button">
+
+                                                        ✕ Mark Absent
+
+                                                    </button>
+
+                                                </form>
+                                            }
+
+
+                                        </div>
+                                    }
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
         }
 
-        <a class="secondary-action" asp-controller="MyProfile" asp-action="Index">Back to My Profile</a>
     </section>
+
 </div>
