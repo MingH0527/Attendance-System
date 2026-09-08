@@ -95,14 +95,19 @@
                     int height =
                         month.Amount <= 0
                             ? 0
-                            : (int)Math.Round(month.Amount / monthPeak * 100m);
+                            : Math.Max(
+                                1,
+                                (int)Math.Round(month.Amount / monthPeak * 100m));
 
                     <div class="apd-bar-col"
                          title='@month.Label — RM @month.Amount.ToString("N2") (@month.Count paid)'>
 
                         <div class="apd-bar-track">
-                            <div class="apd-bar-fill"
-                                 style="height:@(height)%"></div>
+                            @if (height > 0)
+                            {
+                                <div class="apd-bar-fill"
+                                     style="height:@(height)%"></div>
+                            }
                         </div>
 
                         <span class="apd-bar-label">@month.Label</span>
@@ -249,14 +254,19 @@
                     int height =
                         day.Count == 0
                             ? 0
-                            : (int)Math.Round(day.Count * 100d / weekdayPeak);
+                            : Math.Max(
+                                1,
+                                (int)Math.Round(day.Count * 100d / weekdayPeak));
 
                     <div class="apd-bar-col"
                          title='@day.Label — @day.Count paid, RM @day.Amount.ToString("N2")'>
 
                         <div class="apd-bar-track">
-                            <div class="apd-bar-fill apd-bar-fill--alt"
-                                 style="height:@(height)%"></div>
+                            @if (height > 0)
+                            {
+                                <div class="apd-bar-fill apd-bar-fill--alt"
+                                     style="height:@(height)%"></div>
+                            }
                         </div>
 
                         <span class="apd-bar-label">@day.Label</span>
@@ -272,14 +282,19 @@
                     int height =
                         block.Count == 0
                             ? 0
-                            : (int)Math.Round(block.Count * 100d / hourPeak);
+                            : Math.Max(
+                                1,
+                                (int)Math.Round(block.Count * 100d / hourPeak));
 
                     <div class="apd-bar-col"
                          title='@block.Label — @block.Count paid, RM @block.Amount.ToString("N2")'>
 
                         <div class="apd-bar-track">
-                            <div class="apd-bar-fill apd-bar-fill--warm"
-                                 style="height:@(height)%"></div>
+                            @if (height > 0)
+                            {
+                                <div class="apd-bar-fill apd-bar-fill--warm"
+                                     style="height:@(height)%"></div>
+                            }
                         </div>
 
                         <span class="apd-bar-label">@block.Label</span>
