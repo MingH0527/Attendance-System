@@ -13,7 +13,7 @@ public static class Cloudflare
     //
 
     public const string PublicUrl =
-        "https://recorders-activists-subsequently-infrared.trycloudflare.com";
+        "https://chelsea-poet-collectibles-documented.trycloudflare.com";
 
     // ==================================================
     // CONFIGURATION CHECK

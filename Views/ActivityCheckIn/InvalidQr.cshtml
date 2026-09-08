@@ -1,0 +1,3 @@
+@{ Layout = "_AuthLayout"; ViewData["Title"] = "Activity Check-In Unavailable"; }
+<link rel="stylesheet" href="~/css/activity-checkin.css" asp-append-version="true" />
+<div class="activity-mobile-shell"><section class="activity-mobile-card error-card"><div class="activity-icon warning">!</div><span class="activity-eyebrow">ACTIVITY ATTENDANCE</span><h1>Check-In Unavailable</h1><p>@(ViewBag.Message ?? "The Activity Check-In QR code is invalid or no longer available.")</p></section></div>

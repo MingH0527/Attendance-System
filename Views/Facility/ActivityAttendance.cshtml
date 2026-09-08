@@ -1,0 +1,96 @@
+@model List<WebAndMobile.Models.FacilityBooking>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Activity Attendance";
+    var facilities = Model.Where(x => x.Facility != null).Select(x => x.Facility!.FacilityName).Distinct().OrderBy(x => x).ToList();
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
+}
+<div class="facility-page">
+    <a asp-action="AdminIndex" class="facility-back">← Back to Facilities</a>
+
+    <div class="facility-header">
+        <div>
+            <span class="facility-kicker">ATTENDANCE SYSTEM</span>
+            <h1>Activity Attendance</h1>
+            <p>Approved facility bookings become Present only after Student ID, password, QR and Face ID verification.</p>
+        </div>
+    </div>
+
+    <nav class="facility-section-nav" aria-label="Facility management navigation">
+        <a asp-action="AdminIndex">Facilities</a>
+        <a asp-action="BookingRequests">Booking Requests</a>
+        <a asp-action="ActivityAttendance" class="active">Activity Attendance</a>
+    </nav>
+
+    <section class="facility-list-card" data-facility-admin-list data-page-size="5">
+        <div class="facility-list-toolbar">
+            <div class="facility-search-box">
+                <span>⌕</span>
+                <input type="text" data-list-search placeholder="Search student, booking ID or facility..." autocomplete="off" />
+            </div>
+            <button type="button" class="facility-filter-button" data-filter-toggle>☰ Filter</button>
+        </div>
+
+        <div class="facility-filter-panel" data-filter-panel hidden>
+            <div class="facility-filter-head"><strong>Filter Activity Attendance</strong><button type="button" data-filter-close>×</button></div>
+            <div class="facility-filter-grid">
+                <label>Attendance
+                    <select data-filter-status>
+                        <option value="all">All Attendance</option>
+                        <option value="Present">Present</option>
+                        <option value="Not Checked In">Not Checked In</option>
+                    </select>
+                </label>
+                <label>Facility
+                    <select data-filter-facility>
+                        <option value="all">All Facilities</option>
+                        @foreach (var facility in facilities) { <option value="@facility">@facility</option> }
+                    </select>
+                </label>
+                <label>Sort
+                    <select data-filter-sort>
+                        <option value="default">Booking Date ↓</option>
+                        <option value="date-asc">Booking Date ↑</option>
+                        <option value="date-desc">Booking Date ↓</option>
+                        <option value="student-asc">Student A–Z</option>
+                    </select>
+                </label>
+            </div>
+            <div class="facility-filter-actions"><button type="button" class="facility-secondary-btn" data-filter-reset>Reset</button><button type="button" class="facility-primary-btn" data-filter-apply>Apply Filter</button></div>
+        </div>
+
+        <div class="table-shell">
+            <table class="facility-table">
+                <thead><tr><th>Student</th><th>Facility</th><th>Booking Date</th><th>Booking Time</th><th>Check-In</th><th>Verification</th><th>Attendance</th></tr></thead>
+                <tbody data-list-body>
+                    @foreach (var b in Model)
+                    {
+                        var attendanceStatus = b.Attendance != null ? "Present" : "Not Checked In";
+                        var searchText = $"{b.User?.Username} {b.StudentId} {b.BookingId} {b.Facility?.FacilityName}".ToLowerInvariant();
+                        <tr data-list-row
+                            data-search="@searchText"
+                            data-status="@attendanceStatus"
+                            data-facility="@b.Facility?.FacilityName"
+                            data-date="@b.BookingDate.ToString("yyyy-MM-dd")"
+                            data-student="@b.User?.Username">
+                            <td><strong>@b.User?.Username</strong><br/><small>@b.StudentId</small></td>
+                            <td>@b.Facility?.FacilityName<br/><small>@b.BookingId</small></td>
+                            <td>@b.BookingDate.ToString("dd MMM yyyy")</td>
+                            <td>@($"{b.StartHour:00}:00")–@(b.EndHour == 24 ? "00:00" : $"{b.EndHour:00}:00")</td>
+                            <td>@(b.Attendance == null ? "—" : b.Attendance.CheckInTime.ToString("dd MMM yyyy HH:mm"))</td>
+                            <td>@if (b.Attendance != null) { <span class="verify-ok">✓ Student Login<br/>✓ QR<br/>✓ Face ID</span> } else { <span class="muted-text">Not verified</span> }</td>
+                            <td>@if (b.Attendance != null) { <span class="attendance-present">Present</span> } else { <span class="attendance-pending">Not Checked In</span> }</td>
+                        </tr>
+                    }
+                    <tr data-empty-row hidden><td colspan="7" class="facility-empty-row">No Activity Attendance records found.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="facility-list-footer"><div data-pagination-summary></div><div class="facility-pagination" data-pagination></div></div>
+    </section>
+</div>
+@section Scripts {
+    <script src="~/js/facility-admin-list.js" asp-append-version="true"></script>
+}

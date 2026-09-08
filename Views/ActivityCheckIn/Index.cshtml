@@ -1,0 +1,11 @@
+@model WebAndMobile.Models.ActivityCheckInLoginViewModel
+@{ Layout = "_AuthLayout"; ViewData["Title"] = "Activity Check-In"; }
+<link rel="stylesheet" href="~/css/activity-checkin.css" asp-append-version="true" />
+<div class="activity-mobile-shell"><section class="activity-mobile-card"><span class="activity-eyebrow">ACTIVITY ATTENDANCE</span><div class="activity-icon">✓</div><h1>Activity Check-In</h1><p>Verify the booking owner's student account to continue to Face ID.</p>
+<form asp-action="VerifyStudent" method="post">@Html.AntiForgeryToken()<input type="hidden" asp-for="Token" />
+<div asp-validation-summary="ModelOnly" class="activity-error"></div>
+<label>Student ID<input asp-for="StudentId" autocomplete="username" placeholder="Enter Student ID" required /></label>
+<label>Login Password<input asp-for="Password" type="password" autocomplete="current-password" placeholder="Enter login password" required /></label>
+<button type="submit">Verify &amp; Continue</button></form>
+<div class="activity-steps"><span class="done">1 QR Scanned</span><span>2 Student Login</span><span>3 Face ID</span><span>4 Present</span></div>
+</section></div>

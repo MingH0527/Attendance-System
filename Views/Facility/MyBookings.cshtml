@@ -1,0 +1,49 @@
+@model List<WebAndMobile.Models.FacilityBooking>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "My Facility Bookings";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
+}
+<div class="facility-page">
+    <a asp-action="Index" class="facility-back">← Back to Facilities</a>
+
+    <div class="facility-header">
+        <div>
+            <span class="facility-kicker">ACTIVITY ATTENDANCE</span>
+            <h1>My Facility Bookings</h1>
+            <p>Track booking approval and completed Activity Check-Ins.</p>
+        </div>
+    </div>
+
+    <nav class="facility-section-nav student-nav" aria-label="Facility booking navigation">
+        <a asp-action="Index">Facilities</a>
+        <a asp-action="MyBookings" class="active">My Bookings</a>
+    </nav>
+
+    @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
+    @if (TempData["FacilitySuccess"] != null) { <div class="facility-alert success">@TempData["FacilitySuccess"]</div> }
+    <div class="booking-list">
+        @if (!Model.Any()) { <div class="empty-state">No facility bookings yet.</div> }
+        @foreach (var b in Model)
+        {
+            <article class="booking-row">
+                <div>
+                    <span class="booking-id">@b.BookingId</span>
+                    <h2>@b.Facility?.FacilityName</h2>
+                    <p>@b.BookingDate.ToString("dd MMM yyyy") · @($"{b.StartHour:00}:00")–@(b.EndHour == 24 ? "00:00" : $"{b.EndHour:00}:00") · @(b.EndHour-b.StartHour) Hours</p>
+                    @if (!string.IsNullOrWhiteSpace(b.RejectionReason)) { <p class="reason">Reason: @b.RejectionReason</p> }
+                </div>
+                <div class="booking-status-area">
+                    <span class="status-pill status-@b.Status.Replace(" ", "").ToLowerInvariant()">@b.Status</span>
+                    @if (b.Attendance != null) { <small>Activity Attendance: <strong>Present</strong><br/>Check-In: @b.Attendance.CheckInTime.ToString("dd MMM yyyy HH:mm")</small> }
+                    @if (b.Status is "Pending" or "Approved")
+                    {
+                        <form asp-action="Cancel" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId" /><button class="danger-link" type="submit">Cancel Booking</button></form>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+</div>

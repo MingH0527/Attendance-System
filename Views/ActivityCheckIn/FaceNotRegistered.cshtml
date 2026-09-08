@@ -1,0 +1,3 @@
+@{ Layout = "_AuthLayout"; ViewData["Title"] = "Face ID Not Registered"; }
+<link rel="stylesheet" href="~/css/activity-checkin.css" asp-append-version="true" />
+<div class="activity-mobile-shell"><section class="activity-mobile-card error-card"><div class="activity-icon warning">!</div><span class="activity-eyebrow">ACTIVITY CHECK-IN</span><h1>Face ID Not Registered</h1><p>No active Face ID profile was found for Student ID <strong>@ViewBag.StudentId</strong>.</p><div class="activity-message">Please sign in to the Student Portal and register Face ID before performing Activity Check-In.</div><a asp-controller="Account" asp-action="Login" class="activity-link">Go to Student Login</a></section></div>

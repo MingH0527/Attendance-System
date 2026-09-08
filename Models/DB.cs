@@ -40,6 +40,10 @@ public class DB : DbContext
     public DbSet<AttendanceSession> AttendanceSessions => Set<AttendanceSession>();
     public DbSet<AttendanceRecord> AttendanceRecords => Set<AttendanceRecord>();
     public DbSet<LeaveApplication> LeaveApplications => Set<LeaveApplication>();
+    public DbSet<Facility> Facilities => Set<Facility>();
+    public DbSet<FacilityImage> FacilityImages => Set<FacilityImage>();
+    public DbSet<FacilityBooking> FacilityBookings => Set<FacilityBooking>();
+    public DbSet<FacilityAttendance> FacilityAttendances => Set<FacilityAttendance>();
 
     // ==============================
     // BARRED LIST
@@ -106,5 +110,43 @@ public class DB : DbContext
                     r.SourceOccurrenceDate,
                     r.Status
                 });
+
+        modelBuilder.Entity<FacilityBooking>()
+            .HasIndex(b => new { b.FacilityId, b.BookingDate, b.Status });
+
+        modelBuilder.Entity<FacilityBooking>()
+            .HasIndex(b => b.QrToken)
+            .IsUnique()
+            .HasFilter("[QrToken] IS NOT NULL");
+
+        modelBuilder.Entity<FacilityBooking>()
+            .HasOne(b => b.Attendance)
+            .WithOne(a => a.Booking)
+            .HasForeignKey<FacilityAttendance>(a => a.BookingId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FacilityAttendance>()
+            .HasIndex(a => a.BookingId)
+            .IsUnique();
+
+        modelBuilder.Entity<FacilityAttendance>()
+            .HasOne(a => a.User)
+            .WithMany()
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FacilityAttendance>()
+            .HasOne(a => a.Facility)
+            .WithMany()
+            .HasForeignKey(a => a.FacilityId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Facility>().HasData(
+            new Facility { FacilityId = "FAC001", FacilityName = "Computer Lab", Location = "Block A", Capacity = 30, Description = "A 24-hour self-service computer laboratory for student activities and independent work." },
+            new Facility { FacilityId = "FAC002", FacilityName = "Gym", Location = "Sports Centre", Capacity = 30, Description = "A 24-hour self-service gym for student fitness and physical activities." },
+            new Facility { FacilityId = "FAC003", FacilityName = "Swimming Pool", Location = "Pool Area", Capacity = 40, Description = "A 24-hour self-service swimming facility for approved student activities." },
+            new Facility { FacilityId = "FAC004", FacilityName = "Sports Court", Location = "Sports Centre", Capacity = 40, Description = "A 24-hour self-service sports court for student recreational activities." },
+            new Facility { FacilityId = "FAC005", FacilityName = "Music Room", Location = "Block B", Capacity = 20, Description = "A 24-hour self-service music room for student practice and activities." }
+        );
     }
 }

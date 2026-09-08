@@ -1,0 +1,51 @@
+@model WebAndMobile.Models.FacilityBooking
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Already Checked In";
+}
+<link rel="stylesheet" href="~/css/activity-checkin.css" asp-append-version="true" />
+
+<div class="activity-mobile-shell">
+    <section class="activity-mobile-card already-card">
+        <div class="activity-already-mark">✓</div>
+        <span class="activity-eyebrow">ACTIVITY ATTENDANCE</span>
+
+        <h1>Already Checked In</h1>
+        <p class="activity-already-message">
+            This activity attendance has already been recorded successfully.
+            No further check-in is required.
+        </p>
+
+        <p class="activity-facility">@Model.Facility?.FacilityName</p>
+
+        <div class="activity-result-grid">
+            <span>
+                <small>Booking ID</small>
+                <strong>@Model.BookingId</strong>
+            </span>
+            <span>
+                <small>Student</small>
+                <strong>@Model.StudentId</strong>
+            </span>
+            <span>
+                <small>Date</small>
+                <strong>@Model.BookingDate.ToString("dd MMM yyyy")</strong>
+            </span>
+            <span>
+                <small>Booking Time</small>
+                <strong>@($"{Model.StartHour:00}:00")–@(Model.EndHour == 24 ? "00:00" : $"{Model.EndHour:00}:00")</strong>
+            </span>
+        </div>
+
+        <div class="original-checkin-box">
+            <small>ORIGINAL CHECK-IN</small>
+            <strong>@(Model.Attendance?.CheckInTime.ToString("dd MMM yyyy • HH:mm") ?? "Recorded")</strong>
+            <span>QR + Face ID verified</span>
+        </div>
+
+        <div class="already-status-box">
+            <span>ATTENDANCE STATUS</span>
+            <strong>PRESENT · ALREADY RECORDED</strong>
+        </div>
+    </section>
+</div>

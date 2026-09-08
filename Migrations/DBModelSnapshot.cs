@@ -508,6 +508,224 @@ namespace WebAndMobile.Migrations
                     b.ToTable("Courses");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.Facility", b =>
+                {
+                    b.Property<string>("FacilityId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("nvarchar(600)");
+
+                    b.Property<string>("FacilityName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.HasKey("FacilityId");
+
+                    b.ToTable("Facilities");
+
+                    b.HasData(
+                        new
+                        {
+                            FacilityId = "FAC001",
+                            Capacity = 30,
+                            Description = "A 24-hour self-service computer laboratory for student activities and independent work.",
+                            FacilityName = "Computer Lab",
+                            Location = "Block A"
+                        },
+                        new
+                        {
+                            FacilityId = "FAC002",
+                            Capacity = 30,
+                            Description = "A 24-hour self-service gym for student fitness and physical activities.",
+                            FacilityName = "Gym",
+                            Location = "Sports Centre"
+                        },
+                        new
+                        {
+                            FacilityId = "FAC003",
+                            Capacity = 40,
+                            Description = "A 24-hour self-service swimming facility for approved student activities.",
+                            FacilityName = "Swimming Pool",
+                            Location = "Pool Area"
+                        },
+                        new
+                        {
+                            FacilityId = "FAC004",
+                            Capacity = 40,
+                            Description = "A 24-hour self-service sports court for student recreational activities.",
+                            FacilityName = "Sports Court",
+                            Location = "Sports Centre"
+                        },
+                        new
+                        {
+                            FacilityId = "FAC005",
+                            Capacity = 20,
+                            Description = "A 24-hour self-service music room for student practice and activities.",
+                            FacilityName = "Music Room",
+                            Location = "Block B"
+                        });
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.FacilityAttendance", b =>
+                {
+                    b.Property<string>("FacilityAttendanceId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("BookingId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CheckInTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("FaceVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FacilityId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("QrVerified")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("VerificationMethod")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("FacilityAttendanceId");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.HasIndex("FacilityId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("FacilityAttendances");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.FacilityBooking", b =>
+                {
+                    b.Property<string>("BookingId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("BookingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EndHour")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FacilityId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("QrToken")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("StartHour")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("BookingId");
+
+                    b.HasIndex("QrToken")
+                        .IsUnique()
+                        .HasFilter("[QrToken] IS NOT NULL");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("FacilityId", "BookingDate", "Status");
+
+                    b.ToTable("FacilityBookings");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.FacilityImage", b =>
+                {
+                    b.Property<string>("FacilityImageId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("FacilityId")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsCover")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("FacilityImageId");
+
+                    b.HasIndex("FacilityId");
+
+                    b.ToTable("FacilityImages");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.LeaveApplication", b =>
                 {
                     b.Property<int>("LeaveId")
@@ -1140,6 +1358,10 @@ namespace WebAndMobile.Migrations
 
                     b.HasKey("NotificationId");
 
+                    b.HasIndex("TermId");
+
+                    b.HasIndex("TimetableId");
+
                     b.HasIndex("UserId", "IsRead", "CreatedAt");
 
                     b.ToTable("TimetableNotifications");
@@ -1495,6 +1717,63 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.FacilityAttendance", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.FacilityBooking", "Booking")
+                        .WithOne("Attendance")
+                        .HasForeignKey("WebAndMobile.Models.FacilityAttendance", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.Facility", "Facility")
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Facility");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.FacilityBooking", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Facility", "Facility")
+                        .WithMany("Bookings")
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Facility");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.FacilityImage", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.Facility", "Facility")
+                        .WithMany("Images")
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Facility");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.LeaveApplication", b =>
                 {
                     b.HasOne("WebAndMobile.Models.User", "Student")
@@ -1697,6 +1976,30 @@ namespace WebAndMobile.Migrations
                     b.Navigation("Timetable");
                 });
 
+            modelBuilder.Entity("WebAndMobile.Models.TimetableNotification", b =>
+                {
+                    b.HasOne("WebAndMobile.Models.AcademicTerm", "Term")
+                        .WithMany()
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WebAndMobile.Models.Timetable", "Timetable")
+                        .WithMany("Notifications")
+                        .HasForeignKey("TimetableId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("WebAndMobile.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Term");
+
+                    b.Navigation("Timetable");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("WebAndMobile.Models.UserFaceProfile", b =>
                 {
                     b.HasOne("WebAndMobile.Models.User", "User")
@@ -1754,6 +2057,23 @@ namespace WebAndMobile.Migrations
             modelBuilder.Entity("WebAndMobile.Models.Course", b =>
                 {
                     b.Navigation("Timetables");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.Facility", b =>
+                {
+                    b.Navigation("Bookings");
+
+                    b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.FacilityBooking", b =>
+                {
+                    b.Navigation("Attendance");
+                });
+
+            modelBuilder.Entity("WebAndMobile.Models.Timetable", b =>
+                {
+                    b.Navigation("Notifications");
                 });
 
             modelBuilder.Entity("WebAndMobile.Models.User", b =>

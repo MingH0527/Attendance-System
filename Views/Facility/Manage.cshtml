@@ -1,0 +1,77 @@
+@model WebAndMobile.Models.Facility
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Manage " + Model.FacilityName;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
+}
+<div class="facility-page narrow">
+    <a asp-action="AdminIndex" class="facility-back">← Back to Facilities</a>
+
+    <div class="facility-header">
+        <div>
+            <span class="facility-kicker">@Model.FacilityId</span>
+            <h1>@Model.FacilityName</h1>
+            <p>Facility details and image gallery management.</p>
+        </div>
+    </div>
+
+    <nav class="facility-section-nav" aria-label="Facility management navigation">
+        <a asp-action="AdminIndex" class="active">Facilities</a>
+        <a asp-action="BookingRequests">Booking Requests</a>
+        <a asp-action="ActivityAttendance">Activity Attendance</a>
+    </nav>
+
+    @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
+    @if (TempData["FacilitySuccess"] != null) { <div class="facility-alert success">@TempData["FacilitySuccess"]</div> }
+
+    <div class="admin-manage-grid">
+        <section class="admin-panel">
+            <h2>Facility Details</h2>
+            <form asp-action="UpdateDetails" method="post" class="facility-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="facilityId" value="@Model.FacilityId" />
+                <label>Location<input name="location" value="@Model.Location" required maxlength="120" /></label>
+                <label>Capacity<input name="capacity" type="number" min="1" value="@Model.Capacity" required /></label>
+                <label>Description<textarea name="description" maxlength="600" rows="5" required>@Model.Description</textarea></label>
+                <button class="facility-primary-btn" type="submit">Save Details</button>
+            </form>
+        </section>
+
+        <section class="admin-panel">
+            <div class="panel-title-row">
+                <div>
+                    <h2>Facility Photos</h2>
+                    <p>Maximum 4 images. Files are stored in <code>wwwroot/uploads/facility</code>.</p>
+                </div>
+                <span class="photo-count">@Model.Images.Count / 4</span>
+            </div>
+
+            <div class="admin-gallery">
+                @foreach (var image in Model.Images)
+                {
+                    <div class="admin-photo">
+                        <img src="@image.ImagePath" alt="Facility image" />
+                        @if (image.IsCover) { <span class="cover-tag">Cover</span> }
+                        <div class="photo-actions">
+                            @if (!image.IsCover)
+                            {
+                                <form asp-action="SetCover" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@image.FacilityImageId"/><button type="submit">Set Cover</button></form>
+                            }
+                            <form asp-action="DeleteImage" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@image.FacilityImageId"/><button type="submit" class="delete">Delete</button></form>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <form asp-action="UploadImages" method="post" enctype="multipart/form-data" class="upload-box">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="facilityId" value="@Model.FacilityId" />
+                <label>Upload Images<input type="file" name="images" multiple accept=".jpg,.png" disabled="@(Model.Images.Count >= 4)" /></label>
+                <small>JPG or PNG · maximum 5 MB each · total facility limit: 4</small>
+                <button class="facility-primary-btn" type="submit" disabled="@(Model.Images.Count >= 4)">Upload Selected Images</button>
+            </form>
+        </section>
+    </div>
+</div>

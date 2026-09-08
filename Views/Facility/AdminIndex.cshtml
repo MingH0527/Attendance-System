@@ -1,0 +1,48 @@
+@model List<WebAndMobile.Models.Facility>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Facility Management";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
+}
+<div class="facility-page">
+    <a asp-controller="Admin" asp-action="Index" class="facility-back">← Back</a>
+
+    <div class="facility-header">
+        <div>
+            <span class="facility-kicker">ADMIN</span>
+            <h1>Facility Management</h1>
+            <p>Manage facility details, images, booking requests and Activity Attendance.</p>
+        </div>
+    </div>
+
+    <nav class="facility-section-nav" aria-label="Facility management navigation">
+        <a asp-action="AdminIndex" class="active">Facilities</a>
+        <a asp-action="BookingRequests">Booking Requests</a>
+        <a asp-action="ActivityAttendance">Activity Attendance</a>
+    </nav>
+
+    @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
+    @if (TempData["FacilitySuccess"] != null) { <div class="facility-alert success">@TempData["FacilitySuccess"]</div> }
+
+    <div class="facility-grid five-cards">
+        @foreach (var facility in Model)
+        {
+            var cover = facility.Images.FirstOrDefault(i => i.IsCover) ?? facility.Images.FirstOrDefault();
+            <article class="facility-card">
+                <div class="facility-card-image">
+                    @if (cover != null) { <img src="@cover.ImagePath" alt="@facility.FacilityName" /> }
+                    else { <div class="facility-placeholder">🏫</div> }
+                    <span class="facility-badge">@facility.Images.Count / 4 Photos</span>
+                </div>
+                <div class="facility-card-body">
+                    <h2>@facility.FacilityName</h2>
+                    <p class="facility-location">📍 @facility.Location</p>
+                    <p>Capacity: @facility.Capacity</p>
+                    <a asp-action="Manage" asp-route-id="@facility.FacilityId" class="facility-primary-btn">Manage Facility</a>
+                </div>
+            </article>
+        }
+    </div>
+</div>

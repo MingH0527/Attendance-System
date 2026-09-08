@@ -1,0 +1,87 @@
+@model WebAndMobile.Models.FacilityBookingPageViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = Model.Facility.FacilityName;
+    var today = DateTime.Now.Date;
+    var first = new DateTime(Model.SelectedDate.Year, Model.SelectedDate.Month, 1);
+    var days = DateTime.DaysInMonth(first.Year, first.Month);
+    var offset = (int)first.DayOfWeek;
+    var cover = Model.Facility.Images.FirstOrDefault(i => i.IsCover) ?? Model.Facility.Images.FirstOrDefault();
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
+}
+<div class="facility-page">
+    <a asp-action="Index" class="facility-back">← Back to Facilities</a>
+    @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
+    <div class="booking-layout">
+        <section class="facility-detail-panel">
+            <span class="facility-kicker">24-HOUR SELF-SERVICE FACILITY</span>
+            <h1>@Model.Facility.FacilityName</h1>
+            <div class="facility-hero-image">@if (cover != null) { <img id="mainFacilityImage" src="@cover.ImagePath" alt="@Model.Facility.FacilityName" /> } else { <div class="facility-placeholder large">🏫</div> }</div>
+            <div class="facility-thumbnails">
+                @foreach (var image in Model.Facility.Images.Take(4)) { <button type="button" class="facility-thumb" data-image="@image.ImagePath"><img src="@image.ImagePath" alt="Facility photo" /></button> }
+            </div>
+            <div class="facility-meta"><span><strong>Location</strong>@Model.Facility.Location</span><span><strong>Capacity</strong>@Model.Facility.Capacity students</span><span><strong>Availability</strong>24 Hours</span></div>
+            <div class="facility-description"><strong>Description</strong><p>@Model.Facility.Description</p></div>
+        </section>
+        <section class="booking-panel" id="bookingPanel" data-facility="@Model.Facility.FacilityId" data-daily-booked-hours="@Model.DailyBookedHours" data-daily-remaining-hours="@Model.DailyRemainingHours">
+            <h2>Book Facility</h2>
+            <p class="panel-note">Bookings are available from today up to 7 days in advance.</p>
+            <div class="booking-rules">
+                <strong>Booking Rules</strong>
+                <span>Maximum 6 hours per booking</span>
+                <span>Maximum 8 hours per student per day</span>
+                <span>Cooldown applies after a 6-hour booking and does not count toward the 8-hour daily limit</span>
+                <span>Booked today: @Model.DailyBookedHours hour(s) · Remaining: @Model.DailyRemainingHours hour(s)</span>
+            </div>
+            <div class="calendar-card">
+                <div class="calendar-title">@first.ToString("MMMM yyyy")</div>
+                <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+                <div class="calendar-grid">
+                    @for (int i = 0; i < offset; i++) { <span class="calendar-empty"></span> }
+                    @for (int day = 1; day <= days; day++)
+                    {
+                        var d = new DateTime(first.Year, first.Month, day);
+                        bool allowed = d >= today && d <= today.AddDays(7);
+                        bool selected = d == Model.SelectedDate.Date;
+                        if (allowed) { <a asp-action="Details" asp-route-id="@Model.Facility.FacilityId" asp-route-date="@d.ToString("yyyy-MM-dd")" class="calendar-day available @(selected ? "selected" : "")">@day</a> }
+                        else { <span class="calendar-day unavailable">@day</span> }
+                    }
+                </div>
+                <div class="legend compact"><span><i class="legend-dot date-available"></i>Available Date</span><span><i class="legend-dot date-selected"></i>Selected Date</span><span><i class="legend-dot date-unavailable"></i>Unavailable Date</span></div>
+            </div>
+            <h3>Select Time</h3>
+            <div class="time-slot-grid" id="timeSlots">
+                @for (int hour = 0; hour < 24; hour += 2)
+                {
+                    bool ownBooking = Model.OwnBookingStartHours.Contains(hour);
+                    bool unavailable = !ownBooking && Model.UnavailableStartHours.Contains(hour);
+                    bool cooldown = !ownBooking && !unavailable && Model.CooldownStartHours.Contains(hour);
+                    bool dailyLimit = Model.DailyBookedHours >= 8 && !ownBooking && !unavailable;
+                    string end = hour + 2 == 24 ? "00:00" : $"{hour + 2:00}:00";
+                    string slotClass = ownBooking ? "own-booking" : unavailable ? "unavailable" : dailyLimit ? "daily-limit" : cooldown ? "cooldown" : "available";
+                    string title = ownBooking ? "Your existing booking. This time counts toward your daily booked hours."
+                        : unavailable ? "Already booked by another student or unavailable."
+                        : dailyLimit ? "Daily limit reached. You already have 8 booked hours for this date."
+                        : cooldown ? "Cooldown after a 6-hour booking. This time does not count toward your 8-hour daily limit."
+                        : "Available";
+                    bool disabled = ownBooking || unavailable || dailyLimit || cooldown;
+                    <button type="button" class="time-slot @slotClass" data-hour="@hour" disabled="@disabled" title="@title">@($"{hour:00}:00")–@end</button>
+                }
+            </div>
+            <div class="legend time-legend"><span><i class="legend-box slot-available"></i>Available</span><span><i class="legend-box slot-range"></i>Selected Range</span><span><i class="legend-box slot-boundary"></i>Selected Start / End</span><span><i class="legend-box slot-own-booking"></i>Your Booking</span><span><i class="legend-box slot-cooldown"></i>Cooldown (not counted in 8h)</span><span><i class="legend-box slot-unavailable"></i>Unavailable</span><span><i class="legend-box slot-daily-limit"></i>Daily Limit</span></div>
+            <div class="booking-client-error" id="bookingClientError" role="alert" hidden></div>
+            <div class="booking-summary"><span>Selected Date<strong>@Model.SelectedDate.ToString("dd MMMM yyyy")</strong></span><span>Selected Time<strong id="selectedTime">Not selected</strong></span><span>Duration<strong id="selectedDuration">0 Hours</strong></span></div>
+            <form asp-action="Book" method="post" id="bookingForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="FacilityId" value="@Model.Facility.FacilityId" />
+                <input type="hidden" name="BookingDate" value="@Model.SelectedDate.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="StartHour" id="startHour" />
+                <input type="hidden" name="EndHour" id="endHour" />
+                <button type="submit" class="facility-primary-btn wide" id="bookButton" disabled>Confirm Booking</button>
+            </form>
+        </section>
+    </div>
+</div>
+<script src="~/js/facility-booking.js" asp-append-version="true"></script>

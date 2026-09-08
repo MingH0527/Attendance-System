@@ -1,0 +1,109 @@
+@model List<WebAndMobile.Models.FacilityBooking>
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Facility Booking Requests";
+    var facilities = Model.Where(x => x.Facility != null).Select(x => x.Facility!.FacilityName).Distinct().OrderBy(x => x).ToList();
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility.css" asp-append-version="true" />
+}
+<div class="facility-page">
+    <a asp-action="AdminIndex" class="facility-back">← Back to Facilities</a>
+
+    <div class="facility-header">
+        <div>
+            <span class="facility-kicker">ADMIN REVIEW</span>
+            <h1>Facility Booking Requests</h1>
+            <p>Approve or reject student facility reservations.</p>
+        </div>
+    </div>
+
+    <nav class="facility-section-nav" aria-label="Facility management navigation">
+        <a asp-action="AdminIndex">Facilities</a>
+        <a asp-action="BookingRequests" class="active">Booking Requests</a>
+        <a asp-action="ActivityAttendance">Activity Attendance</a>
+    </nav>
+
+    @if (TempData["FacilityError"] != null) { <div class="facility-alert error">@TempData["FacilityError"]</div> }
+    @if (TempData["FacilitySuccess"] != null) { <div class="facility-alert success">@TempData["FacilitySuccess"]</div> }
+
+    <section class="facility-list-card" data-facility-admin-list data-page-size="5">
+        <div class="facility-list-toolbar">
+            <div class="facility-search-box">
+                <span>⌕</span>
+                <input type="text" data-list-search placeholder="Search booking ID, student or facility..." autocomplete="off" />
+            </div>
+            <button type="button" class="facility-filter-button" data-filter-toggle>☰ Filter</button>
+        </div>
+
+        <div class="facility-filter-panel" data-filter-panel hidden>
+            <div class="facility-filter-head"><strong>Filter booking requests</strong><button type="button" data-filter-close>×</button></div>
+            <div class="facility-filter-grid">
+                <label>Status
+                    <select data-filter-status>
+                        <option value="all">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Checked In">Checked In</option>
+                    </select>
+                </label>
+                <label>Facility
+                    <select data-filter-facility>
+                        <option value="all">All Facilities</option>
+                        @foreach (var facility in facilities) { <option value="@facility">@facility</option> }
+                    </select>
+                </label>
+                <label>Sort
+                    <select data-filter-sort>
+                        <option value="default">Newest Request</option>
+                        <option value="date-asc">Booking Date ↑</option>
+                        <option value="date-desc">Booking Date ↓</option>
+                        <option value="student-asc">Student A–Z</option>
+                    </select>
+                </label>
+            </div>
+            <div class="facility-filter-actions"><button type="button" class="facility-secondary-btn" data-filter-reset>Reset</button><button type="button" class="facility-primary-btn" data-filter-apply>Apply Filter</button></div>
+        </div>
+
+        <div class="table-shell">
+            <table class="facility-table">
+                <thead><tr><th>Booking</th><th>Student</th><th>Facility</th><th>Date</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody data-list-body>
+                    @foreach (var b in Model)
+                    {
+                        var searchText = $"{b.BookingId} {b.User?.Username} {b.StudentId} {b.Facility?.FacilityName}".ToLowerInvariant();
+                        <tr data-list-row
+                            data-search="@searchText"
+                            data-status="@b.Status"
+                            data-facility="@b.Facility?.FacilityName"
+                            data-date="@b.BookingDate.ToString("yyyy-MM-dd")"
+                            data-student="@b.User?.Username">
+                            <td><strong>@b.BookingId</strong></td>
+                            <td>@b.User?.Username<br/><small>@b.StudentId</small></td>
+                            <td>@b.Facility?.FacilityName</td>
+                            <td>@b.BookingDate.ToString("dd MMM yyyy")</td>
+                            <td>@($"{b.StartHour:00}:00")–@(b.EndHour == 24 ? "00:00" : $"{b.EndHour:00}:00")<br/><small>@(b.EndHour-b.StartHour) Hours</small></td>
+                            <td><span class="status-pill status-@b.Status.Replace(" ", "").ToLowerInvariant()">@b.Status</span></td>
+                            <td class="actions-cell">
+                                @if (b.Status == "Pending")
+                                {
+                                    <form asp-action="Approve" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId"/><button class="mini-btn approve" type="submit">Approve</button></form>
+                                    <form asp-action="Reject" method="post" class="reject-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@b.BookingId"/><input name="reason" placeholder="Rejection reason" maxlength="300"/><button class="mini-btn reject" type="submit">Reject</button></form>
+                                }
+                                else if (b.Status is "Approved" or "Checked In") { <a asp-action="Qr" asp-route-id="@b.BookingId" class="mini-btn qr">Activity QR</a> }
+                                else if (b.Status == "Rejected") { <small>@b.RejectionReason</small> }
+                            </td>
+                        </tr>
+                    }
+                    <tr data-empty-row hidden><td colspan="7" class="facility-empty-row">No booking requests found.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="facility-list-footer"><div data-pagination-summary></div><div class="facility-pagination" data-pagination></div></div>
+    </section>
+</div>
+@section Scripts {
+    <script src="~/js/facility-admin-list.js" asp-append-version="true"></script>
+}
