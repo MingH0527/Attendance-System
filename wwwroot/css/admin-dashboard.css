@@ -417,3 +417,242 @@
         flex: 1 1 100%;
     }
 }
+
+/* =========================================================
+   Payment insight charts
+   Rendered as plain SVG/CSS - no chart library, so nothing
+   depends on a CDN being reachable.
+   ========================================================= */
+
+.apd-charts {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+}
+
+.apd-chart {
+    display: flex;
+    flex-direction: column;
+}
+
+.apd-chart-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.apd-chart-title {
+    margin: 0;
+    color: #182134;
+    font-size: 18px;
+}
+
+.apd-chart-note {
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: #eef4f6;
+    color: #21707a;
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.apd-chart-sub {
+    margin: 4px 0 10px;
+    color: #7a8699;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.apd-chart-foot {
+    margin: 14px 0 0;
+    color: #8a94a6;
+    font-size: 12.5px;
+}
+
+/* ---------- vertical bars ---------- */
+
+.apd-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 190px;
+}
+
+.apd-bars--short {
+    height: 118px;
+    margin-bottom: 6px;
+}
+
+.apd-bar-col {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.apd-bar-track {
+    width: 100%;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-end;
+    border-radius: 7px;
+    background: #f1f4f9;
+}
+
+.apd-bar-fill {
+    width: 100%;
+    min-height: 3px;
+    border-radius: 7px;
+    background: linear-gradient(180deg, #14919b, #0f766e);
+}
+
+.apd-bar-fill--alt {
+    background: linear-gradient(180deg, #4f86f7, #2563eb);
+}
+
+.apd-bar-fill--warm {
+    background: linear-gradient(180deg, #e08a3c, #c2410c);
+}
+
+.apd-bar-label {
+    color: #7a8699;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* ---------- donut ---------- */
+
+.apd-donut-row {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    flex-wrap: wrap;
+}
+
+.apd-donut {
+    width: 170px;
+    height: 170px;
+    flex: 0 0 170px;
+}
+
+.apd-donut-value {
+    font-size: 19px;
+    font-weight: 700;
+    fill: #182134;
+}
+
+.apd-donut-caption {
+    font-size: 11px;
+    fill: #8a94a6;
+}
+
+.apd-legend {
+    flex: 1 1 190px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+    .apd-legend li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid #f0f3f7;
+    }
+
+        .apd-legend li:last-child {
+            border-bottom: none;
+        }
+
+.apd-swatch {
+    width: 11px;
+    height: 11px;
+    flex: 0 0 11px;
+    border-radius: 3px;
+}
+
+.apd-legend-name {
+    flex: 1 1 auto;
+    color: #2c3648;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.apd-legend-value {
+    text-align: right;
+    color: #182134;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+    .apd-legend-value small {
+        display: block;
+        margin-top: 2px;
+        color: #8a94a6;
+        font-size: 11.5px;
+        font-weight: 500;
+    }
+
+/* ---------- horizontal bars ---------- */
+
+.apd-hbars {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+    .apd-hbars li {
+        display: grid;
+        grid-template-columns: minmax(72px, 26%) 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 0;
+    }
+
+.apd-hbar-name {
+    overflow: hidden;
+    color: #2c3648;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.apd-hbar-track {
+    height: 12px;
+    border-radius: 999px;
+    background: #f1f4f9;
+}
+
+.apd-hbar-fill {
+    display: block;
+    height: 100%;
+    min-width: 4px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #17a2ad, #0f766e);
+}
+
+.apd-hbar-value {
+    color: #182134;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .apd-charts {
+        grid-template-columns: 1fr;
+    }
+}

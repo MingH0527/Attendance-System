@@ -1443,3 +1443,66 @@
         color: #7b8aa5;
         font-size: 12px;
     }
+
+.teacher-registration-section {
+    margin-top: 20px;
+}
+
+.teacher-registration-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.teacher-registration-heading strong {
+    color: #10254a;
+    font-size: 14px;
+}
+
+.teacher-registration-heading span {
+    color: #7b8aa5;
+    font-size: 12px;
+}
+
+/* Teacher registration drawer: fixed header/footer with scrollable content */
+#teacherSubjectOverlay .teacher-registration-drawer {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#teacherSubjectOverlay .teacher-registration-header {
+    flex: 0 0 auto;
+}
+
+#teacherSubjectOverlay .teacher-registration-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#teacherSubjectOverlay .teacher-registration-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 6px;
+    padding-bottom: 18px;
+    overscroll-behavior: contain;
+}
+
+#teacherSubjectOverlay .teacher-registration-footer {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding: 8px 0 10px;
+    border-top: 1px solid #eef2f7;
+    background: #ffffff;
+}
+
+#teacherSubjectOverlay .teacher-registration-drawer {
+    padding-bottom: 14px;
+    box-sizing: border-box;
+}

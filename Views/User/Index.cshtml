@@ -9,7 +9,7 @@
     int studentCount = Model?.Count(u => !u.IsDeleted && u.Position == "Student") ?? 0;
 }
 
-<link rel="stylesheet" href="~/css/user.css" />
+<link rel="stylesheet" href="~/css/user.css" asp-append-version="true" />
 
 <div class="user-page">
     <div class="user-container">
@@ -666,19 +666,19 @@
      id="teacherSubjectOverlay"
      hidden>
 
-    <aside class="detail-drawer"
+    <aside class="detail-drawer teacher-registration-drawer"
            role="dialog"
            aria-modal="true">
 
-        <div class="detail-header">
+        <div class="detail-header teacher-registration-header">
 
             <div>
                 <span class="detail-eyebrow">
-                    Subject Registration
+                    Teaching Registration
                 </span>
 
                 <h2>
-                    Manage Teacher Subjects
+                    Manage Teacher Programs &amp; Subjects
                 </h2>
             </div>
 
@@ -693,13 +693,16 @@
         <form asp-controller="Admin"
               asp-action="SaveTeacherSubjects"
               method="post"
-              id="teacherSubjectForm">
+              id="teacherSubjectForm"
+              class="teacher-registration-form">
 
             @Html.AntiForgeryToken()
 
             <input type="hidden"
                    name="teacherId"
                    id="teacherSubjectTeacherId" />
+
+            <div class="teacher-registration-scroll">
 
             <div class="detail-item detail-item-wide">
                 <span class="detail-label">
@@ -711,22 +714,41 @@
                 </strong>
             </div>
 
+            <div class="teacher-registration-section">
+                <div class="teacher-registration-heading">
+                    <strong>Programs</strong>
+                    <span>Select the program(s) this teacher is allowed to teach.</span>
+                </div>
+
+                <div id="teacherProgramList"
+                     class="teacher-subject-list">
+                </div>
+            </div>
+
             <div id="teacherSubjectNoProgram"
                  class="user-flash error"
                  style="margin-top:20px;"
                  hidden>
 
-                This teacher has not registered any program.
+                Select at least one program first. Subjects from the selected program(s) will appear below.
 
             </div>
 
-            <div id="teacherSubjectList"
-                 class="teacher-subject-list">
+            <div class="teacher-registration-section">
+                <div class="teacher-registration-heading">
+                    <strong>Subjects</strong>
+                    <span>Select the subjects this teacher is allowed to teach.</span>
+                </div>
+
+                <div id="teacherSubjectList"
+                     class="teacher-subject-list">
+                </div>
             </div>
 
-            <div class="filter-actions"
-                 id="teacherSubjectActions"
-                 style="margin-top:20px;">
+            </div>
+
+            <div class="filter-actions teacher-registration-footer"
+                 id="teacherSubjectActions">
 
                 <button type="button"
                         class="filter-reset"
@@ -747,4 +769,4 @@
 
 </div>
 
-<script src="~/js/usermanagement.js"></script>
+<script src="~/js/usermanagement.js" asp-append-version="true"></script>

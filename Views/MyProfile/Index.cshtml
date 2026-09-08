@@ -63,6 +63,13 @@
                         storedAvatar != "default.png" &&
                         storedAvatar != "default-avatar.png";
 
+                    string? currentAvatarUrl =
+                        hasCustomAvatar
+                            ? (storedAvatar!.StartsWith("/") || storedAvatar.StartsWith("http://") || storedAvatar.StartsWith("https://")
+                                ? storedAvatar
+                                : $"/uploads/avatars/{storedAvatar}")
+                            : null;
+
                     string firstLetter =
                         !string.IsNullOrWhiteSpace(username)
                             ? username.Substring(0, 1).ToUpper()
@@ -79,14 +86,7 @@
                 <!-- Uploaded avatar -->
                 @if (hasCustomAvatar)
                 {
-                    string avatarUrl =
-                        storedAvatar!.StartsWith("/") ||
-                        storedAvatar.StartsWith("http://") ||
-                        storedAvatar.StartsWith("https://")
-                            ? storedAvatar
-                            : $"/uploads/avatars/{storedAvatar}";
-
-                    <img src="@avatarUrl"
+                    <img src="@currentAvatarUrl"
                          class="profile-avatar-image"
                          alt="@username"
                          onerror="this.style.display='none';" />
@@ -96,31 +96,10 @@
                 <!-- Edit button -->
                 <button type="button"
                         class="avatar-edit-button"
-                        title="Change profile picture"
-                        onclick="document.getElementById('avatarInput').click()">
-
+                        title="Edit profile photo"
+                        id="openPhotoStudioButton">
                     ✎
-
                 </button>
-
-
-                <!-- Upload form -->
-                <form asp-controller="MyProfile"
-                      asp-action="UploadAvatar"
-                      method="post"
-                      enctype="multipart/form-data"
-                      id="avatarForm">
-
-                    @Html.AntiForgeryToken()
-
-                    <input type="file"
-                           id="avatarInput"
-                           name="avatar"
-                           accept=".jpg,.jpeg,.png,.webp"
-                           hidden
-                           onchange="document.getElementById('avatarForm').submit()" />
-
-                </form>
 
             </div>
 
@@ -543,6 +522,130 @@
 
 </div>
 
+
+<!-- ==================================================
+     PROFILE PHOTO STUDIO
+================================================== -->
+<div id="photoStudioModal" class="photo-studio-modal" aria-hidden="true" data-current-avatar-url="@currentAvatarUrl" data-avatar-initial="@firstLetter">
+    <div class="photo-studio-backdrop" data-close-photo-studio></div>
+
+    <section class="photo-studio-dialog" role="dialog" aria-modal="true" aria-labelledby="photoStudioTitle">
+        <header class="photo-studio-header">
+            <div>
+                <p class="photo-studio-eyebrow">PROFILE PHOTO</p>
+                <h2 id="photoStudioTitle">Edit Profile Photo</h2>
+                <p>Take a photo or upload one, then adjust it before saving.</p>
+            </div>
+            <button type="button" class="photo-studio-close" data-close-photo-studio aria-label="Close">×</button>
+        </header>
+
+        <div class="photo-studio-body">
+            <div class="photo-studio-preview-column">
+                <div class="photo-canvas-shell" id="photoCanvasShell">
+                    <canvas id="photoEditorCanvas" width="640" height="640"></canvas>
+                    <div id="photoStudioEmpty" class="photo-studio-empty">
+                        <div class="photo-studio-empty-icon">📷</div>
+                        <strong>No photo selected</strong>
+                        <span>Use the camera or upload a picture to begin.</span>
+                    </div>
+                    <div class="avatar-safe-area" aria-hidden="true"></div>
+                </div>
+
+                <div class="photo-source-actions">
+                    <button type="button" class="photo-tool-button primary" id="takePhotoButton">📷 Take Photo</button>
+                    <button type="button" class="photo-tool-button" id="uploadPhotoButton">🖼 Upload Photo</button>
+                    <input type="file" id="photoStudioFileInput" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden />
+                </div>
+
+                <p class="photo-studio-hint">Drag the photo to reposition it inside the circular avatar area.</p>
+            </div>
+
+            <div class="photo-studio-tools">
+                <div class="photo-tool-section">
+                    <div class="photo-tool-heading">Transform</div>
+                    <div class="photo-tool-grid">
+                        <button type="button" class="photo-tool-button" id="rotateLeftButton">↶ Rotate</button>
+                        <button type="button" class="photo-tool-button" id="flipButton">↔ Flip</button>
+                    </div>
+                    <label class="photo-slider-label" for="zoomSlider"><span>Zoom</span><output id="zoomValue">100%</output></label>
+                    <input id="zoomSlider" type="range" min="100" max="250" value="100" step="1" />
+                </div>
+
+                <div class="photo-tool-section">
+                    <div class="photo-tool-heading">Adjust</div>
+                    <label class="photo-slider-label" for="brightnessSlider"><span>Brightness</span><output id="brightnessValue">100%</output></label>
+                    <input id="brightnessSlider" type="range" min="50" max="150" value="100" step="1" />
+
+                    <label class="photo-slider-label" for="contrastSlider"><span>Contrast</span><output id="contrastValue">100%</output></label>
+                    <input id="contrastSlider" type="range" min="50" max="150" value="100" step="1" />
+
+                    <label class="photo-slider-label" for="saturationSlider"><span>Saturation</span><output id="saturationValue">100%</output></label>
+                    <input id="saturationSlider" type="range" min="0" max="180" value="100" step="1" />
+                </div>
+
+                <div class="photo-tool-section">
+                    <div class="photo-tool-heading">Filters</div>
+                    <div class="photo-filter-grid" id="photoFilterGrid">
+                        <button type="button" class="photo-filter active" data-filter="original">Original</button>
+                        <button type="button" class="photo-filter" data-filter="warm">Warm</button>
+                        <button type="button" class="photo-filter" data-filter="cool">Cool</button>
+                        <button type="button" class="photo-filter" data-filter="vivid">Vivid</button>
+                        <button type="button" class="photo-filter" data-filter="bw">B&amp;W</button>
+                    </div>
+                </div>
+
+                <div class="photo-tool-section ai-photo-section">
+                    <div class="photo-tool-heading">AI Tools</div>
+                    <p>Cloudinary processes the current edited photo and returns the result to this editor.</p>
+                    <div class="photo-tool-grid">
+                        <button type="button" class="photo-tool-button" id="autoEnhanceButton">✨ Auto Enhance</button>
+                        <button type="button" class="photo-tool-button" id="removeBackgroundButton">👤 Remove Background</button>
+                    </div>
+                    <p class="photo-ai-status" id="photoAiStatus" aria-live="polite"></p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="photo-studio-footer">
+            <div class="photo-studio-footer-left">
+                <button type="button" class="photo-link-button" id="resetPhotoButton">Reset</button>
+            </div>
+            <div class="photo-studio-footer-right">
+                <button type="button" class="photo-tool-button" data-close-photo-studio>Cancel</button>
+                <button type="button" class="photo-save-button" id="savePhotoButton" disabled>Save Profile Photo</button>
+            </div>
+        </footer>
+
+        <form asp-controller="MyProfile" asp-action="UploadAvatar" method="post" enctype="multipart/form-data" id="photoStudioUploadForm" hidden>
+            @Html.AntiForgeryToken()
+            <input type="file" name="avatar" id="processedAvatarInput" />
+        </form>
+    </section>
+</div>
+
+<!-- Camera modal -->
+<div id="cameraModal" class="camera-modal" aria-hidden="true">
+    <div class="camera-backdrop"></div>
+    <section class="camera-dialog" role="dialog" aria-modal="true" aria-labelledby="cameraTitle">
+        <header class="camera-header">
+            <div>
+                <p class="photo-studio-eyebrow">CAMERA</p>
+                <h2 id="cameraTitle">Take Profile Photo</h2>
+            </div>
+            <button type="button" class="photo-studio-close" id="closeCameraButton" aria-label="Close">×</button>
+        </header>
+        <div class="camera-video-shell">
+            <video id="cameraVideo" autoplay playsinline muted></video>
+            <div class="camera-guide" aria-hidden="true"></div>
+        </div>
+        <p id="cameraMessage" class="camera-message">Allow camera access when your browser asks for permission.</p>
+        <footer class="camera-actions">
+            <button type="button" class="photo-tool-button" id="cancelCameraButton">Cancel</button>
+            <button type="button" class="photo-save-button" id="capturePhotoButton">● Capture</button>
+        </footer>
+    </section>
+</div>
+
 @if (TempData["AvatarSuccess"] != null)
 {
     <div id="avatarToast"
@@ -582,6 +685,8 @@
 
     </div>
 }
+
+<script src="~/js/myprofile-photo-studio.js" asp-append-version="true"></script>
 
 <script>
     function closeAvatarToast() {
