@@ -1,0 +1,293 @@
+﻿@using System.Globalization
+@model WebAndMobile.ViewModels.AdminDashboardViewModel
+
+@{
+    // Shared palette for every chart on this page.
+    string[] palette =
+    [
+        "#0f766e", "#2563eb", "#c2410c", "#7c3aed", "#0891b2", "#b45309"
+    ];
+
+    decimal monthPeak =
+        Model.MonthlyCollection.Count > 0
+            ? Model.MonthlyCollection.Max(m => m.Amount)
+            : 0m;
+
+    decimal studentPeak =
+        Model.TopStudents.Count > 0
+            ? Model.TopStudents.Max(s => s.Amount)
+            : 0m;
+
+    int weekdayPeak =
+        Model.WeekdayBuckets.Count > 0
+            ? Model.WeekdayBuckets.Max(b => b.Count)
+            : 0;
+
+    int hourPeak =
+        Model.HourBuckets.Count > 0
+            ? Model.HourBuckets.Max(b => b.Count)
+            : 0;
+
+    decimal methodTotal =
+        Model.MethodBreakdown.Sum(m => m.Amount);
+
+    // Donut geometry, worked out up front so the markup below is a plain
+    // loop. Lengths are formatted with the invariant culture because SVG
+    // needs a dot as the decimal separator whatever the server locale is.
+    const double radius = 58d;
+    double circumference = 2 * Math.PI * radius;
+
+    var donutSlices = new List<(
+        string Label,
+        string Color,
+        string Dash,
+        string Gap,
+        string Offset,
+        decimal Amount,
+        int Count,
+        decimal Percent)>();
+
+    double runningOffset = 0d;
+
+    for (int i = 0; i < Model.MethodBreakdown.Count && methodTotal > 0; i++)
+    {
+        var slice = Model.MethodBreakdown[i];
+
+        double length =
+            (double)(slice.Amount / methodTotal) * circumference;
+
+        donutSlices.Add((
+            slice.Label,
+            palette[i % palette.Length],
+            length.ToString("F2", CultureInfo.InvariantCulture),
+            (circumference - length).ToString("F2", CultureInfo.InvariantCulture),
+            (-runningOffset).ToString("F2", CultureInfo.InvariantCulture),
+            slice.Amount,
+            slice.Count,
+            Math.Round(slice.Amount / methodTotal * 100m, 1)));
+
+        runningOffset += length;
+    }
+}
+
+<h2 class="apd-section-title">Payment Insights</h2>
+
+<section class="apd-charts">
+
+    <!-- ============ Monthly collection ============ -->
+
+    <div class="apd-panel apd-chart">
+
+        <div class="apd-chart-head">
+            <h3 class="apd-chart-title">Collection by month</h3>
+            <span class="apd-chart-note">Best month: @Model.BusiestMonth</span>
+        </div>
+
+        @if (monthPeak <= 0)
+        {
+            <p class="apd-empty-note">No completed payments yet.</p>
+        }
+        else
+        {
+            <div class="apd-bars">
+                @foreach (var month in Model.MonthlyCollection)
+                {
+                    int height =
+                        month.Amount <= 0
+                            ? 0
+                            : (int)Math.Round(month.Amount / monthPeak * 100m);
+
+                    <div class="apd-bar-col"
+                         title='@month.Label — RM @month.Amount.ToString("N2") (@month.Count paid)'>
+
+                        <div class="apd-bar-track">
+                            <div class="apd-bar-fill"
+                                 style="height:@(height)%"></div>
+                        </div>
+
+                        <span class="apd-bar-label">@month.Label</span>
+                    </div>
+                }
+            </div>
+
+            <p class="apd-chart-foot">
+                Bar height is the amount collected. Hover a bar for the exact total.
+            </p>
+        }
+
+    </div>
+
+    <!-- ============ Payment method mix ============ -->
+
+    <div class="apd-panel apd-chart">
+
+        <div class="apd-chart-head">
+            <h3 class="apd-chart-title">Payment methods</h3>
+            <span class="apd-chart-note">Most used: @Model.TopMethod</span>
+        </div>
+
+        @if (methodTotal <= 0)
+        {
+            <p class="apd-empty-note">No completed payments yet.</p>
+        }
+        else
+        {
+            <div class="apd-donut-row">
+
+                <svg class="apd-donut"
+                     viewBox="0 0 160 160"
+                     role="img"
+                     aria-label="Share of collection by payment method">
+
+                    @foreach (var slice in donutSlices)
+                    {
+                        <circle cx="80" cy="80" r="58"
+                                fill="none"
+                                stroke="@slice.Color"
+                                stroke-width="24"
+                                stroke-dasharray="@slice.Dash @slice.Gap"
+                                stroke-dashoffset="@slice.Offset"
+                                transform="rotate(-90 80 80)"></circle>
+                    }
+
+                    <text x="80" y="75"
+                          class="apd-donut-value"
+                          text-anchor="middle">RM @methodTotal.ToString("N0")</text>
+
+                    <text x="80" y="93"
+                          class="apd-donut-caption"
+                          text-anchor="middle">collected</text>
+
+                </svg>
+
+                <ul class="apd-legend">
+                    @foreach (var slice in donutSlices)
+                    {
+                        <li>
+                            <span class="apd-swatch"
+                                  style="background:@slice.Color"></span>
+
+                            <span class="apd-legend-name">@slice.Label</span>
+
+                            <span class="apd-legend-value">
+                                @slice.Percent.ToString("0.#")%
+                                <small>
+                                    RM @slice.Amount.ToString("N2")
+                                    (@slice.Count paid)
+                                </small>
+                            </span>
+                        </li>
+                    }
+                </ul>
+
+            </div>
+        }
+
+    </div>
+
+    <!-- ============ Top paying students ============ -->
+
+    <div class="apd-panel apd-chart">
+
+        <div class="apd-chart-head">
+            <h3 class="apd-chart-title">Students who paid the most</h3>
+            <span class="apd-chart-note">Top @Model.TopStudents.Count</span>
+        </div>
+
+        @if (studentPeak <= 0)
+        {
+            <p class="apd-empty-note">No completed payments yet.</p>
+        }
+        else
+        {
+            <ul class="apd-hbars">
+                @foreach (var student in Model.TopStudents)
+                {
+                    int width =
+                        (int)Math.Round(student.Amount / studentPeak * 100m);
+
+                    <li>
+                        <span class="apd-hbar-name">@student.Label</span>
+
+                        <span class="apd-hbar-track">
+                            <span class="apd-hbar-fill"
+                                  style="width:@(width)%"></span>
+                        </span>
+
+                        <span class="apd-hbar-value">
+                            RM @student.Amount.ToString("N2")
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+
+    </div>
+
+    <!-- ============ When payments happen ============ -->
+
+    <div class="apd-panel apd-chart">
+
+        <div class="apd-chart-head">
+            <h3 class="apd-chart-title">When payments happen</h3>
+            <span class="apd-chart-note">
+                Busiest: @Model.BusiestDay, @Model.BusiestHour
+            </span>
+        </div>
+
+        @if (weekdayPeak <= 0)
+        {
+            <p class="apd-empty-note">No completed payments yet.</p>
+        }
+        else
+        {
+            <p class="apd-chart-sub">By day of week</p>
+
+            <div class="apd-bars apd-bars--short">
+                @foreach (var day in Model.WeekdayBuckets)
+                {
+                    int height =
+                        day.Count == 0
+                            ? 0
+                            : (int)Math.Round(day.Count * 100d / weekdayPeak);
+
+                    <div class="apd-bar-col"
+                         title='@day.Label — @day.Count paid, RM @day.Amount.ToString("N2")'>
+
+                        <div class="apd-bar-track">
+                            <div class="apd-bar-fill apd-bar-fill--alt"
+                                 style="height:@(height)%"></div>
+                        </div>
+
+                        <span class="apd-bar-label">@day.Label</span>
+                    </div>
+                }
+            </div>
+
+            <p class="apd-chart-sub">By time of day</p>
+
+            <div class="apd-bars apd-bars--short">
+                @foreach (var block in Model.HourBuckets)
+                {
+                    int height =
+                        block.Count == 0
+                            ? 0
+                            : (int)Math.Round(block.Count * 100d / hourPeak);
+
+                    <div class="apd-bar-col"
+                         title='@block.Label — @block.Count paid, RM @block.Amount.ToString("N2")'>
+
+                        <div class="apd-bar-track">
+                            <div class="apd-bar-fill apd-bar-fill--warm"
+                                 style="height:@(height)%"></div>
+                        </div>
+
+                        <span class="apd-bar-label">@block.Label</span>
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+
+</section>

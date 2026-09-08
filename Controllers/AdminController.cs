@@ -173,6 +173,152 @@ public class AdminController : Controller
                     .ToListAsync()
         };
 
+        // ---- Chart data -------------------------------------------------
+        // Pulled into memory once. The paid set is small for a school, and
+        // grouping locally avoids fighting EF over date-part translation
+        // and UTC-to-local conversion.
+
+        var paidRows = await allPayments
+            .Where(p => p.Status == "Paid" && p.PaidAt != null)
+            .Select(p => new
+            {
+                PaidAt = p.PaidAt!.Value,
+                p.Amount,
+                p.PaymentMethod,
+                p.UserId,
+                Username = p.User.Username
+            })
+            .ToListAsync();
+
+        var paidLocal = paidRows
+            .Select(r => new
+            {
+                When = r.PaidAt.ToLocalTime(),
+                r.Amount,
+                Method = string.IsNullOrWhiteSpace(r.PaymentMethod)
+                    ? "Unknown"
+                    : r.PaymentMethod,
+                r.UserId,
+                r.Username
+            })
+            .ToList();
+
+        // Monthly collection - last 12 calendar months, gaps included.
+        DateTime thisMonth = new(DateTime.Now.Year, DateTime.Now.Month, 1);
+
+        for (int back = 11; back >= 0; back--)
+        {
+            DateTime month = thisMonth.AddMonths(-back);
+
+            var inMonth = paidLocal
+                .Where(r =>
+                    r.When.Year == month.Year &&
+                    r.When.Month == month.Month)
+                .ToList();
+
+            model.MonthlyCollection.Add(new AdminMonthPoint
+            {
+                Label = month.ToString("MMM yy"),
+                Count = inMonth.Count,
+                Amount = inMonth.Sum(r => r.Amount)
+            });
+        }
+
+        // Payment method mix.
+        model.MethodBreakdown = paidLocal
+            .GroupBy(r => r.Method)
+            .Select(g => new AdminChartSlice
+            {
+                Label = g.Key,
+                Count = g.Count(),
+                Amount = g.Sum(r => r.Amount)
+            })
+            .OrderByDescending(s => s.Amount)
+            .ToList();
+
+        // Who pays the most.
+        model.TopStudents = paidLocal
+            .GroupBy(r => new { r.UserId, r.Username })
+            .Select(g => new AdminChartSlice
+            {
+                Label = string.IsNullOrWhiteSpace(g.Key.Username)
+                    ? g.Key.UserId
+                    : g.Key.Username,
+                Count = g.Count(),
+                Amount = g.Sum(r => r.Amount)
+            })
+            .OrderByDescending(s => s.Amount)
+            .Take(6)
+            .ToList();
+
+        // Day of week, Monday first.
+        DayOfWeek[] weekOrder =
+        [
+            DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+            DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday,
+            DayOfWeek.Sunday
+        ];
+
+        foreach (DayOfWeek day in weekOrder)
+        {
+            var onDay = paidLocal
+                .Where(r => r.When.DayOfWeek == day)
+                .ToList();
+
+            model.WeekdayBuckets.Add(new AdminBucket
+            {
+                Label = day.ToString()[..3],
+                Count = onDay.Count,
+                Amount = onDay.Sum(r => r.Amount)
+            });
+        }
+
+        // Four-hour blocks across the day.
+        for (int startHour = 0; startHour < 24; startHour += 4)
+        {
+            int endHour = startHour + 4;
+
+            var inBlock = paidLocal
+                .Where(r =>
+                    r.When.Hour >= startHour &&
+                    r.When.Hour < endHour)
+                .ToList();
+
+            model.HourBuckets.Add(new AdminBucket
+            {
+                Label = $"{startHour:00}-{endHour:00}",
+                Count = inBlock.Count,
+                Amount = inBlock.Sum(r => r.Amount)
+            });
+        }
+
+        // Headline answers, so each chart has a plain-language summary.
+        model.BusiestMonth =
+            model.MonthlyCollection.Any(m => m.Amount > 0)
+                ? model.MonthlyCollection
+                    .OrderByDescending(m => m.Amount)
+                    .First().Label
+                : "-";
+
+        model.BusiestDay =
+            model.WeekdayBuckets.Any(b => b.Count > 0)
+                ? model.WeekdayBuckets
+                    .OrderByDescending(b => b.Count)
+                    .First().Label
+                : "-";
+
+        model.BusiestHour =
+            model.HourBuckets.Any(b => b.Count > 0)
+                ? model.HourBuckets
+                    .OrderByDescending(b => b.Count)
+                    .First().Label
+                : "-";
+
+        model.TopMethod =
+            model.MethodBreakdown.Count > 0
+                ? model.MethodBreakdown[0].Label
+                : "-";
+
         IQueryable<PaymentTransaction> filtered =
             allPayments;
 
