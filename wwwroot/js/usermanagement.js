@@ -661,6 +661,11 @@ document.addEventListener("DOMContentLoaded", () => {
             "teacherSubjectTeacherName"
         );
 
+    const teacherProgramList =
+        document.getElementById(
+            "teacherProgramList"
+        );
+
     const teacherSubjectList =
         document.getElementById(
             "teacherSubjectList"
@@ -1021,306 +1026,189 @@ document.addEventListener("DOMContentLoaded", () => {
         row
     ) {
 
-        /*
-         * IMPORTANT:
-         * If any Manage Subjects HTML element
-         * is missing, do NOT crash the entire JS.
-         *
-         * This protects Search / Filter / Pagination.
-         */
         if (
             !teacherSubjectOverlay ||
             !teacherSubjectTeacherId ||
             !teacherSubjectTeacherName ||
+            !teacherProgramList ||
             !teacherSubjectList ||
             !teacherSubjectNoProgram ||
             !teacherSubjectActions
         ) {
-
-            alert(
-                "Manage Subjects panel was not found."
-            );
-
+            alert("Manage Teacher Programs & Subjects panel was not found.");
             return;
         }
 
+        const teacherId = row.dataset.userId;
+        const username = row.dataset.username;
 
-        const teacherId =
-            row.dataset.userId;
-
-
-        const username =
-            row.dataset.username;
-
-
-        teacherSubjectTeacherId.value =
-            teacherId;
-
-
-        teacherSubjectTeacherName
-            .textContent =
-            username;
-
-
-        teacherSubjectList.innerHTML =
-            "Loading subjects...";
-
-
-        teacherSubjectNoProgram.hidden =
-            true;
-
-
-        teacherSubjectActions.hidden =
-            false;
-
-
-        teacherSubjectOverlay.hidden =
-            false;
-
-
-        document.body.classList.add(
-            "drawer-open"
-        );
-
+        teacherSubjectTeacherId.value = teacherId;
+        teacherSubjectTeacherName.textContent = username;
+        teacherProgramList.innerHTML = "Loading programs...";
+        teacherSubjectList.innerHTML = "";
+        teacherSubjectNoProgram.hidden = true;
+        teacherSubjectActions.hidden = false;
+        teacherSubjectOverlay.hidden = false;
+        document.body.classList.add("drawer-open");
 
         try {
+            const response = await fetch(
+                `/Admin/GetTeacherSubjectRegistration?teacherId=${encodeURIComponent(teacherId)}`
+            );
 
-            const response =
-                await fetch(
-                    `/Admin/GetTeacherSubjectRegistration?teacherId=${encodeURIComponent(teacherId)}`
-                );
-
-
-            if (
-                !response.ok
-            ) {
-
-                const message =
-                    await response.text();
-
-
-                throw new Error(
-                    message ||
-                    "Unable to load teacher subjects."
-                );
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(message || "Unable to load teacher registration.");
             }
 
+            const data = await response.json();
+            teacherSubjectTeacherName.textContent = data.teacherName || username;
 
-            const data =
-                await response.json();
+            const programs = Array.isArray(data.programs) ? data.programs : [];
+            const subjects = Array.isArray(data.subjects) ? data.subjects : [];
+            const selectedCourseState = new Set(
+                subjects
+                    .filter(subject => Boolean(subject.selected))
+                    .map(subject => subject.courseId)
+            );
 
+            teacherProgramList.innerHTML = "";
 
-            teacherSubjectTeacherName
-                .textContent =
-                data.teacherName ||
-                username;
-
-
-            // ------------------------------------------
-            // Teacher has no registered program
-            // ------------------------------------------
-
-            if (
-                !data.hasProgram
-            ) {
-
-                teacherSubjectList.innerHTML =
-                    "";
-
-
-                teacherSubjectNoProgram.hidden =
-                    false;
-
-
-                teacherSubjectActions.hidden =
-                    true;
-
-
+            if (programs.length === 0) {
+                teacherProgramList.innerHTML = "";
+                const message = document.createElement("div");
+                message.className = "user-flash error";
+                message.textContent = "No programs are available. Create a program first.";
+                teacherProgramList.appendChild(message);
+                teacherSubjectActions.hidden = true;
                 return;
             }
 
+            programs.forEach(program => {
+                const label = document.createElement("label");
+                label.className = "teacher-subject-item";
 
-            // ------------------------------------------
-            // No subjects available
-            // ------------------------------------------
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.name = "selectedProgramIds";
+                checkbox.value = program.programId;
+                checkbox.checked = Boolean(program.selected);
+                checkbox.dataset.teacherProgram = "true";
 
-            if (
-                !data.subjects ||
-                data.subjects.length === 0
-            ) {
+                const info = document.createElement("div");
+                const title = document.createElement("strong");
+                title.textContent = program.programCode
+                    ? `${program.programCode} · ${program.programName}`
+                    : program.programName;
 
-                teacherSubjectList.innerHTML =
-                    "";
+                const detail = document.createElement("span");
+                detail.textContent = "Program";
 
+                info.appendChild(title);
+                info.appendChild(detail);
+                label.appendChild(checkbox);
+                label.appendChild(info);
+                teacherProgramList.appendChild(label);
+            });
 
-                const message =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                message.className =
-                    "user-flash error";
-
-
-                message.textContent =
-                    "No subjects are available for this teacher's program.";
-
-
-                teacherSubjectList
-                    .appendChild(
-                        message
-                    );
-
-
-                return;
+            function getSelectedProgramIds() {
+                return Array.from(
+                    teacherProgramList.querySelectorAll(
+                        'input[name="selectedProgramIds"]:checked'
+                    )
+                ).map(input => input.value);
             }
 
+            function renderSubjects() {
+                const selectedProgramIds = getSelectedProgramIds();
+                teacherSubjectList.innerHTML = "";
 
-            // ------------------------------------------
-            // Create subject checkboxes
-            // ------------------------------------------
-
-            teacherSubjectList.innerHTML =
-                "";
-
-
-            data.subjects.forEach(
-                subject => {
-
-                    const label =
-                        document.createElement(
-                            "label"
-                        );
-
-
-                    label.className =
-                        "teacher-subject-item";
-
-
-                    const checkbox =
-                        document.createElement(
-                            "input"
-                        );
-
-
-                    checkbox.type =
-                        "checkbox";
-
-
-                    checkbox.name =
-                        "selectedCourseIds";
-
-
-                    checkbox.value =
-                        subject.courseId;
-
-
-                    checkbox.checked =
-                        Boolean(
-                            subject.selected
-                        );
-
-
-                    const info =
-                        document.createElement(
-                            "div"
-                        );
-
-
-                    const title =
-                        document.createElement(
-                            "strong"
-                        );
-
-
-                    if (
-                        subject.courseCode
-                    ) {
-
-                        title.textContent =
-                            `${subject.courseCode} · ${subject.courseName}`;
-                    }
-
-                    else {
-
-                        title.textContent =
-                            subject.courseName;
-                    }
-
-
-                    const program =
-                        document.createElement(
-                            "span"
-                        );
-
-
-                    program.textContent =
-                        subject.programs ||
-                        "";
-
-
-                    info.appendChild(
-                        title
-                    );
-
-
-                    info.appendChild(
-                        program
-                    );
-
-
-                    label.appendChild(
-                        checkbox
-                    );
-
-
-                    label.appendChild(
-                        info
-                    );
-
-
-                    teacherSubjectList
-                        .appendChild(
-                            label
-                        );
+                if (selectedProgramIds.length === 0) {
+                    teacherSubjectNoProgram.hidden = false;
+                    return;
                 }
-            );
+
+                teacherSubjectNoProgram.hidden = true;
+
+                const visibleSubjects = subjects.filter(subject =>
+                    Array.isArray(subject.programIds) &&
+                    subject.programIds.some(programId =>
+                        selectedProgramIds.includes(programId)
+                    )
+                );
+
+                if (visibleSubjects.length === 0) {
+                    const message = document.createElement("div");
+                    message.className = "user-flash error";
+                    message.textContent =
+                        "No subjects are assigned to the selected program(s).";
+                    teacherSubjectList.appendChild(message);
+                    return;
+                }
+
+                visibleSubjects.forEach(subject => {
+                    const label = document.createElement("label");
+                    label.className = "teacher-subject-item";
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.name = "selectedCourseIds";
+                    checkbox.value = subject.courseId;
+                    checkbox.checked = selectedCourseState.has(subject.courseId);
+                    checkbox.addEventListener("change", () => {
+                        if (checkbox.checked) {
+                            selectedCourseState.add(subject.courseId);
+                        }
+                        else {
+                            selectedCourseState.delete(subject.courseId);
+                        }
+                    });
+
+                    const info = document.createElement("div");
+                    const title = document.createElement("strong");
+                    title.textContent = subject.courseCode
+                        ? `${subject.courseCode} · ${subject.courseName}`
+                        : subject.courseName;
+
+                    const program = document.createElement("span");
+                    const visibleProgramNames = programs
+                        .filter(p =>
+                            selectedProgramIds.includes(p.programId) &&
+                            subject.programIds.includes(p.programId)
+                        )
+                        .map(p => p.programName);
+
+                    program.textContent = visibleProgramNames.join(", ");
+
+                    info.appendChild(title);
+                    info.appendChild(program);
+                    label.appendChild(checkbox);
+                    label.appendChild(info);
+                    teacherSubjectList.appendChild(label);
+                });
+            }
+
+            teacherProgramList
+                .querySelectorAll('input[name="selectedProgramIds"]')
+                .forEach(input => {
+                    input.addEventListener("change", renderSubjects);
+                });
+
+            renderSubjects();
         }
-
         catch (error) {
+            console.error(error);
+            teacherProgramList.innerHTML = "";
+            teacherSubjectList.innerHTML = "";
 
-            console.error(
-                error
-            );
-
-
-            teacherSubjectList.innerHTML =
-                "";
-
-
-            const errorBox =
-                document.createElement(
-                    "div"
-                );
-
-
-            errorBox.className =
-                "user-flash error";
-
-
+            const errorBox = document.createElement("div");
+            errorBox.className = "user-flash error";
             errorBox.textContent =
-                error.message ||
-                "Unable to load teacher subjects.";
+                error.message || "Unable to load teacher registration.";
 
-
-            teacherSubjectList
-                .appendChild(
-                    errorBox
-                );
+            teacherProgramList.appendChild(errorBox);
         }
     }
-
 
     // ==================================================
     // CLOSE MANAGE TEACHER SUBJECTS

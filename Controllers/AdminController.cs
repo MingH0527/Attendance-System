@@ -1457,12 +1457,9 @@ public class AdminController : Controller
         GetTeacherSubjectRegistration(
             string teacherId)
     {
-        if (string.IsNullOrWhiteSpace(
-            teacherId))
+        if (string.IsNullOrWhiteSpace(teacherId))
         {
-            return BadRequest(
-                "Teacher ID is required."
-            );
+            return BadRequest("Teacher ID is required.");
         }
 
         User? teacher =
@@ -1476,167 +1473,105 @@ public class AdminController : Controller
 
         if (teacher == null)
         {
-            return NotFound(
-                "Teacher not found."
-            );
+            return NotFound("Teacher not found.");
         }
 
-        // Get programs registered by teacher
-        List<string> programIds =
-            await _context
-                .TeacherPrograms
+        List<string> selectedProgramIds =
+            await _context.TeacherPrograms
                 .AsNoTracking()
-                .Where(tp =>
-                    tp.UserId ==
-                    teacherId
-                )
-                .Select(tp =>
-                    tp.ProgramId
-                )
+                .Where(tp => tp.UserId == teacherId)
+                .Select(tp => tp.ProgramId)
                 .ToListAsync();
 
-        if (programIds.Count == 0)
-        {
-            return Json(new
-            {
-                teacherId =
-                    teacher.UserId,
-
-                teacherName =
-                    teacher.Username,
-
-                hasProgram =
-                    false,
-
-                subjects =
-                    Array.Empty<object>()
-            });
-        }
-
-        // Get all subjects from teacher's programs
-        var availableSubjects =
-            await _context
-                .ProgramCourses
-                .AsNoTracking()
-                .Where(pc =>
-                    programIds.Contains(
-                        pc.ProgramId
-                    )
-                )
-                .Include(
-                    pc => pc.Course)
-                .Include(
-                    pc => pc.Program)
-                .Where(pc =>
-                    pc.Course != null
-                )
-                .Select(pc =>
-                    new
-                    {
-                        CourseId =
-                            pc.CourseId,
-
-                        CourseCode =
-                            pc.Course!
-                                .CourseCode,
-
-                        CourseName =
-                            pc.Course
-                                .CourseName,
-
-                        ProgramName =
-                            pc.Program != null
-                                ? pc.Program
-                                    .ProgramName
-                                : ""
-                    })
-                .ToListAsync();
-
-        // Subjects already registered to teacher
         List<string> selectedCourseIds =
-            await _context
-                .TeacherCourses
+            await _context.TeacherCourses
                 .AsNoTracking()
-                .Where(tc =>
-                    tc.UserId ==
-                    teacherId
-                )
-                .Select(tc =>
-                    tc.CourseId
-                )
+                .Where(tc => tc.UserId == teacherId)
+                .Select(tc => tc.CourseId)
+                .ToListAsync();
+
+        var programs =
+            await _context.AcademicPrograms
+                .AsNoTracking()
+                .OrderBy(p => p.ProgramName)
+                .Select(p => new
+                {
+                    programId = p.ProgramId,
+                    programCode = p.ProgramCode,
+                    programName = p.ProgramName,
+                    selected = selectedProgramIds.Contains(p.ProgramId)
+                })
+                .ToListAsync();
+
+        var programSubjects =
+            await _context.ProgramCourses
+                .AsNoTracking()
+                .Include(pc => pc.Course)
+                .Include(pc => pc.Program)
+                .Where(pc => pc.Course != null)
+                .Select(pc => new
+                {
+                    pc.CourseId,
+                    CourseCode = pc.Course!.CourseCode,
+                    CourseName = pc.Course.CourseName,
+                    pc.ProgramId,
+                    ProgramName = pc.Program != null
+                        ? pc.Program.ProgramName
+                        : pc.ProgramId
+                })
                 .ToListAsync();
 
         var subjects =
-            availableSubjects
-                .GroupBy(s =>
-                    new
-                    {
-                        s.CourseId,
-                        s.CourseCode,
-                        s.CourseName
-                    })
-                .Select(g =>
-                    new
-                    {
-                        courseId =
-                            g.Key.CourseId,
-
-                        courseCode =
-                            g.Key.CourseCode
-                            ?? "",
-
-                        courseName =
-                            g.Key.CourseName,
-
-                        programs =
-                            string.Join(
-                                ", ",
-                                g.Select(
-                                    x =>
-                                        x.ProgramName
-                                )
-                                .Distinct()
-                            ),
-
-                        selected =
-                            selectedCourseIds
-                                .Contains(
-                                    g.Key.CourseId
-                                )
-                    })
-                .OrderBy(
-                    s => s.courseName)
+            programSubjects
+                .GroupBy(s => new
+                {
+                    s.CourseId,
+                    s.CourseCode,
+                    s.CourseName
+                })
+                .Select(g => new
+                {
+                    courseId = g.Key.CourseId,
+                    courseCode = g.Key.CourseCode ?? "",
+                    courseName = g.Key.CourseName,
+                    programIds = g
+                        .Select(x => x.ProgramId)
+                        .Distinct()
+                        .ToList(),
+                    programs = string.Join(
+                        ", ",
+                        g.Select(x => x.ProgramName)
+                            .Distinct()
+                    ),
+                    selected = selectedCourseIds.Contains(g.Key.CourseId)
+                })
+                .OrderBy(s => s.courseName)
                 .ToList();
 
         return Json(new
         {
-            teacherId =
-                teacher.UserId,
-
-            teacherName =
-                teacher.Username,
-
-            hasProgram =
-                true,
-
+            teacherId = teacher.UserId,
+            teacherName = teacher.Username,
+            hasProgram = selectedProgramIds.Count > 0,
+            programs,
             subjects
         });
     }
 
     // ==================================================
-    // SAVE SUBJECTS FOR TEACHER
+    // SAVE PROGRAMS + SUBJECTS FOR TEACHER
     // ==================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveTeacherSubjects(
         string teacherId,
+        List<string>? selectedProgramIds,
         List<string>? selectedCourseIds)
     {
-        selectedCourseIds ??=
-            new List<string>();
+        selectedProgramIds ??= new List<string>();
+        selectedCourseIds ??= new List<string>();
 
-        // Find teacher
         User? teacher =
             await _context.Users
                 .FirstOrDefaultAsync(u =>
@@ -1647,201 +1582,156 @@ public class AdminController : Controller
 
         if (teacher == null)
         {
-            TempData["ErrorMessage"] =
-                "Teacher not found.";
-
-            return RedirectToAction(
-                "Index",
-                "User"
-            );
+            TempData["ErrorMessage"] = "Teacher not found.";
+            return RedirectToAction("Index", "User");
         }
 
-        // Get teacher's registered programs
-        List<string> programIds =
-            await _context
-                .TeacherPrograms
-                .AsNoTracking()
-                .Where(tp =>
-                    tp.UserId ==
-                    teacherId
-                )
-                .Select(tp =>
-                    tp.ProgramId
-                )
-                .ToListAsync();
+        selectedProgramIds = selectedProgramIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
 
-        if (programIds.Count == 0)
+        selectedCourseIds = selectedCourseIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList();
+
+        if (selectedProgramIds.Count == 0)
         {
             TempData["ErrorMessage"] =
-                "This teacher has not registered any program.";
-
-            return RedirectToAction(
-                "Index",
-                "User"
-            );
+                "Please select at least one program for this teacher.";
+            return RedirectToAction("Index", "User");
         }
 
-        // Get all valid subjects for teacher's programs
-        List<string> allowedCourseIds =
-            await _context
-                .ProgramCourses
+        List<string> validProgramIds =
+            await _context.AcademicPrograms
                 .AsNoTracking()
-                .Where(pc =>
-                    programIds.Contains(
-                        pc.ProgramId
-                    )
-                )
-                .Select(pc =>
-                    pc.CourseId
-                )
+                .Where(p => selectedProgramIds.Contains(p.ProgramId))
+                .Select(p => p.ProgramId)
+                .ToListAsync();
+
+        if (validProgramIds.Count != selectedProgramIds.Count)
+        {
+            TempData["ErrorMessage"] =
+                "One or more selected programs are invalid.";
+            return RedirectToAction("Index", "User");
+        }
+
+        List<string> allowedCourseIds =
+            await _context.ProgramCourses
+                .AsNoTracking()
+                .Where(pc => selectedProgramIds.Contains(pc.ProgramId))
+                .Select(pc => pc.CourseId)
                 .Distinct()
                 .ToListAsync();
 
-        // Only accept valid course IDs
-        selectedCourseIds =
-            selectedCourseIds
-                .Where(id =>
-                    allowedCourseIds.Contains(
-                        id
-                    )
-                )
-                .Distinct()
-                .ToList();
+        // Never trust course IDs posted by the browser.
+        selectedCourseIds = selectedCourseIds
+            .Where(id => allowedCourseIds.Contains(id))
+            .ToList();
 
-        // Get current teacher subjects
         List<TeacherCourse> currentCourses =
-            await _context
-                .TeacherCourses
-                .Where(tc =>
-                    tc.UserId ==
-                    teacherId
-                )
+            await _context.TeacherCourses
+                .Where(tc => tc.UserId == teacherId)
                 .ToListAsync();
 
-        // Find subjects unchecked by admin
         List<TeacherCourse> coursesToRemove =
             currentCourses
-                .Where(tc =>
-                    !selectedCourseIds
-                        .Contains(
-                            tc.CourseId
-                        )
-                )
+                .Where(tc => !selectedCourseIds.Contains(tc.CourseId))
                 .ToList();
 
-        // Prevent removing a subject
-        // already used in timetable
-        foreach (
-            TeacherCourse item
-            in coursesToRemove)
+        // A timetable assignment is historical/operational data.
+        // Do not allow registration editing to make it invalid.
+        foreach (TeacherCourse item in coursesToRemove)
         {
             bool usedInTimetable =
-                await _context
-                    .Timetables
+                await _context.Timetables
                     .AnyAsync(t =>
-                        t.TeacherId ==
-                            teacherId &&
-                        t.CourseId ==
-                            item.CourseId
+                        t.TeacherId == teacherId &&
+                        t.CourseId == item.CourseId
                     );
 
             if (usedInTimetable)
             {
                 Course? course =
-                    await _context
-                        .Courses
+                    await _context.Courses
                         .AsNoTracking()
-                        .FirstOrDefaultAsync(c =>
-                            c.CourseId ==
-                                item.CourseId
-                        );
+                        .FirstOrDefaultAsync(c => c.CourseId == item.CourseId);
 
                 TempData["ErrorMessage"] =
-                    $"Cannot remove " +
-                    $"{course?.CourseName ?? item.CourseId} " +
-                    "because this teacher is already assigned " +
-                    "to this subject in the timetable.";
+                    $"Cannot remove {course?.CourseName ?? item.CourseId} " +
+                    "because this teacher is already assigned to this subject in the timetable.";
 
-                return RedirectToAction(
-                    "Index",
-                    "User"
-                );
+                return RedirectToAction("Index", "User");
             }
         }
 
-        // Remove unchecked subjects
-        _context
-            .TeacherCourses
-            .RemoveRange(
-                coursesToRemove
-            );
+        List<TeacherProgram> currentPrograms =
+            await _context.TeacherPrograms
+                .Where(tp => tp.UserId == teacherId)
+                .ToListAsync();
 
-        // Current course IDs
-        List<string> existingCourseIds =
-            currentCourses
-                .Select(tc =>
-                    tc.CourseId
-                )
+        List<TeacherProgram> programsToRemove =
+            currentPrograms
+                .Where(tp => !selectedProgramIds.Contains(tp.ProgramId))
                 .ToList();
 
-        // Add newly selected subjects
-        foreach (
-            string courseId
-            in selectedCourseIds)
+        _context.TeacherPrograms.RemoveRange(programsToRemove);
+
+        List<string> existingProgramIds =
+            currentPrograms
+                .Select(tp => tp.ProgramId)
+                .ToList();
+
+        foreach (string programId in selectedProgramIds)
         {
-            // Already registered
-            if (
-                existingCourseIds
-                    .Contains(
-                        courseId
-                    )
-            )
+            if (existingProgramIds.Contains(programId))
             {
                 continue;
             }
 
-            TeacherCourse teacherCourse =
-                new TeacherCourse
-                {
-                    TeacherCourseId =
-                        await FormattedIdGenerator
-                            .NextAsync(
-                                _context
-                                    .TeacherCourses,
-
-                                x =>
-                                    x.TeacherCourseId,
-
-                                "TCR"
-                            ),
-
-                    UserId =
-                        teacherId,
-
-                    CourseId =
-                        courseId,
-
-                    RegisteredDate =
-                        DateTime.Now
-                };
-
-            _context
-                .TeacherCourses
-                .Add(
-                    teacherCourse
-                );
+            _context.TeacherPrograms.Add(new TeacherProgram
+            {
+                UserId = teacherId,
+                ProgramId = programId,
+                RegisteredDate = DateTime.Now
+            });
         }
 
-        await _context
-            .SaveChangesAsync();
+        _context.TeacherCourses.RemoveRange(coursesToRemove);
+
+        List<string> existingCourseIds =
+            currentCourses
+                .Select(tc => tc.CourseId)
+                .ToList();
+
+        foreach (string courseId in selectedCourseIds)
+        {
+            if (existingCourseIds.Contains(courseId))
+            {
+                continue;
+            }
+
+            _context.TeacherCourses.Add(new TeacherCourse
+            {
+                TeacherCourseId =
+                    await FormattedIdGenerator.NextAsync(
+                        _context.TeacherCourses,
+                        x => x.TeacherCourseId,
+                        "TCR"
+                    ),
+                UserId = teacherId,
+                CourseId = courseId,
+                RegisteredDate = DateTime.Now
+            });
+        }
+
+        await _context.SaveChangesAsync();
 
         TempData["SuccessMessage"] =
-            $"Subjects for {teacher.Username} updated successfully.";
+            $"Programs and subjects for {teacher.Username} updated successfully.";
 
-        return RedirectToAction(
-            "Index",
-            "User"
-        );
+        return RedirectToAction("Index", "User");
     }
 
     // ==================================================
