@@ -2,14 +2,72 @@
     ViewData["Title"] = "Home";
 }
 
-<div class="home-page">
-    <div class="home-card">
-        <h1>Attendance System</h1>
-        <p>Welcome to the Attendance System.</p>
+@section Styles {
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:wght@400;500&display=swap" />
 
-        <div class="button-group">
-            <a href="/Account/Register" class="btn btn-register">Register</a>
-            <a href="/Account/Login" class="btn btn-login">Login</a>
+    <link rel="stylesheet"
+          href="~/css/home.css"
+          asp-append-version="true" />
+}
+
+<div class="lp">
+
+    <section class="lp-cover">
+
+        <img class="lp-crest"
+             src="~/image/Logo_transparent_bg.png"
+             alt="SMK HLIH crest" />
+
+        <div>
+            <h1 class="lp-name">SMK HLIH</h1>
+
+            <hr class="lp-rule" />
+
+            <p class="lp-blurb">
+                Attendance, timetables, leave applications and
+                fee payments, kept together in one record.
+            </p>
         </div>
-    </div>
+
+        <p class="lp-foot">Attendance System</p>
+
+    </section>
+
+    <section class="lp-entry">
+
+        <div class="lp-panel">
+
+            <h2 class="lp-greet">Sign in to continue</h2>
+
+            <p class="lp-lede">
+                Students, teachers and administrators all use
+                the same account.
+            </p>
+
+            <div class="lp-actions">
+
+                <a class="lp-btn lp-btn--primary"
+                   href="/Account/Login">
+                    Log in
+                </a>
+
+                <a class="lp-btn lp-btn--quiet"
+                   href="/Account/Register">
+                    Create an account
+                </a>
+
+            </div>
+
+            <p class="lp-note">
+                New students should register first, then add
+                their program and class from My Profile.
+            </p>
+
+        </div>
+
+    </section>
+
 </div>

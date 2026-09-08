@@ -1,0 +1,239 @@
+﻿/* =========================================================
+   Landing page (Views/Home/Index.cshtml)
+
+   Self-contained: every class is prefixed "lp-" so nothing
+   here can collide with app.css, register.css or login.css.
+   ========================================================= */
+
+.lp {
+    --lp-ink: #0E2340;
+    --lp-field: #17376A;
+    --lp-paper: #FFFFFF;
+    --lp-wash: #EDF1F7;
+    --lp-gold: #C9A227;
+    --lp-muted: #5C6B84;
+    --lp-line: #DCE3ED;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    background: var(--lp-wash);
+    color: var(--lp-ink);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- left: the register cover ---------- */
+
+.lp-cover {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 60px;
+    background: var(--lp-ink);
+    color: #fff;
+    overflow: hidden;
+}
+
+    /* Ruled lines of an attendance register, plus its margin rule. */
+    .lp-cover::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient( to bottom, rgba(255,255,255,.055) 0 1px, transparent 1px 38px );
+        pointer-events: none;
+    }
+
+    .lp-cover::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 46px;
+        width: 1px;
+        background: rgba(201, 162, 39, .5);
+        pointer-events: none;
+    }
+
+    .lp-cover > * {
+        position: relative;
+    }
+
+.lp-crest {
+    width: 108px;
+    height: auto;
+    display: block;
+    /* The crest artwork is dark navy on transparency, so it disappears
+       against this panel. brightness(0) flattens it to solid black and
+       invert(1) flips that to white, keeping the transparent areas
+       transparent - a clean white silhouette rather than the shifted
+       hues a plain invert() would give. */
+    filter: brightness(0) invert(1);
+    opacity: .92;
+}
+
+.lp-name {
+    margin: 30px 0 0;
+    font-family: Newsreader, Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: clamp(46px, 5.4vw, 68px);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+}
+
+.lp-rule {
+    width: 64px;
+    height: 2px;
+    margin: 26px 0 22px;
+    background: var(--lp-gold);
+    border: 0;
+}
+
+.lp-blurb {
+    max-width: 34ch;
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, .76);
+}
+
+.lp-foot {
+    margin: 0;
+    font-size: 13px;
+    letter-spacing: .01em;
+    color: rgba(255, 255, 255, .45);
+}
+
+/* ---------- right: the entrance ---------- */
+
+.lp-entry {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 64px 60px;
+    background: var(--lp-paper);
+}
+
+.lp-panel {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+}
+
+.lp-greet {
+    margin: 0 0 10px;
+    font-family: Newsreader, Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.lp-lede {
+    margin: 0 0 34px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--lp-muted);
+}
+
+.lp-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lp-btn {
+    display: block;
+    padding: 15px 20px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.lp-btn--primary {
+    background: var(--lp-ink);
+    color: #fff;
+}
+
+    .lp-btn--primary:hover {
+        background: var(--lp-field);
+    }
+
+.lp-btn--quiet {
+    background: #fff;
+    border-color: var(--lp-line);
+    color: var(--lp-ink);
+}
+
+    .lp-btn--quiet:hover {
+        border-color: var(--lp-ink);
+        background: var(--lp-wash);
+    }
+
+.lp-btn:focus-visible {
+    outline: 2px solid var(--lp-gold);
+    outline-offset: 3px;
+}
+
+.lp-note {
+    margin: 30px 0 0;
+    padding-top: 22px;
+    border-top: 1px solid var(--lp-line);
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--lp-muted);
+}
+
+/* ---------- one page-load moment ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .lp-panel {
+        animation: lp-rise .5s cubic-bezier(.2, .7, .3, 1) both;
+    }
+}
+
+@keyframes lp-rise {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+    .lp {
+        grid-template-columns: 1fr;
+    }
+
+    .lp-cover {
+        gap: 28px;
+        padding: 44px 30px 40px;
+    }
+
+        .lp-cover::after {
+            left: 22px;
+        }
+
+    .lp-crest {
+        width: 78px;
+    }
+
+    .lp-name {
+        margin-top: 20px;
+        font-size: 42px;
+    }
+
+    .lp-foot {
+        display: none;
+    }
+
+    .lp-entry {
+        padding: 44px 30px 56px;
+    }
+}
