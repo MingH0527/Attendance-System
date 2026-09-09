@@ -419,9 +419,7 @@
 
                         <small>
 
-                            @notification.CreatedAt.ToString(
-                                "dd MMM yyyy HH:mm"
-                            )
+                            @notification.CreatedAt.ToString("dd/MM/yyyy HH:mm")
 
                         </small>
 
@@ -553,18 +551,14 @@
 
                                     <strong>
 
-                                        @startTime.ToString(
-                                            "hh:mm tt"
-                                        )
+                                        @startTime.ToString("hh:mm tt")
 
                                     </strong>
 
 
                                     <span>
 
-                                        @endTime.ToString(
-                                            "hh:mm tt"
-                                        )
+                                        @endTime.ToString("hh:mm tt")
 
                                     </span>
 
@@ -653,9 +647,7 @@
 
                                         <span>
 
-                                            @actualDate.Value.ToString(
-                                                "dd/MM/yyyy"
-                                            )
+                                            @actualDate.Value.ToString("dd/MM/yyyy")
 
                                         </span>
 
@@ -852,9 +844,7 @@
 
                                                     <div class="subject-date">
 
-                                                        @item.OccurrenceDate.Value.ToString(
-                                                            "dd MMM yyyy"
-                                                        )
+                                                        @item.OccurrenceDate.Value.ToString("dd/MM/yyyy")
 
                                                     </div>
 
