@@ -101,14 +101,30 @@ public class PaymentController : Controller
         {
             finalAmount = selectedFee.Amount;
         }
-        else if (!customAmount.HasValue || customAmount.Value <= 0)
+        else if (!customAmount.HasValue)
         {
-            TempData["Error"] = "Please enter a valid payment amount.";
-            return RedirectToAction(nameof(Pay), new { feeId });
+            TempData["Error"] =
+                "Please enter a payment amount.";
+
+            return RedirectToAction(
+                nameof(Pay),
+                new { feeId }
+            );
+        }
+        else if (customAmount.Value < selectedFee.Amount)
+        {
+            TempData["Error"] =
+                $"The minimum payment amount is RM {selectedFee.Amount:0.00}.";
+
+            return RedirectToAction(
+                nameof(Pay),
+                new { feeId }
+            );
         }
         else
         {
-            finalAmount = customAmount.Value;
+            finalAmount =
+                customAmount.Value;
         }
 
         long amountInSen = Convert.ToInt64(decimal.Round(finalAmount * 100, 0, MidpointRounding.AwayFromZero));
@@ -267,11 +283,23 @@ public class PaymentController : Controller
             return RedirectToAction(nameof(Pay), new { feeId });
         }
 
-        decimal amount = fee.AmountIsFixed ? fee.Amount : customAmount.GetValueOrDefault();
-        if (amount <= 0)
+        decimal amount =
+      fee.AmountIsFixed
+          ? fee.Amount
+          : customAmount.GetValueOrDefault();
+
+
+        if (!fee.AmountIsFixed &&
+            (!customAmount.HasValue ||
+             amount < fee.Amount))
         {
-            TempData["Error"] = "Please enter a valid payment amount.";
-            return RedirectToAction(nameof(Pay), new { feeId });
+            TempData["Error"] =
+                $"The minimum payment amount is RM {fee.Amount:0.00}.";
+
+            return RedirectToAction(
+                nameof(Pay),
+                new { feeId }
+            );
         }
 
 
@@ -309,13 +337,24 @@ public class PaymentController : Controller
         FeeItem? fee = GetFeeItems().FirstOrDefault(f => f.Id == feeId);
         if (fee == null) return NotFound();
 
-        decimal amount = fee.AmountIsFixed ? fee.Amount : customAmount.GetValueOrDefault();
-        if (amount <= 0)
-        {
-            TempData["Error"] = "Please enter a valid payment amount.";
-            return RedirectToAction(nameof(Pay), new { feeId });
-        }
+        decimal amount =
+     fee.AmountIsFixed
+         ? fee.Amount
+         : customAmount.GetValueOrDefault();
 
+
+        if (!fee.AmountIsFixed &&
+            (!customAmount.HasValue ||
+             amount < fee.Amount))
+        {
+            TempData["Error"] =
+                $"The minimum payment amount is RM {fee.Amount:0.00}.";
+
+            return RedirectToAction(
+                nameof(Pay),
+                new { feeId }
+            );
+        }
         DateTime paidAt = DateTime.UtcNow;
 
         PaymentTransaction transaction = new()

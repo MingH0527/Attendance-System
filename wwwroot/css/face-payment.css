@@ -3,3 +3,15 @@
 /* V2 payment method selection */
 .payment-choice-card{max-width:980px}.payment-method-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:26px 0}.payment-method-card{padding:24px;border:1px solid #dbe5f1;border-radius:22px;background:#fff;text-align:left;box-shadow:0 12px 28px rgba(15,23,42,.07)}.payment-method-card h2{margin:8px 0;font-size:22px}.payment-method-icon{width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:#eff6ff;font-size:27px}.qr-method-card{border-color:#bfdbfe;background:linear-gradient(180deg,#fff,#f8fbff)}.security-mini-status{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.security-mini-status span{padding:8px 10px;border-radius:999px;font-size:12px;font-weight:750}.security-mini-status .ok{background:#ecfdf5;color:#047857}.security-mini-status .missing{background:#fff7ed;color:#c2410c}.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.wallet-option{padding:14px 8px;border:2px solid #e2e8f0;border-radius:15px;text-align:center;cursor:pointer;transition:.2s;background:#fff}.wallet-option:hover,.wallet-option.selected{border-color:#2563eb;transform:translateY(-2px);box-shadow:0 8px 18px rgba(37,99,235,.12)}.wallet-option input{position:absolute;opacity:0;pointer-events:none}.wallet-emoji{display:block;font-size:25px;margin-bottom:5px}.field-group small{display:block;margin-top:6px;color:#64748b;font-size:12px}.qr-debug{margin-top:14px;text-align:left}.qr-debug code{display:block;margin-top:8px;padding:10px;overflow-wrap:anywhere;border-radius:10px;background:#f1f5f9;font-size:11px}.mobile-result-box{margin:18px 0;padding:14px;display:grid;grid-template-columns:1fr auto;gap:10px;border-radius:15px;background:#f8fafc;text-align:left}.already-paid-icon{width:76px;height:76px;margin:0 auto 18px;display:grid;place-items:center;border-radius:50%;background:#d1fae5;color:#047857;font-size:40px;font-weight:900}.already-paid-screen{border:2px solid #a7f3d0}
 @media(max-width:780px){.payment-method-grid{grid-template-columns:1fr}.wallet-grid{grid-template-columns:1fr}.payment-choice-card{max-width:620px}}
+
+
+/* Hide amount number arrows */
+.amount-input::-webkit-inner-spin-button,
+.amount-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.amount-input {
+    -moz-appearance: textfield;
+}
