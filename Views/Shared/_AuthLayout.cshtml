@@ -49,6 +49,25 @@
           href="~/css/app.css"
           asp-append-version="true" />
 
+@if (authIsStudent)
+{
+        @* Dark mode follows the student across the bare-shell pages too
+           (payment, register program, receipts). *@
+        <link rel="stylesheet"
+              href="~/css/dark.css"
+              asp-append-version="true" />
+
+        <script data-no-translate>
+            (function () {
+                try {
+                    if (localStorage.getItem('darkMode') === 'on') {
+                        document.documentElement.classList.add('dark');
+                    }
+                } catch (e) { }
+            })();
+        </script>
+}
+
     @await RenderSectionAsync("Styles", required: false)
 </head>
 
