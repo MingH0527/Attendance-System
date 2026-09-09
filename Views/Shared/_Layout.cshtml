@@ -148,6 +148,8 @@
 
                 @if (isAdmin)
                 {
+                    <p class="sidebar-group">Overview</p>
+
                     <a asp-controller="Admin"
                        asp-action="Index">
 
@@ -161,6 +163,8 @@
                         Dashboard
 
                     </a>
+
+                    <p class="sidebar-group">Account</p>
 
                     <a asp-controller="MyProfile"
                        asp-action="Index">
@@ -176,6 +180,8 @@
 
                     </a>
 
+                    <p class="sidebar-group">Academic</p>
+
                     <a asp-controller="Admin"
                        asp-action="Timetable">
 
@@ -187,6 +193,15 @@
                        asp-action="Index">
 
                         Program &amp; Subject
+
+                    </a>
+
+                    <p class="sidebar-group">Management</p>
+
+                    <a asp-controller="Admin"
+                       asp-action="BarredList">
+
+                        Barred List
 
                     </a>
 
@@ -204,13 +219,6 @@
 
                     </a>
 
-                    <a asp-controller="Admin"
-                        asp-action="BarredList">
-
-                        Barred List
-                    
-                    </a>
-
                     <a asp-controller="Facility"
                        asp-action="AdminIndex">
 
@@ -220,6 +228,8 @@
                 }
                 else
                 {
+                    <p class="sidebar-group">Overview</p>
+
                     <a asp-controller="Student"
                        asp-action="Index">
 
@@ -227,12 +237,16 @@
 
                     </a>
 
+                    <p class="sidebar-group">Account</p>
+
                     <a asp-controller="MyProfile"
                        asp-action="Index">
 
                         My Profile
 
                     </a>
+
+                    <p class="sidebar-group">Academic</p>
 
                     <a asp-controller="Student"
                        asp-action="Timetable">
@@ -256,6 +270,8 @@
 
                     </a>
 
+
+                    <p class="sidebar-group">Services</p>
 
                     <a asp-controller="Facility"
                        asp-action="Index">

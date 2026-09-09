@@ -1375,32 +1375,39 @@
     background: #e5e7eb;
     color: #4b5563;
 }
+
 .user-row[data-is-deleted="true"] {
     background: #f8fafc;
     opacity: .78;
 }
+
 .delete-account-button {
     background: #fff1f2;
     color: #b42318;
     border-color: #fecdd3;
 }
-.delete-account-button:hover {
-    background: #ffe4e6;
-}
+
+    .delete-account-button:hover {
+        background: #ffe4e6;
+    }
+
 .user-flash {
     margin: 12px 0;
     padding: 12px 14px;
     border-radius: 10px;
     font-size: 14px;
 }
-.user-flash.success { 
-    background: #ecfdf3;
-    color: #027a48;
-}
-.user-flash.error { 
-    background: #fef3f2;
-    color: #b42318; 
-}
+
+    .user-flash.success {
+        background: #ecfdf3;
+        color: #027a48;
+    }
+
+    .user-flash.error {
+        background: #fef3f2;
+        color: #b42318;
+    }
+
 .teacher-subject-list {
     display: flex;
     flex-direction: column;
@@ -1454,15 +1461,15 @@
     gap: 3px;
 }
 
-.teacher-registration-heading strong {
-    color: #10254a;
-    font-size: 14px;
-}
+    .teacher-registration-heading strong {
+        color: #10254a;
+        font-size: 14px;
+    }
 
-.teacher-registration-heading span {
-    color: #7b8aa5;
-    font-size: 12px;
-}
+    .teacher-registration-heading span {
+        color: #7b8aa5;
+        font-size: 12px;
+    }
 
 /* Teacher registration drawer: fixed header/footer with scrollable content */
 #teacherSubjectOverlay .teacher-registration-drawer {
@@ -1505,4 +1512,16 @@
 #teacherSubjectOverlay .teacher-registration-drawer {
     padding-bottom: 14px;
     box-sizing: border-box;
+}
+
+/* Rendered inside the shared shell (_Layout): .content owns the padding
+   and background, so the standalone full-page treatment is dropped. */
+.user-page {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+}
+
+.user-container {
+    max-width: none;
 }

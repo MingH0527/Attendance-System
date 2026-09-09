@@ -367,3 +367,10 @@ a.page-button:hover {
         flex-direction: column;
     }
 }
+/* Rendered inside the shared shell (_Layout): .content owns the padding
+   and background, so the standalone full-page treatment is dropped. */
+.leave-management-page {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+}

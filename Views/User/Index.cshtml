@@ -1,6 +1,8 @@
 @model List<WebAndMobile.Models.UserListItemDto>
 
 @{
+    Layout = "_Layout";
+
     ViewData["Title"] = "User Management";
 
     int totalUsers = Model?.Count(u => !u.IsDeleted) ?? 0;
@@ -704,46 +706,46 @@
 
             <div class="teacher-registration-scroll">
 
-            <div class="detail-item detail-item-wide">
-                <span class="detail-label">
-                    Teacher
-                </span>
+                <div class="detail-item detail-item-wide">
+                    <span class="detail-label">
+                        Teacher
+                    </span>
 
-                <strong id="teacherSubjectTeacherName">
-                    -
-                </strong>
-            </div>
-
-            <div class="teacher-registration-section">
-                <div class="teacher-registration-heading">
-                    <strong>Programs</strong>
-                    <span>Select the program(s) this teacher is allowed to teach.</span>
+                    <strong id="teacherSubjectTeacherName">
+                        -
+                    </strong>
                 </div>
 
-                <div id="teacherProgramList"
-                     class="teacher-subject-list">
-                </div>
-            </div>
+                <div class="teacher-registration-section">
+                    <div class="teacher-registration-heading">
+                        <strong>Programs</strong>
+                        <span>Select the program(s) this teacher is allowed to teach.</span>
+                    </div>
 
-            <div id="teacherSubjectNoProgram"
-                 class="user-flash error"
-                 style="margin-top:20px;"
-                 hidden>
-
-                Select at least one program first. Subjects from the selected program(s) will appear below.
-
-            </div>
-
-            <div class="teacher-registration-section">
-                <div class="teacher-registration-heading">
-                    <strong>Subjects</strong>
-                    <span>Select the subjects this teacher is allowed to teach.</span>
+                    <div id="teacherProgramList"
+                         class="teacher-subject-list">
+                    </div>
                 </div>
 
-                <div id="teacherSubjectList"
-                     class="teacher-subject-list">
+                <div id="teacherSubjectNoProgram"
+                     class="user-flash error"
+                     style="margin-top:20px;"
+                     hidden>
+
+                    Select at least one program first. Subjects from the selected program(s) will appear below.
+
                 </div>
-            </div>
+
+                <div class="teacher-registration-section">
+                    <div class="teacher-registration-heading">
+                        <strong>Subjects</strong>
+                        <span>Select the subjects this teacher is allowed to teach.</span>
+                    </div>
+
+                    <div id="teacherSubjectList"
+                         class="teacher-subject-list">
+                    </div>
+                </div>
 
             </div>
 
