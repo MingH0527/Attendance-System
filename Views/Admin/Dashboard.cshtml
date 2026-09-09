@@ -284,6 +284,21 @@
                     Reset
                 </a>
 
+                @* Exports every filtered row, not just this page. The href is
+                   kept in step with the live filters by the script below. *@
+                <a id="exportCsvLink"
+                   asp-controller="Admin"
+                   asp-action="ExportPaymentsCsv"
+                   asp-route-search="@Model.Search"
+                   asp-route-status="@Model.StatusFilter"
+                   asp-route-method="@Model.MethodFilter"
+                   asp-route-from="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                   asp-route-to="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                   data-endpoint='@Url.Action("ExportPaymentsCsv", "Admin")'
+                   class="apd-button apd-button--export">
+                    Export CSV
+                </a>
+
             </form>
 
         </div>

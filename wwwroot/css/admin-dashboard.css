@@ -750,3 +750,23 @@
         opacity: .45;
         pointer-events: none;
     }
+
+/* ---------- export button ---------- */
+
+.apd-button--export {
+    border-color: #cfe0e2;
+    background: #ffffff;
+    color: #0b6b73;
+}
+
+    .apd-button--export:hover {
+        border-color: #008c95;
+        background: #f0fbfb;
+        color: #01717a;
+    }
+
+    .apd-button--export::before {
+        content: "↓";
+        margin-right: 7px;
+        font-weight: 700;
+    }

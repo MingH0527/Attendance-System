@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Security.Claims;
+using System.Text;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
 using WebAndMobile.ViewModels;
@@ -116,13 +118,92 @@ public class AdminController : Controller
         return View(model);
     }
 
+    /// <summary>
+    /// Downloads the Overall Student Payments table as CSV, honouring
+    /// whatever filters are currently applied. Not paged: the export
+    /// contains every matching row, not just the visible page.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> ExportPaymentsCsv(
+        string? search,
+        string? status,
+        string? method,
+        DateTime? from,
+        DateTime? to)
+    {
+        AdminDashboardViewModel model =
+            await BuildDashboardAsync(
+                search, status, method, from, to,
+                page: 1,
+                pageSize: int.MaxValue);
+
+        StringBuilder csv = new();
+
+        csv.AppendLine(string.Join(',',
+        [
+            "Transaction ID",
+            "User ID",
+            "Student",
+            "Fee",
+            "Payment Method",
+            "Amount (RM)",
+            "Status",
+            "Created",
+            "Paid"
+        ]));
+
+        foreach (AdminPaymentRow row in model.Payments)
+        {
+            csv.AppendLine(string.Join(',',
+            [
+                CsvField(row.PaymentTransactionId),
+                CsvField(row.UserId),
+                CsvField(row.Username),
+                CsvField(row.FeeName),
+                CsvField(row.PaymentMethod),
+                CsvField(row.Amount.ToString(
+                    "0.00", CultureInfo.InvariantCulture)),
+                CsvField(row.Status),
+                CsvField(row.CreatedAt.ToLocalTime()
+                    .ToString("yyyy-MM-dd HH:mm")),
+                CsvField(row.PaidAt.HasValue
+                    ? row.PaidAt.Value.ToLocalTime()
+                        .ToString("yyyy-MM-dd HH:mm")
+                    : "")
+            ]));
+        }
+
+        // UTF-8 BOM so Excel opens the file in the right encoding.
+        byte[] bytes =
+            Encoding.UTF8.GetPreamble()
+                .Concat(Encoding.UTF8.GetBytes(csv.ToString()))
+                .ToArray();
+
+        string fileName =
+            $"payments-{DateTime.Now:yyyyMMdd-HHmm}.csv";
+
+        return File(bytes, "text/csv", fileName);
+    }
+
+    /// <summary>
+    /// Quotes a CSV field and doubles any embedded quotes, so a comma or
+    /// a quote inside a student name cannot break the column layout.
+    /// </summary>
+    private static string CsvField(string? value)
+    {
+        string text = value ?? "";
+
+        return $"\"{text.Replace("\"", "\"\"")}\"";
+    }
+
     private async Task<AdminDashboardViewModel> BuildDashboardAsync(
         string? search,
         string? status,
         string? method,
         DateTime? from,
         DateTime? to,
-        int page)
+        int page,
+        int pageSize = 10)
     {
         IQueryable<PaymentTransaction> allPayments =
             _context.PaymentTransactions.AsNoTracking();
@@ -140,6 +221,8 @@ public class AdminController : Controller
 
         AdminDashboardViewModel model = new()
         {
+            PageSize = pageSize,
+
             Search = search,
 
             StatusFilter =
