@@ -100,7 +100,8 @@
                                 (int)Math.Round(month.Amount / monthPeak * 100m));
 
                     <div class="apd-bar-col"
-                         title='@month.Label — RM @month.Amount.ToString("N2") (@month.Count paid)'>
+                         data-tip-title='@month.Label'
+                         data-tip='RM @month.Amount.ToString("N2") · @month.Count paid'>
 
                         <div class="apd-bar-track">
                             @if (height > 0)
@@ -146,13 +147,16 @@
 
                     @foreach (var slice in donutSlices)
                     {
-                        <circle cx="80" cy="80" r="58"
+                        <circle class="apd-donut-slice"
+                                cx="80" cy="80" r="58"
                                 fill="none"
                                 stroke="@slice.Color"
                                 stroke-width="24"
                                 stroke-dasharray="@slice.Dash @slice.Gap"
                                 stroke-dashoffset="@slice.Offset"
-                                transform="rotate(-90 80 80)"></circle>
+                                transform="rotate(-90 80 80)"
+                                data-tip-title='@slice.Label'
+                                data-tip='@slice.Percent.ToString("0.#")% · RM @slice.Amount.ToString("N2") · @slice.Count paid'></circle>
                     }
 
                     <text x="80" y="75"
@@ -168,7 +172,8 @@
                 <ul class="apd-legend">
                     @foreach (var slice in donutSlices)
                     {
-                        <li>
+                        <li data-tip-title='@slice.Label'
+                            data-tip='@slice.Percent.ToString("0.#")% · RM @slice.Amount.ToString("N2") · @slice.Count paid'>
                             <span class="apd-swatch"
                                   style="background:@slice.Color"></span>
 
@@ -211,7 +216,8 @@
                     int width =
                         (int)Math.Round(student.Amount / studentPeak * 100m);
 
-                    <li>
+                    <li data-tip-title='@student.Label'
+                        data-tip='RM @student.Amount.ToString("N2") · @student.Count payment(s)'>
                         <span class="apd-hbar-name">@student.Label</span>
 
                         <span class="apd-hbar-track">
@@ -259,7 +265,8 @@
                                 (int)Math.Round(day.Count * 100d / weekdayPeak));
 
                     <div class="apd-bar-col"
-                         title='@day.Label — @day.Count paid, RM @day.Amount.ToString("N2")'>
+                         data-tip-title='@day.Label'
+                         data-tip='@day.Count paid · RM @day.Amount.ToString("N2")'>
 
                         <div class="apd-bar-track">
                             @if (height > 0)
@@ -287,7 +294,8 @@
                                 (int)Math.Round(block.Count * 100d / hourPeak));
 
                     <div class="apd-bar-col"
-                         title='@block.Label — @block.Count paid, RM @block.Amount.ToString("N2")'>
+                         data-tip-title='@block.Label'
+                         data-tip='@block.Count paid · RM @block.Amount.ToString("N2")'>
 
                         <div class="apd-bar-track">
                             @if (height > 0)
@@ -306,3 +314,6 @@
     </div>
 
 </section>
+
+<script src="~/js/dashboard-charts.js"
+        asp-append-version="true"></script>

@@ -949,15 +949,25 @@ html.dark {
         color: var(--dk-text);
     }
 
-    html.dark .profile-required-content {
-        background: #33290f;
-        border-color: #5c4a1c;
-        color: var(--dk-text);
-    }
+    /* The amber banner is .profile-required-message (the outer box);
+   .profile-required-content is just the text wrapper inside it, so
+   giving that a background painted a dark block behind the words. */
 
     html.dark .profile-required-message {
-        color: var(--dk-text);
+        background: #33290f;
+        border-color: #5c4a1c;
+        color: #f3dfae;
     }
+
+    html.dark .profile-required-content,
+    html.dark .profile-required-content strong {
+        background: transparent;
+        color: #f3dfae;
+    }
+
+        html.dark .profile-required-content span {
+            color: #d8c391;
+        }
 
     html.dark .back-link {
         color: var(--dk-accent);
@@ -1112,3 +1122,210 @@ html.dark {
         html.dark .change-content div {
             color: #dfe6ef;
         }
+
+
+    /* =========================================================
+   Round 8 - facility booking calendar and time slots
+
+   In the light theme "available" is white and "selected" is the
+   app's near-black. On dark both of those invert in meaning:
+   white is the loudest thing on the page, and near-black is
+   invisible. So availability is signalled the other way round -
+   selected becomes the bright accent, unavailable recedes below
+   the card surface, and available sits in between with a clear
+   border.
+   ========================================================= */
+
+    html.dark .calendar-card,
+    html.dark .time-slot-grid {
+        background: var(--dk-surface);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .calendar-title,
+    html.dark .calendar-weekdays,
+    html.dark .calendar-weekdays span {
+        color: var(--dk-text);
+    }
+
+    /* ---------- calendar days ---------- */
+
+    html.dark .calendar-day.available {
+        background: var(--dk-surface-2);
+        border: 1px solid #46587a;
+        color: var(--dk-text);
+    }
+
+        html.dark .calendar-day.available:hover {
+            border-color: var(--dk-accent);
+            background: #26374f;
+        }
+
+    html.dark .calendar-day.unavailable {
+        background: #131b28;
+        border: 1px solid transparent;
+        color: #5d687a;
+    }
+
+    html.dark .calendar-day.selected {
+        background: var(--dk-accent);
+        border-color: var(--dk-accent);
+        color: #0d1521;
+    }
+
+    /* ---------- time slots ---------- */
+
+    html.dark .time-slot {
+        color: var(--dk-text);
+    }
+
+    html.dark .slot-available {
+        background: var(--dk-surface-2);
+        border: 1px solid #46587a;
+        color: var(--dk-text);
+    }
+
+        html.dark .slot-available:hover {
+            border-color: var(--dk-accent);
+            background: #26374f;
+        }
+
+    html.dark .slot-range {
+        background: #27405f;
+        border-color: #3c5a80;
+        color: #dbe7f7;
+    }
+
+    html.dark .slot-boundary {
+        background: var(--dk-accent);
+        border-color: var(--dk-accent);
+        color: #0d1521;
+    }
+
+    html.dark .slot-own-booking {
+        background: #3a2f14;
+        border: 1px solid #6d5a26;
+        color: #f0dfb4;
+    }
+
+    html.dark .slot-unavailable {
+        background: #131b28;
+        border: 1px solid transparent;
+        color: #5d687a;
+    }
+
+    html.dark .slot-booking-limit {
+        background: #18212f;
+        border: 1px dashed #4a5568;
+        color: #7d889a;
+    }
+
+    /* ---------- legends ---------- */
+
+    html.dark .legend,
+    html.dark .legend-item,
+    html.dark .legend span {
+        color: var(--dk-text);
+    }
+
+    html.dark .legend-dot.date-available,
+    html.dark .legend-box.slot-available {
+        background: var(--dk-surface-2);
+        border: 1px solid #46587a;
+    }
+
+    html.dark .legend-dot.date-selected,
+    html.dark .legend-box.slot-boundary {
+        background: var(--dk-accent);
+        border: 1px solid var(--dk-accent);
+    }
+
+    html.dark .legend-dot.date-unavailable,
+    html.dark .legend-box.slot-unavailable {
+        background: #131b28;
+        border: 1px solid #2b3648;
+    }
+
+    html.dark .legend-box.slot-range {
+        background: #27405f;
+        border: 1px solid #3c5a80;
+    }
+
+    html.dark .legend-box.slot-own-booking {
+        background: #3a2f14;
+        border: 1px solid #6d5a26;
+    }
+
+    html.dark .legend-box.slot-booking-limit {
+        background: #18212f;
+        border: 1px dashed #4a5568;
+    }
+
+    /* ---------- booking summary + confirm ---------- */
+
+    html.dark .booking-summary,
+    html.dark .summary-box,
+    html.dark .selected-info {
+        background: var(--dk-surface-2);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .confirm-booking-btn:disabled {
+        background: #37445c;
+        color: #9aa5b6;
+    }
+
+
+    /* ---------------------------------------------------------
+   Round 8b - the real time-slot state classes.
+
+   The legend swatches use .slot-* names, but the slots
+   themselves are styled with .time-slot.* and the selection
+   is applied at runtime as .selected-boundary /
+   .selected-range. Styling the legend names alone left the
+   actual selection invisible.
+   --------------------------------------------------------- */
+
+    html.dark .time-slot.available {
+        background: var(--dk-surface-2);
+        border-color: #46587a;
+        color: var(--dk-text);
+    }
+
+        html.dark .time-slot.available:hover {
+            border-color: var(--dk-accent);
+            background: #26374f;
+        }
+
+    html.dark .time-slot.selected-range {
+        background: #27405f;
+        border-color: #4d6f9c;
+        color: #e4eefc;
+    }
+
+    html.dark .time-slot.selected-boundary {
+        background: var(--dk-accent);
+        border-color: var(--dk-accent);
+        color: #0d1521;
+    }
+
+    html.dark .time-slot.unavailable {
+        background: #131b28;
+        border-color: #1d2635;
+        color: #5d687a;
+    }
+
+    html.dark .time-slot.own-booking,
+    html.dark .time-slot.cooldown {
+        background: #3a2f14;
+        border-color: #6d5a26;
+        color: #f0dfb4;
+    }
+
+    html.dark .time-slot.booking-limit {
+        background: #18212f;
+        border: 1px dashed #4a5568;
+        color: #7d889a;
+    }
