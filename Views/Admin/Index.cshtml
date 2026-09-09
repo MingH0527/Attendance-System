@@ -1,4 +1,4 @@
-@model WebAndMobile.Models.User
+﻿@model WebAndMobile.Models.User
 
 @{
     Layout = "_Layout";
@@ -308,6 +308,24 @@
             <div>
                 <h2>Facility Management</h2>
                 <p>Manage 24-hour facility bookings, Activity QR and Activity Attendance.</p>
+            </div>
+
+        </a>
+
+
+        <!-- Facility Analytics -->
+
+        <a asp-controller="Facility"
+           asp-action="Analytics"
+           class="dashboard-card">
+
+            <div class="card-icon">
+                📊
+            </div>
+
+            <div>
+                <h2>Facility Analytics</h2>
+                <p>Analyse facility bookings, usage trends, check-ins, cancellations and user activity.</p>
             </div>
 
         </a>

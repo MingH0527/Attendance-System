@@ -7,6 +7,7 @@ using QRCoder;
 using WebAndMobile.Configuration;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
+using WebAndMobile.ViewModels;
 
 namespace WebAndMobile.Controllers;
 
@@ -237,6 +238,31 @@ public class FacilityController : Controller
         await db.SaveChangesAsync();
         TempData["FacilitySuccess"] = "Booking cancelled successfully.";
         return RedirectToAction(nameof(MyBookings));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet]
+    public async Task<IActionResult> Analytics()
+    {
+        DateTime now = MalaysiaNow();
+        await CompleteEndedActiveBookings(now);
+
+        List<FacilityBooking> bookings = await db.FacilityBookings
+            .AsNoTracking()
+            .Include(b => b.Facility)
+            .Include(b => b.User)
+            .Include(b => b.Attendance)
+            .OrderBy(b => b.BookingDate)
+            .ThenBy(b => b.StartHour)
+            .ToListAsync();
+
+        List<Facility> facilities = await db.Facilities
+            .AsNoTracking()
+            .OrderBy(f => f.FacilityId)
+            .ToListAsync();
+
+        FacilityAnalyticsViewModel model = BuildFacilityAnalytics(bookings, facilities, now);
+        return View(model);
     }
 
     [Authorize(Roles = "Admin")]
@@ -547,6 +573,340 @@ public class FacilityController : Controller
         }
 
         await db.SaveChangesAsync();
+    }
+
+    private static FacilityAnalyticsViewModel BuildFacilityAnalytics(
+        List<FacilityBooking> bookings,
+        List<Facility> facilities,
+        DateTime now)
+    {
+        FacilityAnalyticsViewModel model = new()
+        {
+            TotalBookings = bookings.Count,
+            TotalFacilities = facilities.Count
+        };
+
+        // Booking hours represent facility time reserved by bookings that were
+        // not cancelled or rejected. Pending bookings are included because they
+        // still block the facility slot while awaiting a decision.
+        List<FacilityBooking> booked = bookings
+            .Where(b => b.Status is not ("Cancelled" or "Rejected"))
+            .ToList();
+
+        model.TotalBookingHours = booked.Sum(b => Math.Max(0, b.EndHour - b.StartHour));
+        model.CancellationRate = bookings.Count == 0
+            ? 0
+            : Math.Round(bookings.Count(b => b.Status == "Cancelled") * 100d / bookings.Count, 1);
+
+        // Completion rate uses only bookings that already have a final outcome.
+        // Pending, Approved and currently Checked In bookings are excluded from
+        // the denominator because they have not reached their final outcome yet.
+        int completedCount = bookings.Count(b => b.Status == "Completed");
+        int cancelledCount = bookings.Count(b => b.Status == "Cancelled");
+        int rejectedCount = bookings.Count(b => b.Status == "Rejected");
+        int finalOutcomeCount = completedCount + cancelledCount + rejectedCount;
+
+        model.CompletionRate = finalOutcomeCount == 0
+            ? 0
+            : Math.Round(completedCount * 100d / finalOutcomeCount, 1);
+
+        // Attendance outcome still uses only approved bookings whose booked time
+        // has ended. This is independent from the current booking lifecycle status.
+        List<FacilityBooking> completedApproved = bookings
+            .Where(b => b.ApprovedAt != null &&
+                        b.Status is not ("Cancelled" or "Rejected") &&
+                        GetEndDateTime(b) <= now)
+            .ToList();
+
+        int checkedInCompleted = completedApproved.Count(b => b.Attendance != null);
+
+        DateTime today = now.Date;
+
+        // 1. Last 7 days booking hours.
+        for (int back = 6; back >= 0; back--)
+        {
+            DateTime day = today.AddDays(-back);
+            double hours = booked
+                .Where(b => b.BookingDate.Date == day)
+                .Sum(b => Math.Max(0, b.EndHour - b.StartHour));
+
+            model.Last7DaysBookingHours.Add(new FacilityAnalyticsPoint
+            {
+                Label = day.ToString("ddd dd"),
+                Value = hours,
+                Count = booked.Count(b => b.BookingDate.Date == day)
+            });
+        }
+
+        // 2. Monthly booking hours - current calendar year.
+        for (int monthNumber = 1; monthNumber <= 12; monthNumber++)
+        {
+            DateTime month = new(now.Year, monthNumber, 1);
+            double hours = booked
+                .Where(b => b.BookingDate.Year == month.Year && b.BookingDate.Month == month.Month)
+                .Sum(b => Math.Max(0, b.EndHour - b.StartHour));
+
+            model.MonthlyBookingHours.Add(new FacilityAnalyticsPoint
+            {
+                Label = month.ToString("MMM"),
+                Value = hours,
+                Count = booked.Count(b => b.BookingDate.Year == month.Year && b.BookingDate.Month == month.Month)
+            });
+        }
+
+        // Work out the monthly range once and reuse it for all long-term charts.
+        DateTime firstMonth = bookings.Count == 0
+            ? new DateTime(now.Year, now.Month, 1)
+            : new DateTime(bookings.Min(b => b.BookingDate).Year, bookings.Min(b => b.BookingDate).Month, 1);
+        DateTime currentMonth = new(now.Year, now.Month, 1);
+
+        List<DateTime> allMonths = [];
+        for (DateTime month = firstMonth; month <= currentMonth; month = month.AddMonths(1))
+        {
+            allMonths.Add(month);
+        }
+
+        // 3. All-time usage trend.
+        foreach (DateTime month in allMonths)
+        {
+            List<FacilityBooking> rows = booked
+                .Where(b => b.BookingDate.Year == month.Year && b.BookingDate.Month == month.Month)
+                .ToList();
+
+            model.AllTimeUsageTrend.Add(new FacilityAnalyticsPoint
+            {
+                Label = month.ToString("MMM yy"),
+                Value = rows.Sum(b => Math.Max(0, b.EndHour - b.StartHour)),
+                Count = rows.Count
+            });
+        }
+
+        // 4. Current/final booking status distribution.
+        string[] statuses = ["Pending", "Approved", "Checked In", "Completed", "Cancelled", "Rejected"];
+        foreach (string status in statuses)
+        {
+            model.BookingStatusDistribution.Add(new FacilityAnalyticsPoint
+            {
+                Label = status,
+                Value = bookings.Count(b => b.Status == status),
+                Count = bookings.Count(b => b.Status == status)
+            });
+        }
+
+        // 5. Booking outcome/status trend by booking month (last 6 months).
+        List<DateTime> recentSixMonths = [];
+        for (int back = 5; back >= 0; back--)
+        {
+            recentSixMonths.Add(currentMonth.AddMonths(-back));
+        }
+
+        model.BookingStatusTrend.Labels = recentSixMonths.Select(m => m.ToString("MMM yy")).ToList();
+        foreach (string status in statuses)
+        {
+            model.BookingStatusTrend.Series.Add(new FacilityAnalyticsSeries
+            {
+                Name = status,
+                Values = recentSixMonths
+                    .Select(m => (double)bookings.Count(b =>
+                        b.BookingDate.Year == m.Year &&
+                        b.BookingDate.Month == m.Month &&
+                        b.Status == status))
+                    .ToList()
+            });
+        }
+
+        // 6. Check-in vs no-show. Only approved bookings that have ended are eligible.
+        int noShow = completedApproved.Count - checkedInCompleted;
+        model.CheckInVsNoShow =
+        [
+            new FacilityAnalyticsPoint { Label = "Checked In", Value = checkedInCompleted, Count = checkedInCompleted },
+            new FacilityAnalyticsPoint { Label = "No Show", Value = noShow, Count = noShow }
+        ];
+
+        // 7. Peak booking hours. The booking module works in 2-hour blocks.
+        for (int hour = 0; hour < 24; hour += 2)
+        {
+            int count = booked.Count(b => b.StartHour <= hour && b.EndHour > hour);
+            model.PeakBookingHours.Add(new FacilityAnalyticsPoint
+            {
+                Label = $"{FormatHour(hour)}-{FormatHour(hour + 2)}",
+                Value = count,
+                Count = count
+            });
+        }
+
+        FacilityAnalyticsPoint? peakSlot = model.PeakBookingHours
+            .OrderByDescending(p => p.Value)
+            .FirstOrDefault();
+        if (peakSlot != null && peakSlot.Value > 0)
+        {
+            model.PeakBookingSlot = $"{peakSlot.Label} · {peakSlot.Count} bookings";
+        }
+
+        // 8. Booking duration distribution. Current validation allows 2, 4 or 6 hours.
+        int[] durations = [2, 4, 6];
+        foreach (int hours in durations)
+        {
+            int count = bookings.Count(b => b.EndHour - b.StartHour == hours);
+            model.BookingDurationDistribution.Add(new FacilityAnalyticsPoint
+            {
+                Label = $"{hours} hours",
+                Value = count,
+                Count = count
+            });
+        }
+
+        // 9, 10 and 11. Facility hours, top 3 and booking share.
+        foreach (Facility facility in facilities)
+        {
+            List<FacilityBooking> facilityBookings = booked
+                .Where(b => b.FacilityId == facility.FacilityId)
+                .ToList();
+
+            double hours = facilityBookings.Sum(b => Math.Max(0, b.EndHour - b.StartHour));
+
+            model.FacilityUsageHours.Add(new FacilityAnalyticsPoint
+            {
+                Label = facility.FacilityName,
+                Value = hours,
+                Count = facilityBookings.Count
+            });
+
+            model.BookingShareByFacility.Add(new FacilityAnalyticsPoint
+            {
+                Label = facility.FacilityName,
+                Value = facilityBookings.Count,
+                Count = facilityBookings.Count
+            });
+        }
+
+        model.TopFacilities = facilities
+            .Select(f =>
+            {
+                List<FacilityBooking> rows = booked.Where(b => b.FacilityId == f.FacilityId).ToList();
+                return new FacilityAnalyticsRank
+                {
+                    Label = f.FacilityName,
+                    Count = rows.Count,
+                    Hours = rows.Sum(b => Math.Max(0, b.EndHour - b.StartHour))
+                };
+            })
+            .OrderByDescending(r => r.Count)
+            .ThenByDescending(r => r.Hours)
+            .Take(3)
+            .ToList();
+
+        if (model.TopFacilities.Count > 0 && model.TopFacilities[0].Count > 0)
+        {
+            model.MostBookedFacility = $"{model.TopFacilities[0].Label} · {model.TopFacilities[0].Count} bookings";
+        }
+
+        // 12. Five/all facilities - last 7 days comparison.
+        List<DateTime> lastSevenDays = Enumerable.Range(0, 7)
+            .Select(i => today.AddDays(-6 + i))
+            .ToList();
+        model.FacilityLast7DaysComparison.Labels = lastSevenDays.Select(d => d.ToString("ddd dd")).ToList();
+        foreach (Facility facility in facilities)
+        {
+            model.FacilityLast7DaysComparison.Series.Add(new FacilityAnalyticsSeries
+            {
+                Name = facility.FacilityName,
+                Values = lastSevenDays
+                    .Select(d => (double)booked.Count(b => b.FacilityId == facility.FacilityId && b.BookingDate.Date == d))
+                    .ToList()
+            });
+        }
+
+        // 13. Facility monthly comparison - last 6 calendar months.
+        model.FacilityMonthlyComparison.Labels = recentSixMonths.Select(m => m.ToString("MMM yy")).ToList();
+        foreach (Facility facility in facilities)
+        {
+            model.FacilityMonthlyComparison.Series.Add(new FacilityAnalyticsSeries
+            {
+                Name = facility.FacilityName,
+                Values = recentSixMonths
+                    .Select(m => (double)booked.Count(b =>
+                        b.FacilityId == facility.FacilityId &&
+                        b.BookingDate.Year == m.Year &&
+                        b.BookingDate.Month == m.Month))
+                    .ToList()
+            });
+        }
+
+        // 14. All-time facility trend.
+        model.FacilityAllTimeTrend.Labels = allMonths.Select(m => m.ToString("MMM yy")).ToList();
+        foreach (Facility facility in facilities)
+        {
+            model.FacilityAllTimeTrend.Series.Add(new FacilityAnalyticsSeries
+            {
+                Name = facility.FacilityName,
+                Values = allMonths
+                    .Select(m => (double)booked.Count(b =>
+                        b.FacilityId == facility.FacilityId &&
+                        b.BookingDate.Year == m.Year &&
+                        b.BookingDate.Month == m.Month))
+                    .ToList()
+            });
+        }
+
+        // 15. Top facility users. Facility booking is currently Student-only,
+        // so this correctly ranks students rather than presenting a fake
+        // Student-vs-Teacher split that would always be 100% Student.
+        model.TopStudents = booked
+            .GroupBy(b => new
+            {
+                b.UserId,
+                Name = string.IsNullOrWhiteSpace(b.User?.Username) ? b.UserId : b.User!.Username
+            })
+            .Select(g => new FacilityAnalyticsRank
+            {
+                Label = g.Key.Name,
+                Count = g.Count(),
+                Hours = g.Sum(b => Math.Max(0, b.EndHour - b.StartHour))
+            })
+            .OrderByDescending(r => r.Hours)
+            .ThenByDescending(r => r.Count)
+            .Take(3)
+            .ToList();
+
+        if (model.TopStudents.Count > 0 && model.TopStudents[0].Hours > 0)
+        {
+            model.TopFacilityUser = $"{model.TopStudents[0].Label} · {model.TopStudents[0].Hours:0.#} hrs";
+        }
+
+        // 16. Booking lead time. This replaces Student-vs-Teacher because the
+        // current booking action is Authorize(Roles = "Student"), so that pie
+        // would contain no useful comparison.
+        int sameDay = 0;
+        int oneTwo = 0;
+        int threeFour = 0;
+        int fiveSeven = 0;
+
+        foreach (FacilityBooking booking in bookings)
+        {
+            int leadDays = Math.Max(0, (booking.BookingDate.Date - booking.CreatedAt.Date).Days);
+            if (leadDays == 0) sameDay++;
+            else if (leadDays <= 2) oneTwo++;
+            else if (leadDays <= 4) threeFour++;
+            else fiveSeven++;
+        }
+
+        model.BookingLeadTimeDistribution =
+        [
+            new FacilityAnalyticsPoint { Label = "Same day", Value = sameDay, Count = sameDay },
+            new FacilityAnalyticsPoint { Label = "1-2 days", Value = oneTwo, Count = oneTwo },
+            new FacilityAnalyticsPoint { Label = "3-4 days", Value = threeFour, Count = threeFour },
+            new FacilityAnalyticsPoint { Label = "5-7 days", Value = fiveSeven, Count = fiveSeven }
+        ];
+
+        return model;
+    }
+
+    private static string FormatHour(int hour)
+    {
+        int normalized = ((hour % 24) + 24) % 24;
+        DateTime time = DateTime.Today.AddHours(normalized);
+        return time.ToString("htt").ToLowerInvariant();
     }
 
     private static DateTime GetStartDateTime(FacilityBooking booking) =>
