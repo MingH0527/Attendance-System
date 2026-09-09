@@ -69,6 +69,25 @@
           href="~/css/layout.css"
           asp-append-version="true" />
 
+@if (isStudent)
+{
+        <link rel="stylesheet"
+              href="~/css/dark.css"
+              asp-append-version="true" />
+
+        @* Runs before first paint, so the page never flashes light
+           before switching to dark. *@
+        <script data-no-translate>
+            (function () {
+                try {
+                    if (localStorage.getItem('darkMode') === 'on') {
+                        document.documentElement.classList.add('dark');
+                    }
+                } catch (e) { }
+            })();
+        </script>
+}
+
     @await RenderSectionAsync("Styles", required: false)
 
 </head>
@@ -346,6 +365,9 @@
         </script>
 
         <script src="~/js/translate.js"
+                asp-append-version="true"></script>
+
+        <script src="~/js/dark-mode.js"
                 asp-append-version="true"></script>
     }
 
