@@ -17,6 +17,7 @@
     }
 
     var endpoint = form.getAttribute('data-endpoint');
+    var exportLink = document.getElementById('exportCsvLink');
     var searchInput = form.querySelector('input[name="search"]');
     var submitButton = form.querySelector('button[type="submit"]');
 
@@ -45,6 +46,20 @@
         }
 
         return cleaned.toString();
+    }
+
+    // The export link lives outside the swapped markup, so it has to be
+    // updated by hand whenever the filters change - otherwise it would
+    // keep exporting whatever was filtered when the page first loaded.
+    function syncExportLink() {
+        if (!exportLink) {
+            return;
+        }
+
+        var base = exportLink.getAttribute('data-endpoint');
+        var query = queryString(null);
+
+        exportLink.href = base + (query ? '?' + query : '');
     }
 
     function setBusy(busy) {
@@ -83,6 +98,7 @@
 
                 results.innerHTML = html;
                 setBusy(false);
+                syncExportLink();
 
                 if (pushUrl !== false) {
                     var url =
@@ -147,6 +163,8 @@
 
         load(page);
     });
+
+    syncExportLink();
 
     // The button is redundant once live filtering is on.
     if (submitButton) {

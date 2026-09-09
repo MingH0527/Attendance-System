@@ -1,0 +1,353 @@
+@using System.Text.Json
+@using WebAndMobile.ViewModels
+@model FacilityAnalyticsViewModel
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "Facility Analytics";
+
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    string last7Json = JsonSerializer.Serialize(Model.Last7DaysBookingHours, jsonOptions);
+    string monthlyJson = JsonSerializer.Serialize(Model.MonthlyBookingHours, jsonOptions);
+    string allTimeJson = JsonSerializer.Serialize(Model.AllTimeUsageTrend, jsonOptions);
+    string statusDistributionJson = JsonSerializer.Serialize(Model.BookingStatusDistribution, jsonOptions);
+    string statusTrendJson = JsonSerializer.Serialize(Model.BookingStatusTrend, jsonOptions);
+    string checkInJson = JsonSerializer.Serialize(Model.CheckInVsNoShow, jsonOptions);
+    string peakHoursJson = JsonSerializer.Serialize(Model.PeakBookingHours, jsonOptions);
+    string durationJson = JsonSerializer.Serialize(Model.BookingDurationDistribution, jsonOptions);
+    string facilityUsageJson = JsonSerializer.Serialize(Model.FacilityUsageHours, jsonOptions);
+    string topFacilitiesJson = JsonSerializer.Serialize(Model.TopFacilities, jsonOptions);
+    string bookingShareJson = JsonSerializer.Serialize(Model.BookingShareByFacility, jsonOptions);
+    string last7FacilityJson = JsonSerializer.Serialize(Model.FacilityLast7DaysComparison, jsonOptions);
+    string monthlyFacilityJson = JsonSerializer.Serialize(Model.FacilityMonthlyComparison, jsonOptions);
+    string allTimeFacilityJson = JsonSerializer.Serialize(Model.FacilityAllTimeTrend, jsonOptions);
+    string topStudentsJson = JsonSerializer.Serialize(Model.TopStudents, jsonOptions);
+    string leadTimeJson = JsonSerializer.Serialize(Model.BookingLeadTimeDistribution, jsonOptions);
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/facility-analytics.css" asp-append-version="true" />
+}
+
+<div class="fa-page">
+    <header class="fa-header">
+        <div>
+            <p class="fa-kicker">Administrator Portal · Analysis</p>
+            <h1>Facility Analytics</h1>
+            <p class="fa-subtitle">
+                A complete view of booking volume, reserved hours, attendance behaviour,
+                facility demand and student usage.
+            </p>
+        </div>
+
+        <a asp-controller="Admin" asp-action="Index" class="fa-back">Back to Home</a>
+    </header>
+
+    <section class="fa-kpis" aria-label="Facility analytics summary">
+        <article class="fa-kpi fa-kpi--blue">
+            <span>Total Bookings</span>
+            <strong>@Model.TotalBookings</strong>
+            <small>All facility booking requests recorded</small>
+        </article>
+
+        <article class="fa-kpi fa-kpi--cyan">
+            <span>Total Booking Hours</span>
+            <strong>@Model.TotalBookingHours.ToString("0.#") hrs</strong>
+            <small>Reserved time excluding cancelled and rejected bookings</small>
+        </article>
+
+        <article class="fa-kpi fa-kpi--green">
+            <span>Completion Rate</span>
+            <strong>@Model.CompletionRate.ToString("0.#")%</strong>
+            <small>Completed ÷ (Completed + Cancelled + Rejected) × 100%</small>
+        </article>
+
+        <article class="fa-kpi fa-kpi--orange">
+            <span>Cancellation Rate</span>
+            <strong>@Model.CancellationRate.ToString("0.#")%</strong>
+            <small>Cancelled bookings as a share of all requests</small>
+        </article>
+    </section>
+
+    <div class="fa-summary-strip">
+        <span><b>Peak Slot</b> @Model.PeakBookingSlot</span>
+        <span><b>Most Booked Facility</b> @Model.MostBookedFacility</span>
+        <span><b>Top Facility User</b> @Model.TopFacilityUser</span>
+        <span><b>Facilities Analysed</b> @Model.TotalFacilities</span>
+    </div>
+
+    <h2 class="fa-section-title">Booking Volume & Time</h2>
+    <section class="fa-grid">
+        <article class="fa-card fa-card--span2">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">01</span>
+                    <h3>Booking Hours — Last 7 Days</h3>
+                    <p>Shows the total number of facility hours reserved on each of the most recent seven days.</p>
+                    <div class="fa-formula"><b>Formula</b> Daily booking hours = Σ(End Hour − Start Hour) for valid bookings on that day.</div>
+                </div>
+                <span class="fa-purpose">Recent demand</span>
+            </div>
+            <div class="fa-chart fa-chart--large"><canvas id="chartLast7"></canvas></div>
+            <p class="fa-foot">Use this to spot sudden increases or drops in short-term facility demand.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">02</span>
+                    <h3>Monthly Booking Hours</h3>
+                    <p>Compares total reserved facility hours for each month in @DateTime.Now.Year.</p>
+                    <div class="fa-formula"><b>Formula</b> Monthly booking hours = Σ(End Hour − Start Hour) for valid bookings in the month.</div>
+                </div>
+                <span class="fa-purpose">Monthly comparison</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartMonthlyHours"></canvas></div>
+            <p class="fa-foot">Higher bars mean facilities were reserved for more total hours in that month.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">03</span>
+                    <h3>Overall Facility Usage Trend</h3>
+                    <p>Tracks monthly booking hours from the earliest facility record up to the current month.</p>
+                    <div class="fa-formula"><b>Formula</b> Trend point = Σ valid booking hours for each calendar month from first record to now.</div>
+                </div>
+                <span class="fa-purpose">Long-term direction</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartAllTimeHours"></canvas></div>
+            <p class="fa-foot">Use the curve to see whether overall facility demand is growing, stable or declining.</p>
+        </article>
+    </section>
+
+    <h2 class="fa-section-title">Booking Behaviour & Attendance</h2>
+    <section class="fa-grid">
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">04</span>
+                    <h3>Current Booking Status Distribution</h3>
+                    <p>Breaks all requests into Pending, Approved, Checked In, Completed, Cancelled and Rejected.</p>
+                    <div class="fa-formula"><b>Formula</b> Status count = Number of bookings whose current Status equals each category.</div>
+                </div>
+                <span class="fa-purpose">Status mix</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartStatusDistribution"></canvas></div>
+            <p class="fa-foot">Checked In here means bookings currently in the checked-in stage; completed bookings can already have an attendance record.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">05</span>
+                    <h3>Booking Status Trend</h3>
+                    <p>Compares booking outcomes across the latest six calendar months.</p>
+                    <div class="fa-formula"><b>Formula</b> Monthly status count = Count(Status = category AND Booking Month = month).</div>
+                </div>
+                <span class="fa-purpose">Outcome changes</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartStatusTrend"></canvas></div>
+            <p class="fa-foot">Useful for noticing whether cancellations, pending requests or completed bookings are increasing.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">06</span>
+                    <h3>Check-In vs No-Show</h3>
+                    <p>Looks only at approved bookings whose booked time has ended and compares attendance results.</p>
+                    <div class="fa-formula"><b>Formula</b> Checked In = eligible ended approved bookings with Attendance; No-Show = eligible − Checked In.</div>
+                </div>
+                <span class="fa-purpose">Attendance quality</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartCheckIn"></canvas></div>
+            <p class="fa-foot">A no-show means the booking was approved and ended without a recorded facility attendance check-in.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">07</span>
+                    <h3>Peak Booking Hours</h3>
+                    <p>Counts how many bookings occupy each two-hour slot throughout the day.</p>
+                    <div class="fa-formula"><b>Formula</b> Slot count = Count(Start Hour ≤ slot start AND End Hour &gt; slot start) for valid bookings.</div>
+                </div>
+                <span class="fa-purpose">Busiest time</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartPeakHours"></canvas></div>
+            <p class="fa-foot">Peak detected: <strong>@Model.PeakBookingSlot</strong>.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">08</span>
+                    <h3>Booking Duration Distribution</h3>
+                    <p>Shows how frequently students reserve a facility for 2, 4 or 6 hours.</p>
+                    <div class="fa-formula"><b>Formula</b> Duration = End Hour − Start Hour; each bar counts bookings with the same duration.</div>
+                </div>
+                <span class="fa-purpose">Booking length</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartDuration"></canvas></div>
+            <p class="fa-foot">This matches the current facility rule that bookings use two-hour slots with a six-hour maximum per booking.</p>
+        </article>
+    </section>
+
+    <h2 class="fa-section-title">Facility Performance</h2>
+    <section class="fa-grid">
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">09</span>
+                    <h3>Facility Usage by Booking Hours</h3>
+                    <p>Compares the total amount of reserved time across every facility.</p>
+                    <div class="fa-formula"><b>Formula</b> Facility usage hours = Σ(End Hour − Start Hour) for valid bookings of that facility.</div>
+                </div>
+                <span class="fa-purpose">Time utilisation</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartFacilityUsage"></canvas></div>
+            <p class="fa-foot">This measures reserved hours, so long bookings contribute more than short bookings.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">10</span>
+                    <h3>Top 3 Most Booked Facilities</h3>
+                    <p>Ranks the three facilities with the highest number of non-cancelled and non-rejected bookings.</p>
+                    <div class="fa-formula"><b>Formula</b> Rank = Count(valid bookings per facility), highest to lowest; booking hours break ties.</div>
+                </div>
+                <span class="fa-purpose">Popularity ranking</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartTopFacilities"></canvas></div>
+            <p class="fa-foot">Current leader: <strong>@Model.MostBookedFacility</strong>.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">11</span>
+                    <h3>Booking Share by Facility</h3>
+                    <p>Shows the percentage share of valid bookings contributed by each facility.</p>
+                    <div class="fa-formula"><b>Formula</b> Facility share % = Facility valid bookings ÷ Total valid bookings × 100%.</div>
+                </div>
+                <span class="fa-purpose">Demand share</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartBookingShare"></canvas></div>
+            <p class="fa-foot">Unlike the Top 3 ranking, this chart shows how the whole booking demand is distributed across all facilities.</p>
+        </article>
+    </section>
+
+    <h2 class="fa-section-title">Five-Facility Time Comparison</h2>
+    <section class="fa-grid fa-grid--timeline-row">
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">12</span>
+                    <h3>Facility Booking Comparison — Last 7 Days</h3>
+                    <p>Places every facility on the same seven-day timeline to compare recent daily booking demand.</p>
+                    <div class="fa-formula"><b>Formula</b> Daily facility count = Count(valid bookings for facility on each of the last 7 days).</div>
+                </div>
+                <span class="fa-purpose">Daily facility comparison</span>
+            </div>
+            <div class="fa-chart fa-chart--timeline"><canvas id="chartFacilityLast7"></canvas></div>
+            <p class="fa-foot">Each line represents one facility; higher points mean more bookings on that day.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">13</span>
+                    <h3>Monthly Facility Booking Comparison</h3>
+                    <p>Compares booking counts for every facility across the latest six months.</p>
+                    <div class="fa-formula"><b>Formula</b> Monthly facility count = Count(valid bookings for facility in each of the latest 6 months).</div>
+                </div>
+                <span class="fa-purpose">Monthly facility comparison</span>
+            </div>
+            <div class="fa-chart fa-chart--timeline"><canvas id="chartFacilityMonthly"></canvas></div>
+            <p class="fa-foot">This helps identify facilities that are gaining or losing popularity over recent months.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">14</span>
+                    <h3>Long-Term Facility Booking Trends</h3>
+                    <p>Tracks every facility from the first recorded booking month through the current month.</p>
+                    <div class="fa-formula"><b>Formula</b> Historical point = Count(valid bookings for facility in each month from first record to now).</div>
+                </div>
+                <span class="fa-purpose">Historical facility trend</span>
+            </div>
+            <div class="fa-chart fa-chart--timeline"><canvas id="chartFacilityAllTime"></canvas></div>
+            <p class="fa-foot">Use this to compare long-term demand patterns instead of looking only at the latest month.</p>
+        </article>
+    </section>
+
+    <h2 class="fa-section-title">Student Booking Behaviour</h2>
+    <section class="fa-grid">
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">15</span>
+                    <h3>Top 3 Facility Users</h3>
+                    <p>Ranks students by total valid booking hours, with booking count shown beside each name.</p>
+                    <div class="fa-formula"><b>Formula</b> Student hours = Σ valid booking duration; rank by hours, then booking count.</div>
+                </div>
+                <span class="fa-purpose">Heavy users</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartTopStudents"></canvas></div>
+            <p class="fa-foot">Current top user: <strong>@Model.TopFacilityUser</strong>.</p>
+        </article>
+
+        <article class="fa-card">
+            <div class="fa-card-head">
+                <div>
+                    <span class="fa-number">16</span>
+                    <h3>Booking Lead-Time Distribution</h3>
+                    <p>Shows how far in advance students usually submit their facility bookings.</p>
+                    <div class="fa-formula"><b>Formula</b> Lead days = Booking Date − Created Date; then group into Same day, 1–2, 3–4, 5–7 days.</div>
+                </div>
+                <span class="fa-purpose">Booking planning</span>
+            </div>
+            <div class="fa-chart"><canvas id="chartLeadTime"></canvas></div>
+            <p class="fa-foot">The groups follow your current rule that students can book from today up to seven days ahead.</p>
+        </article>
+    </section>
+
+    <div class="fa-definition-note">
+        <strong>Calculation rules used across this dashboard:</strong>
+        valid bookings exclude Cancelled and Rejected bookings. Completion Rate uses only final outcomes: Completed ÷ (Completed + Cancelled + Rejected) × 100%.
+        Attendance charts use approved bookings whose booked time has already ended. Facility booking is currently Student-only, so Booking Lead Time is used instead of a Student-vs-Teacher split.
+    </div>
+</div>
+
+<script id="facilityAnalyticsData" type="application/json">
+{
+    "last7": @Html.Raw(last7Json),
+    "monthly": @Html.Raw(monthlyJson),
+    "allTime": @Html.Raw(allTimeJson),
+    "statusDistribution": @Html.Raw(statusDistributionJson),
+    "statusTrend": @Html.Raw(statusTrendJson),
+    "checkIn": @Html.Raw(checkInJson),
+    "peakHours": @Html.Raw(peakHoursJson),
+    "duration": @Html.Raw(durationJson),
+    "facilityUsage": @Html.Raw(facilityUsageJson),
+    "topFacilities": @Html.Raw(topFacilitiesJson),
+    "bookingShare": @Html.Raw(bookingShareJson),
+    "facilityLast7": @Html.Raw(last7FacilityJson),
+    "facilityMonthly": @Html.Raw(monthlyFacilityJson),
+    "facilityAllTime": @Html.Raw(allTimeFacilityJson),
+    "topStudents": @Html.Raw(topStudentsJson),
+    "leadTime": @Html.Raw(leadTimeJson)
+}
+</script>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="~/js/facility-analytics.js" asp-append-version="true"></script>
+}
