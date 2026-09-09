@@ -615,10 +615,7 @@
                                     {
 
                                         <span>
-                                            @actualDate.Value
-                                            .ToString(
-                                            "dd/MM/yyyy"
-                                            )
+                                            @actualDate.Value.ToString("dd/MM/yyyy")
                                         </span>
 
                                     }
@@ -807,12 +804,7 @@
 
                                                     <div class="subject-date">
 
-                                                        @item
-                                                        .OccurrenceDate
-                                                        .Value
-                                                        .ToString(
-                                                        "d/MM/yyyy"
-                                                        )
+                                                        @(item.OccurrenceDate.Value.ToString("dd/MM/yyyy"))
 
                                                     </div>
 
