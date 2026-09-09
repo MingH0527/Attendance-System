@@ -893,3 +893,222 @@ html.dark {
         background: var(--dk-accent);
         color: #0d1521;
     }
+
+
+    /* =========================================================
+   Round 7 - program registration + student timetable
+   ========================================================= */
+
+    /* ---- Program / Class Registration (bare shell) ---- */
+
+    html.dark .program-page {
+        background: var(--dk-bg);
+    }
+
+    html.dark .program-container,
+    html.dark .program-form {
+        background: var(--dk-surface);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+        html.dark .program-form h1,
+        html.dark .program-container h1,
+        html.dark .form-group label,
+        html.dark .current-registration__value {
+            color: var(--dk-text);
+        }
+
+        html.dark .program-form .subtitle,
+        html.dark .current-registration__label {
+            color: var(--dk-muted);
+        }
+
+        html.dark .program-form select,
+        html.dark .program-form input {
+            background: var(--dk-surface-2);
+            border-color: var(--dk-border);
+            color: var(--dk-text);
+        }
+
+            /* A disabled select must still read as text, not vanish. */
+            html.dark .program-form select:disabled {
+                background: #131b28;
+                color: #7d889a;
+            }
+
+    html.dark .current-registration {
+        background: var(--dk-surface-2);
+        border-color: var(--dk-border);
+    }
+
+    html.dark .current-registration__tag,
+    html.dark .course-option {
+        background: var(--dk-raised);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .profile-required-content {
+        background: #33290f;
+        border-color: #5c4a1c;
+        color: var(--dk-text);
+    }
+
+    html.dark .profile-required-message {
+        color: var(--dk-text);
+    }
+
+    html.dark .back-link {
+        color: var(--dk-accent);
+    }
+
+    /* ---- Student timetable week view ----------------------------------
+   Corrected class names: the lesson card is .subject-card (with
+   .replacement-card / .cancelled-card modifiers). ".subject-class" is
+   the small "DCS1" text line inside the card, not the card itself.
+   .day-cell sets its background with !important, so this must too. */
+
+    html.dark .student-timetable-page {
+        background: var(--dk-bg);
+    }
+
+    html.dark .current-view-card,
+    html.dark .timetable-legend,
+    html.dark .timetable-grid-wrapper,
+    html.dark .teacher-style-timetable,
+    html.dark .empty-timetable {
+        background: var(--dk-surface);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .current-view-left h1,
+    html.dark .current-view-left h2,
+    html.dark .legend-item,
+    html.dark .small-label {
+        color: var(--dk-text);
+    }
+
+    html.dark .week-select {
+        background: var(--dk-surface-2);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    /* ---- grid frame ---- */
+
+    html.dark .teacher-style-timetable th {
+        background: var(--dk-surface-2) !important;
+        border-color: var(--dk-border) !important;
+        color: var(--dk-text) !important;
+    }
+
+    html.dark .day-cell {
+        background: var(--dk-surface-2) !important;
+        border-color: var(--dk-border) !important;
+        color: var(--dk-text) !important;
+    }
+
+        html.dark .day-cell strong,
+        html.dark .day-cell span,
+        html.dark .day-cell div {
+            color: var(--dk-text) !important;
+        }
+
+    html.dark .schedule-cell {
+        background: var(--dk-surface) !important;
+        border-color: var(--dk-border) !important;
+    }
+
+    html.dark .time-column strong,
+    html.dark .time-column span,
+    html.dark .time-column div {
+        color: var(--dk-text) !important;
+    }
+
+    html.dark .teacher-style-timetable td,
+    html.dark .teacher-style-timetable th {
+        border-color: var(--dk-border) !important;
+    }
+
+    /* ---- lesson cards ---- */
+
+    html.dark .subject-card {
+        background: #12313a !important;
+        border-color: #1e5464 !important;
+        border-left-color: #37a4bd !important;
+    }
+
+    html.dark .replacement-card {
+        background: #241f42 !important;
+        border-color: #3f3878 !important;
+        border-left-color: #8f7dff !important;
+    }
+
+    html.dark .cancelled-card {
+        background: #3a1a1e !important;
+        border-color: #6d2c33 !important;
+        border-left-color: #e0616e !important;
+    }
+
+    /* Card text: two levels, so the subject name still leads. */
+
+    html.dark .subject-name,
+    html.dark .subject-time {
+        color: #f1f6fb !important;
+    }
+
+    html.dark .subject-class,
+    html.dark .subject-room,
+    html.dark .subject-date,
+    html.dark .subject-reason {
+        color: #b3c2d1 !important;
+    }
+
+    /* The SCHOOL / TUITION tag sits on a translucent white in the light
+   theme, which turns into a near-solid block on a dark card. */
+    html.dark .subject-type {
+        background: rgba(255, 255, 255, 0.10) !important;
+        color: #dce6f2 !important;
+    }
+
+    /* Status pills keep their meaning at dark-friendly lightness. */
+    html.dark .subject-status {
+        color: #f1f6fb !important;
+    }
+
+    html.dark .cancelled-status {
+        background: #6d2c33 !important;
+        color: #ffd9dc !important;
+    }
+
+    html.dark .replacement-status {
+        background: #3f3878 !important;
+        color: #ded7ff !important;
+    }
+
+    /* ---- recent changes panel ---- */
+
+    html.dark .recent-changes {
+        background: #2e250f;
+        border-color: #5c4a1c;
+        color: var(--dk-text);
+    }
+
+    html.dark .changes-title,
+    html.dark .change-item strong,
+    html.dark .changes-count {
+        color: #f2cf80;
+    }
+
+    html.dark .change-content,
+    html.dark .change-item {
+        border-color: #5c4a1c;
+        color: var(--dk-text);
+    }
+
+        html.dark .change-content span,
+        html.dark .change-content div {
+            color: #dfe6ef;
+        }
