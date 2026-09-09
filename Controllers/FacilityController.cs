@@ -59,6 +59,8 @@ public class FacilityController : Controller
         DateTime selected = (date ?? today).Date;
         if (selected < today || selected > today.AddDays(7)) selected = today;
 
+        string currentUserId = GetCurrentUserId();
+
         List<FacilityBooking> occupiedBookings = await db.FacilityBookings
             .AsNoTracking()
             .Where(b => b.FacilityId == id &&
@@ -70,12 +72,27 @@ public class FacilityController : Controller
             .Where(b => GetEndDateTime(b) > now)
             .ToList();
 
+        // A student cannot be physically present in two facilities at the same time.
+        // Therefore, active bookings made by the current student in OTHER facilities
+        // must also block the matching time slots on this facility's booking page.
+        List<FacilityBooking> currentUserOtherFacilityBookings = await db.FacilityBookings
+            .AsNoTracking()
+            .Where(b => b.UserId == currentUserId &&
+                        b.FacilityId != id &&
+                        b.BookingDate == selected &&
+                        (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In"))
+            .ToListAsync();
+
+        currentUserOtherFacilityBookings = currentUserOtherFacilityBookings
+            .Where(b => GetEndDateTime(b) > now)
+            .ToList();
+
         HashSet<int> unavailable = occupiedBookings
+            .Concat(currentUserOtherFacilityBookings)
             .SelectMany(b => Enumerable.Range(b.StartHour / 2, (b.EndHour - b.StartHour) / 2))
             .Select(x => x * 2)
             .ToHashSet();
 
-        string currentUserId = GetCurrentUserId();
         List<FacilityBooking> ownBookings = occupiedBookings
             .Where(b => b.UserId == currentUserId)
             .ToList();
@@ -135,10 +152,13 @@ public class FacilityController : Controller
         DateTime now = MalaysiaNow();
         await CompleteEndedActiveBookings(now);
 
-        DateTime requestedStartDateTime = date.AddHours(model.StartHour);
-        if (requestedStartDateTime <= now)
+        // Allow a booking while its selected time range is still in progress.
+        // Example: at 22:54, 22:00-24:00 is still bookable. It becomes unavailable
+        // only when the slot ends at 00:00.
+        DateTime requestedEndDateTime = date.AddHours(model.EndHour);
+        if (requestedEndDateTime <= now)
         {
-            TempData["FacilityError"] = "The selected booking start time has already passed. Please choose a future time slot.";
+            TempData["FacilityError"] = "The selected booking time range has already ended. Please choose a time slot that has not finished yet.";
             return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
         }
 
@@ -158,11 +178,29 @@ public class FacilityController : Controller
                         model.StartHour < b.EndHour && model.EndHour > b.StartHour)
             .ToListAsync();
 
-        bool collision = possibleCollisions.Any(b => GetEndDateTime(b) > now);
+        bool facilityCollision = possibleCollisions.Any(b => GetEndDateTime(b) > now);
 
-        if (collision)
+        if (facilityCollision)
         {
             TempData["FacilityError"] = "One or more selected time slots have just been booked by another student. Please select another available time.";
+            return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
+        }
+
+        // Cross-facility personal overlap validation:
+        // the same student cannot hold two active facility bookings whose times overlap,
+        // even when the bookings are for different facilities.
+        List<FacilityBooking> personalOverlaps = await db.FacilityBookings
+            .AsNoTracking()
+            .Where(b => b.UserId == currentUserId &&
+                        b.BookingDate == date &&
+                        (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Checked In") &&
+                        model.StartHour < b.EndHour && model.EndHour > b.StartHour)
+            .ToListAsync();
+
+        bool personalCollision = personalOverlaps.Any(b => GetEndDateTime(b) > now);
+        if (personalCollision)
+        {
+            TempData["FacilityError"] = "You already have another active facility booking during this time. A student cannot book two facilities at overlapping times.";
             return RedirectToAction(nameof(Details), new { id = model.FacilityId, date = date.ToString("yyyy-MM-dd") });
         }
 
