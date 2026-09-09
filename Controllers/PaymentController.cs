@@ -111,10 +111,14 @@ public class PaymentController : Controller
                 new { feeId }
             );
         }
-        else if (customAmount.Value < selectedFee.Amount)
+        else if (
+            customAmount.Value < 10 ||
+            customAmount.Value > 100 ||
+            customAmount.Value != decimal.Truncate(customAmount.Value)
+        )
         {
             TempData["Error"] =
-                $"The minimum payment amount is RM {selectedFee.Amount:0.00}.";
+                "Payment amount must be a whole number between RM10 and RM100.";
 
             return RedirectToAction(
                 nameof(Pay),
@@ -126,15 +130,14 @@ public class PaymentController : Controller
             finalAmount =
                 customAmount.Value;
         }
-
         long amountInSen = Convert.ToInt64(decimal.Round(finalAmount * 100, 0, MidpointRounding.AwayFromZero));
-        string domain = Cloudflare.GetPublicUrl();
+        string domain = $"{Request.Scheme}://{Request.Host}";
 
         SessionCreateOptions options = new()
         {
             Mode = "payment",
             SuccessUrl = $"{domain}/Payment/StripeSuccess?session_id={{CHECKOUT_SESSION_ID}}",
-            CancelUrl = $"{domain}/Payment/Cancel",
+            CancelUrl = $"{domain}/Payment/Cancel?feeId={selectedFee.Id}",
             LineItems =
             [
                 new SessionLineItemOptions
@@ -210,7 +213,13 @@ public class PaymentController : Controller
     }
 
     [HttpGet]
-    public IActionResult Cancel() => View();
+    [HttpGet]
+    public IActionResult Cancel(int feeId)
+    {
+        ViewBag.FeeId = feeId;
+
+        return View();
+    }
 
     [HttpGet]
     public async Task<IActionResult> SetPin(int returnFeeId)
@@ -288,13 +297,18 @@ public class PaymentController : Controller
           ? fee.Amount
           : customAmount.GetValueOrDefault();
 
-
-        if (!fee.AmountIsFixed &&
-            (!customAmount.HasValue ||
-             amount < fee.Amount))
+        if (
+            !fee.AmountIsFixed &&
+            (
+                !customAmount.HasValue ||
+                amount < 10 ||
+                amount > 100 ||
+                amount != decimal.Truncate(amount)
+            )
+        )
         {
             TempData["Error"] =
-                $"The minimum payment amount is RM {fee.Amount:0.00}.";
+                "Payment amount must be a whole number between RM10 and RM100.";
 
             return RedirectToAction(
                 nameof(Pay),
@@ -336,19 +350,23 @@ public class PaymentController : Controller
     {
         FeeItem? fee = GetFeeItems().FirstOrDefault(f => f.Id == feeId);
         if (fee == null) return NotFound();
-
         decimal amount =
-     fee.AmountIsFixed
-         ? fee.Amount
-         : customAmount.GetValueOrDefault();
+            fee.AmountIsFixed
+                ? fee.Amount
+                : customAmount.GetValueOrDefault();
 
-
-        if (!fee.AmountIsFixed &&
-            (!customAmount.HasValue ||
-             amount < fee.Amount))
+        if (
+            !fee.AmountIsFixed &&
+            (
+                !customAmount.HasValue ||
+                amount < 10 ||
+                amount > 100 ||
+                amount != decimal.Truncate(amount)
+            )
+        )
         {
             TempData["Error"] =
-                $"The minimum payment amount is RM {fee.Amount:0.00}.";
+                "Payment amount must be a whole number between RM10 and RM100.";
 
             return RedirectToAction(
                 nameof(Pay),

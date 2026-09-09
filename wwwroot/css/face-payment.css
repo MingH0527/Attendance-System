@@ -15,3 +15,149 @@
 .amount-input {
     -moz-appearance: textfield;
 }
+
+/* ==================================================
+   PAYMENT CANCELLED PAGE
+================================================== */
+
+.payment-cancel-page {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: linear-gradient( 135deg, #f5f8fb, #edf4fb );
+}
+
+
+.payment-cancel-card {
+    width: 100%;
+    max-width: 520px;
+    padding: 42px 38px;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #e1e8f0;
+    border-radius: 22px;
+    box-shadow: 0 16px 45px rgba(38, 61, 92, 0.10);
+}
+
+
+/* Cancel icon */
+
+.payment-cancel-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff0f0;
+    color: #dc3f4f;
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+
+/* Small label */
+
+.payment-cancel-eyebrow {
+    margin: 0 0 8px;
+    color: #2b6fe8;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+}
+
+
+.payment-cancel-card h1 {
+    margin: 0 0 14px;
+    color: #101a2c;
+    font-size: 32px;
+    font-weight: 800;
+}
+
+
+/* Description */
+
+.payment-cancel-message {
+    max-width: 410px;
+    margin: 0 auto 30px;
+    color: #738095;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+
+/* Buttons */
+
+.payment-cancel-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.cancel-button {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 700;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+
+    /* Try Again */
+
+    .cancel-button.primary {
+        background: linear-gradient( 135deg, #2d6df6, #19a7df );
+        color: #ffffff;
+        box-shadow: 0 8px 20px rgba(45, 109, 246, 0.20);
+    }
+
+
+        .cancel-button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(45, 109, 246, 0.28);
+        }
+
+
+    /* Back to Fees */
+
+    .cancel-button.secondary {
+        background: #f6f8fb;
+        color: #314158;
+        border: 1px solid #dfe6ef;
+    }
+
+
+        .cancel-button.secondary:hover {
+            background: #eef3f8;
+            transform: translateY(-1px);
+        }
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    .payment-cancel-page {
+        padding: 24px 16px;
+    }
+
+    .payment-cancel-card {
+        padding: 34px 22px;
+    }
+
+        .payment-cancel-card h1 {
+            font-size: 27px;
+        }
+}

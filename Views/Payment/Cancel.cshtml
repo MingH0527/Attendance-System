@@ -1,21 +1,61 @@
 ﻿@{
     ViewData["Title"] = "Payment Cancelled";
+
+    int feeId =
+        ViewBag.FeeId ?? 0;
 }
 
-<div class="payment-container">
-    <div class="payment-card">
+<link rel="stylesheet"
+      href="~/css/face-payment.css"
+      asp-append-version="true" />
 
-        <h1>Payment Cancelled</h1>
+<div class="payment-cancel-page">
 
-        <p>
-            No payment was charged. You may try again.
+    <div class="payment-cancel-card">
+
+        <div class="payment-cancel-icon">
+            ×
+        </div>
+
+        <p class="payment-cancel-eyebrow">
+            PAYMENT STATUS
         </p>
 
-        <a asp-controller="Payment"
-           asp-action="Pay"
-           class="payment-link">
-            Try Again
-        </a>
+        <h1>
+            Payment Cancelled
+        </h1>
+
+        <p class="payment-cancel-message">
+            No payment was charged.
+            You can try the payment again or return to the fee list.
+        </p>
+
+
+        <div class="payment-cancel-actions">
+
+            @if (feeId > 0)
+            {
+                <a asp-controller="Payment"
+                   asp-action="Pay"
+                   asp-route-feeId="@feeId"
+                   class="cancel-button primary">
+
+                    Try Again
+
+                </a>
+            }
+
+
+            <a asp-controller="Payment"
+               asp-action="SelectFee"
+               class="cancel-button secondary">
+
+                ← Back to Fees
+
+            </a>
+
+        </div>
 
     </div>
+
 </div>
