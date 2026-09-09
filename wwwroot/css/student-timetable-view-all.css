@@ -1,0 +1,32 @@
+﻿/* =========================================================
+   STUDENT TIMETABLE - VIEW ALL CHANGES LINK
+   ========================================================= */
+
+.changes-view-all {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 750;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+    .changes-view-all:hover {
+        color: #78350f;
+        text-decoration: none;
+        transform: translateX(2px);
+    }
+
+    .changes-view-all:visited {
+        color: #92400e;
+    }
+
+@media (max-width: 768px) {
+    .changes-view-all {
+        font-size: 12px;
+    }
+}

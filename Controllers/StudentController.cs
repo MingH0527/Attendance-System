@@ -1066,6 +1066,91 @@ public class StudentController : Controller
     }
 
 
+    // ==================================================
+    // VIEW ALL TIMETABLE CHANGES
+    // ==================================================
+
+    [HttpGet]
+    [Authorize(Roles = "Student")]
+    [RequireStudentProfile]
+    public async Task<IActionResult> TimetableChanges(
+        int page = 1)
+    {
+        string? studentId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier
+            );
+
+        if (string.IsNullOrWhiteSpace(studentId))
+        {
+            return RedirectToAction(
+                "Login",
+                "Account"
+            );
+        }
+
+        const int pageSize = 10;
+
+        IQueryable<TimetableNotification> query =
+            db.TimetableNotifications
+                .AsNoTracking()
+                .Where(n =>
+                    n.UserId == studentId
+                );
+
+        int totalCount =
+            await query.CountAsync();
+
+        int totalPages =
+            (int)Math.Ceiling(
+                totalCount /
+                (double)pageSize
+            );
+
+        if (totalPages < 1)
+        {
+            totalPages = 1;
+        }
+
+        page =
+            Math.Clamp(
+                page,
+                1,
+                totalPages
+            );
+
+        List<TimetableNotification> notifications =
+            await query
+                .OrderByDescending(n =>
+                    n.CreatedAt
+                )
+                .Skip(
+                    (page - 1) *
+                    pageSize
+                )
+                .Take(
+                    pageSize
+                )
+                .ToListAsync();
+
+        ViewBag.CurrentPage =
+            page;
+
+        ViewBag.TotalPages =
+            totalPages;
+
+        ViewBag.TotalCount =
+            totalCount;
+
+        ViewBag.PageSize =
+            pageSize;
+
+        return View(
+            notifications
+        );
+    }
+
+
     // ==============================
     // STUDENT ATTENDANCE
     // ==============================

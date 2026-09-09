@@ -1,0 +1,494 @@
+﻿@model List<WebAndMobile.Models.TimetableNotification>
+@using WebAndMobile.Models
+
+@{
+    Layout = "_Layout";
+
+    ViewData["Title"] =
+        "Timetable Changes";
+
+
+    int currentPage =
+        ViewBag.CurrentPage ?? 1;
+
+
+    int totalPages =
+        ViewBag.TotalPages ?? 1;
+
+
+    int totalCount =
+        ViewBag.TotalCount ?? 0;
+}
+
+
+<link rel="stylesheet"
+      href="~/css/teacher-timetable-changes.css"
+      asp-append-version="true" />
+
+
+<div class="changes-page">
+
+
+    <div class="changes-container">
+
+
+        <!-- ==================================================
+             HEADER
+             ================================================== -->
+
+        <section class="changes-header">
+
+
+            <div class="changes-header-content">
+
+
+                <span class="changes-eyebrow">
+                    TIMETABLE
+                </span>
+
+
+                <h1>
+                    Timetable Changes
+                </h1>
+
+
+                <p>
+                    View all timetable notifications and previous schedule changes.
+                </p>
+
+
+            </div>
+
+
+
+            <a asp-controller="Student"
+               asp-action="Timetable"
+               class="back-button">
+
+                ← Back to Timetable
+
+            </a>
+
+
+        </section>
+
+
+
+        <!-- ==================================================
+             SUMMARY
+             ================================================== -->
+
+        <div class="changes-summary">
+
+
+            <span>
+                Total Changes
+            </span>
+
+
+            <strong>
+                @totalCount
+            </strong>
+
+
+        </div>
+
+
+
+        <!-- ==================================================
+             EMPTY STATE
+             ================================================== -->
+        @if (
+                    Model == null ||
+                    Model.Count == 0
+                )
+        {
+
+            <section class="changes-empty">
+
+
+                <div class="empty-icon">
+                    🔔
+                </div>
+
+
+                <h2>
+                    No timetable changes
+                </h2>
+
+
+                <p>
+                    Your timetable notifications will appear here.
+                </p>
+
+
+                <a asp-controller="Student"
+                   asp-action="Timetable"
+                   class="empty-back-button">
+
+                    Back to Timetable
+
+                </a>
+
+
+            </section>
+
+        }
+        else
+        {
+
+            <!-- ==================================================
+                 NOTIFICATION LIST
+                 ================================================== -->
+
+            <section class="changes-list">
+
+
+                @foreach (
+                    TimetableNotification notification
+                    in Model
+                )
+                {
+
+                    // ==================================================
+                    // TYPE
+                    // ==================================================
+
+                    string type =
+                        notification.Type?.Trim()
+                        ?? "Updated";
+
+
+                    // ==================================================
+                    // DISPLAY TYPE
+                    // ==================================================
+
+                    string displayType =
+                        type switch
+                        {
+                            "LessonCancelled" =>
+                                "Lesson Cancelled",
+
+                            "ClassCancelled" =>
+                                "Class Cancelled",
+
+                            "Cancelled" =>
+                                "Cancelled",
+
+                            "ReplacementClass" =>
+                                "Replacement Class",
+
+                            "ReplacementScheduled" =>
+                                "Replacement Scheduled",
+
+                            "ClassroomChanged" =>
+                                "Classroom Changed",
+
+                            "TimeChanged" =>
+                                "Time Changed",
+
+                            "LessonRestored" =>
+                                "Lesson Restored",
+
+                            "LessonUpdated" =>
+                                "Lesson Updated",
+
+                            _ =>
+                                type
+                        };
+
+
+                    // ==================================================
+                    // CSS CLASS
+                    // ==================================================
+
+                    string typeClass =
+                        type
+                            .ToLowerInvariant()
+                            .Replace(
+                                " ",
+                                "-"
+                            );
+
+
+                    // ==================================================
+                    // MESSAGE
+                    // ==================================================
+
+                    string displayMessage =
+                        notification.Message;
+
+
+                    bool isCancelled =
+                        type.Contains(
+                            "cancel",
+                            StringComparison.OrdinalIgnoreCase
+                        );
+
+
+                    // ==================================================
+                    // CANCELLED MESSAGE FORMAT
+                    // ==================================================
+
+                    if (
+                        isCancelled &&
+                        notification.OccurrenceDate.HasValue
+                    )
+                    {
+
+                        string courseName =
+                            notification.Message;
+
+
+                        int onIndex =
+                            courseName.IndexOf(
+                                " on ",
+                                StringComparison.OrdinalIgnoreCase
+                            );
+
+
+                        if (onIndex > 0)
+                        {
+
+                            courseName =
+                                courseName.Substring(
+                                    0,
+                                    onIndex
+                                );
+
+                        }
+
+
+                        displayMessage =
+                            $"{courseName} on " +
+                            $"{notification.OccurrenceDate.Value.ToString("d/M/yyyy")} " +
+                            $"has been cancelled.";
+
+                    }
+
+
+
+                    <!-- ==================================================
+                         CHANGE CARD
+                         ================================================== -->
+
+                    <article class="change-card">
+
+
+                        <!-- LEFT -->
+
+                        <div class="change-card-main">
+
+
+                            <!-- TYPE -->
+
+                            <span class="change-type @typeClass">
+
+                                @displayType
+
+                            </span>
+
+
+
+                            <!-- MESSAGE -->
+
+                            <div class="change-message">
+
+                                @displayMessage
+
+                            </div>
+
+
+
+                            <!-- LESSON DATE -->
+                            @if (
+                                notification.OccurrenceDate.HasValue
+                             )
+
+                            {
+
+                                <div class="change-lesson-date">
+
+
+                                    <span>
+                                        Lesson Date:
+                                    </span>
+
+
+                                    <strong>
+
+                                        @notification.OccurrenceDate.Value.ToString("d/M/yyyy")
+
+                                    </strong>
+
+
+                                </div>
+
+                            }
+
+
+                        </div>
+
+
+
+                        <!-- RIGHT -->
+
+                        <div class="change-time">
+
+
+                            <span class="change-created-date">
+
+                                @notification.CreatedAt.ToString("d/M/yyyy")
+
+                            </span>
+
+
+                            <small>
+
+                                @notification.CreatedAt.ToString("HH:mm")
+
+                            </small>
+
+
+                        </div>
+
+
+                    </article>
+
+                }
+
+
+            </section>
+
+
+
+            <!-- ==================================================
+                 PAGINATION
+                 ================================================== -->
+            @if (
+                            totalPages > 1
+                        )
+            {
+
+                <nav class="changes-pagination">
+
+
+                    <!-- ==================================================
+                         PREVIOUS
+                         ================================================== -->
+                    @if (
+                                            currentPage > 1
+                                        )
+                    {
+
+                        <a asp-controller="Student"
+                           asp-action="TimetableChanges"
+                           asp-route-page="@(currentPage - 1)"
+                           class="page-button">
+
+                            ← Previous
+
+                        </a>
+
+                    }
+                    else
+                    {
+
+                        <span class="page-button disabled">
+
+                            ← Previous
+
+                        </span>
+
+                    }
+
+
+
+                    <!-- ==================================================
+                         PAGE NUMBERS
+                         ================================================== -->
+
+                    <div class="page-numbers">
+
+
+                        @for (
+                            int i = 1;
+                            i <= totalPages;
+                            i++
+                        )
+                        {
+
+                            if (
+                                i == currentPage
+                            )
+                            {
+
+                                <span class="page-number active">
+
+                                    @i
+
+                                </span>
+
+                            }
+                            else
+                            {
+
+                                <a asp-controller="Student"
+                                   asp-action="TimetableChanges"
+                                   asp-route-page="@i"
+                                   class="page-number">
+
+                                    @i
+
+                                </a>
+
+                            }
+
+                        }
+
+
+                    </div>
+
+
+
+                    <!-- ==================================================
+                         NEXT
+                         ================================================== -->
+                    @if (
+                                            currentPage < totalPages
+                                        )
+                    {
+
+                        <a asp-controller="Student"
+                           asp-action="TimetableChanges"
+                           asp-route-page="@(currentPage + 1)"
+                           class="page-button">
+
+                            Next →
+
+                        </a>
+
+                    }
+                    else
+                    {
+
+                        <span class="page-button disabled">
+
+                            Next →
+
+                        </span>
+
+                    }
+
+
+                </nav>
+
+            }
+
+        }
+
+
+    </div>
+
+
+</div>

@@ -3,8 +3,8 @@
 
 @{
     Layout = "_Layout";
-    ViewData["Title"] = "My Timetable";
 
+    ViewData["Title"] = "My Timetable";
 
     // ==================================================
     // DATA
@@ -14,16 +14,13 @@
         Model.Items
         ?? new List<TeacherTimetableItemViewModel>();
 
-
     List<AcademicWeek> weeks =
         Model.Weeks
         ?? new List<AcademicWeek>();
 
-
     List<TimetableNotification> notifications =
         Model.Notifications
         ?? new List<TimetableNotification>();
-
 
 
     // ==================================================
@@ -41,13 +38,9 @@
             DayOfWeek.Saturday
         };
 
-
-    // Sunday only appears when there is a Sunday class.
-
     if (
         timetableItems.Any(i =>
-            i.DayOfWeek ==
-                DayOfWeek.Sunday
+            i.DayOfWeek == DayOfWeek.Sunday
         )
     )
     {
@@ -57,14 +50,12 @@
     }
 
 
-
     // ==================================================
     // TIME RANGE
     // ==================================================
 
     int startHour = 8;
     int endHour = 18;
-
 
     if (timetableItems.Count > 0)
     {
@@ -74,7 +65,6 @@
                     i.StartTime.Hours
                 );
 
-
         int latestHour =
             timetableItems
                 .Max(i =>
@@ -83,13 +73,11 @@
                         : i.EndTime.Hours
                 );
 
-
         if (earliestHour < startHour)
         {
             startHour =
                 earliestHour;
         }
-
 
         if (latestHour > endHour)
         {
@@ -99,7 +87,6 @@
     }
 
 
-
     // ==================================================
     // NOTIFICATION COUNT
     // ==================================================
@@ -107,10 +94,8 @@
     int recentNotificationCount =
         notifications.Count;
 
-
     if (
-        ViewBag.RecentNotificationCount !=
-        null
+        ViewBag.RecentNotificationCount != null
     )
     {
         recentNotificationCount =
@@ -121,14 +106,16 @@
 }
 
 
-
 @section Styles
 {
     <link rel="stylesheet"
           href="~/css/student-timetable.css"
           asp-append-version="true" />
-}
 
+    <link rel="stylesheet"
+          href="~/css/student-timetable-view-all.css"
+          asp-append-version="true" />
+}
 
 
 <div class="student-timetable-page">
@@ -145,7 +132,6 @@
 
         <div class="current-view-left">
 
-
             <span class="small-label">
                 CURRENT VIEW
             </span>
@@ -157,7 +143,6 @@
                     Weekly Template
                 </h2>
 
-
                 <p>
                     @Model.TermName
                 </p>
@@ -168,24 +153,18 @@
                     Week @(Model.SelectedWeekNumber ?? 1)
                 </h2>
 
-
                 @if (
                     Model.WeekStart.HasValue &&
                     Model.WeekEnd.HasValue
                 )
                 {
                     <p>
-
                         @Model.WeekStart.Value.ToString("dd/MM/yyyy")
-
                         -
-
                         @Model.WeekEnd.Value.ToString("dd/MM/yyyy")
-
                     </p>
                 }
             }
-
 
         </div>
 
@@ -194,7 +173,6 @@
         <!-- RIGHT -->
 
         <div class="current-view-right">
-
 
             <label for="weekNumber">
                 View:
@@ -206,7 +184,6 @@
                   method="get"
                   class="week-form">
 
-
                 <select id="weekNumber"
                         name="weekNumber"
                         class="week-select"
@@ -214,33 +191,26 @@
 
 
                     <!-- WEEKLY TEMPLATE -->
-
                     @if (Model.IsTemplate)
                     {
                         <option value="0"
                                 selected>
-
                             Weekly Template
-
                         </option>
                     }
                     else
                     {
                         <option value="0">
-
                             Weekly Template
-
                         </option>
                     }
 
 
-
                     <!-- ACADEMIC WEEKS -->
-
                     @foreach (
-                        AcademicWeek week
-                        in weeks
-                    )
+                            AcademicWeek week
+                            in weeks
+                     )
                     {
                         if (
                             !Model.IsTemplate &&
@@ -271,15 +241,11 @@
                         }
                     }
 
-
                 </select>
-
 
             </form>
 
-
         </div>
-
 
     </div>
 
@@ -304,7 +270,6 @@
         </div>
 
 
-
         <div class="legend-item">
 
             <span class="legend-box replacement">
@@ -315,7 +280,6 @@
             </span>
 
         </div>
-
 
 
         <div class="legend-item">
@@ -348,16 +312,13 @@
 
             <div class="changes-title">
 
-
                 <span class="bell-icon">
                     🔔
                 </span>
 
-
                 <strong>
                     Recent Timetable Changes
                 </strong>
-
 
             </div>
 
@@ -371,9 +332,13 @@
                 </span>
 
 
-                <strong>
-                    Latest changes
-                </strong>
+                <a asp-controller="Student"
+                   asp-action="TimetableChanges"
+                   class="changes-view-all">
+
+                    View all changes →
+
+                </a>
 
 
             </div>
@@ -383,9 +348,12 @@
 
 
 
-        <!-- NOTIFICATIONS -->
-
-        @if (notifications.Count > 0)
+        <!-- ==================================================
+             NOTIFICATIONS
+             ================================================== -->
+        @if (
+            notifications.Count > 0
+         )
         {
 
             <div class="changes-list">
@@ -400,22 +368,23 @@
                     <div class="change-item">
 
 
-                        <div class="change-content">
+                        <!-- LEFT -->
 
+                        <div class="change-content">
 
                             <strong>
                                 @notification.Type
                             </strong>
 
-
                             <p>
                                 @notification.Message
                             </p>
 
-
                         </div>
 
 
+
+                        <!-- RIGHT -->
 
                         <small>
 
@@ -469,10 +438,13 @@
     <div class="timetable-grid-wrapper">
 
 
-        @if (timetableItems.Count == 0)
+        <!-- ==================================================
+             EMPTY
+             ================================================== -->
+        @if (
+                    timetableItems.Count == 0
+                )
         {
-
-            <!-- EMPTY -->
 
             <div class="empty-timetable">
 
@@ -488,10 +460,8 @@
 
 
                 <p>
-
                     There are currently no timetable
                     entries available for this semester.
-
                 </p>
 
 
@@ -501,7 +471,9 @@
         else
         {
 
-            <!-- TABLE -->
+            <!-- ==================================================
+                 TABLE
+                 ================================================== -->
 
             <div class="timetable-scroll">
 
@@ -510,7 +482,7 @@
 
 
                     <!-- ==================================================
-                         HEADER
+                         TABLE HEADER
                          ================================================== -->
 
                     <thead>
@@ -520,11 +492,8 @@
 
 
                             <th class="day-column">
-
                                 Day
-
                             </th>
-
 
 
                             @for (
@@ -535,31 +504,28 @@
                             {
 
                                 DateTime startTime =
-                                    DateTime.Today.AddHours(
-                                        hour
-                                    );
-
+                                    DateTime.Today
+                                        .AddHours(
+                                            hour
+                                        );
 
                                 DateTime endTime =
-                                    startTime.AddHours(
-                                        1
-                                    );
+                                    startTime
+                                        .AddHours(
+                                            1
+                                        );
 
 
                                 <th class="time-column">
 
 
                                     <strong>
-
                                         @startTime.ToString("hh:mm tt")
-
                                     </strong>
 
 
                                     <span>
-
                                         @endTime.ToString("hh:mm tt")
-
                                     </span>
 
 
@@ -576,7 +542,7 @@
 
 
                     <!-- ==================================================
-                         BODY
+                         TABLE BODY
                          ================================================== -->
 
                     <tbody>
@@ -588,9 +554,9 @@
                         )
                         {
 
-                            // ==============================================
+                            // ==================================================
                             // ACTUAL DATE FOR THIS DAY
-                            // ==============================================
+                            // ==================================================
 
                             DateTime? actualDate =
                                 null;
@@ -603,7 +569,10 @@
                             {
 
                                 DateTime weekStart =
-                                    Model.WeekStart.Value.Date;
+                                    Model
+                                        .WeekStart
+                                        .Value
+                                        .Date;
 
 
                                 int difference =
@@ -628,9 +597,9 @@
                             <tr>
 
 
-                                <!-- ======================================
+                                <!-- ==================================================
                                      DAY
-                                     ====================================== -->
+                                     ================================================== -->
 
                                 <td class="day-cell">
 
@@ -646,9 +615,10 @@
                                     {
 
                                         <span>
-
-                                            @actualDate.Value.ToString("dd/MM/yyyy")
-
+                                            @actualDate.Value
+                                            .ToString(
+                                            "dd/MM/yyyy"
+                                            )
                                         </span>
 
                                     }
@@ -658,20 +628,19 @@
 
 
 
-                                <!-- ======================================
+                                <!-- ==================================================
                                      HOURS
-                                     ====================================== -->
-
+                                     ================================================== -->
                                 @for (
-                                    int hour = startHour;
-                                    hour < endHour;
-                                    hour++
-                                )
+                                      int hour = startHour;
+                                      hour < endHour;
+                                      hour++
+                                 )
                                 {
 
-                                    // ======================================
+                                    // ==================================================
                                     // ITEMS STARTING IN THIS HOUR
-                                    // ======================================
+                                    // ==================================================
 
                                     List<TeacherTimetableItemViewModel>
                                         cellItems =
@@ -698,9 +667,9 @@
                                         )
                                         {
 
-                                            // ==================================
+                                            // ==================================================
                                             // STATUS
-                                            // ==================================
+                                            // ==================================================
 
                                             string status =
                                                 item.Status?.Trim()
@@ -736,22 +705,17 @@
 
 
 
-                                            <!-- ==============================
+                                            <!-- ==================================================
                                                  SUBJECT CARD
-                                                 ============================== -->
+                                                 ================================================== -->
 
                                             <div class="@cardClass">
 
 
                                                 <!-- STATUS -->
-
                                                 @if (
-                                                    string.Equals(
-                                                        status,
-                                                        "Replacement",
-                                                        StringComparison.OrdinalIgnoreCase
-                                                    )
-                                                )
+                                                      string.Equals(status,"Replacement",StringComparison.OrdinalIgnoreCase)
+                                                 )
                                                 {
 
                                                     <span class="subject-status replacement-status">
@@ -836,15 +800,19 @@
 
 
                                                 <!-- OCCURRENCE DATE -->
-
                                                 @if (
-                                                    item.OccurrenceDate.HasValue
-                                                )
+                                                     item.OccurrenceDate.HasValue
+                                                 )
                                                 {
 
                                                     <div class="subject-date">
 
-                                                        @item.OccurrenceDate.Value.ToString("d/MM/yyyy")
+                                                        @item
+                                                        .OccurrenceDate
+                                                        .Value
+                                                        .ToString(
+                                                        "d/MM/yyyy"
+                                                        )
 
                                                     </div>
 
@@ -853,11 +821,10 @@
 
 
                                                 <!-- REASON -->
-
                                                 @if (
                                                     !string.IsNullOrWhiteSpace(
-                                                        item.Reason
-                                                    )
+                                                     item.Reason
+                                                   )
                                                 )
                                                 {
 
