@@ -1,0 +1,205 @@
+﻿@model WebAndMobile.ViewModels.ClassManagementViewModel
+
+@{
+    Layout = "_Layout";
+
+    ViewData["Title"] = "Class Management";
+
+    string nextSort = Model.Sort == "asc" ? "desc" : "asc";
+}
+
+<link rel="stylesheet"
+      href="~/css/class-management.css"
+      asp-append-version="true" />
+
+<div class="cm-page">
+
+    <header class="cm-header">
+        <div>
+            <p class="cm-eyebrow">Administrator Portal</p>
+            <h1>Class Management</h1>
+            <p class="cm-subtitle">
+                Each program can have up to @WebAndMobile.ViewModels.ClassManagementViewModel.MaxClassesPerProgram
+                classes. A program with no class cannot be used in the timetable.
+            </p>
+        </div>
+    </header>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="cm-flash cm-flash--ok">@TempData["Success"]</div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="cm-flash cm-flash--error">@TempData["Error"]</div>
+    }
+
+    <section class="cm-stats">
+
+        <div class="cm-stat">
+            <span class="cm-stat-label">Programs</span>
+            <strong>@Model.TotalPrograms</strong>
+        </div>
+
+        <div class="cm-stat">
+            <span class="cm-stat-label">Classes</span>
+            <strong>@Model.TotalClasses</strong>
+        </div>
+
+        <div class="cm-stat @(Model.ProgramsWithoutClass > 0 ? "cm-stat--warn" : "")">
+            <span class="cm-stat-label">Without a class</span>
+            <strong>@Model.ProgramsWithoutClass</strong>
+        </div>
+
+    </section>
+
+    <section class="cm-panel">
+
+        <div class="cm-toolbar">
+
+            <form asp-action="Index" method="get" class="cm-search">
+                <input type="hidden" name="sort" value="@Model.Sort" />
+
+                <input type="text"
+                       name="search"
+                       value="@Model.Search"
+                       placeholder="Search program ID or name"
+                       class="cm-input" />
+
+                <button type="submit" class="cm-button">Search</button>
+
+                <a asp-action="Index"
+                   asp-route-sort="@Model.Sort"
+                   class="cm-button cm-button--ghost">Reset</a>
+            </form>
+
+            <a asp-action="Index"
+               asp-route-sort="@nextSort"
+               asp-route-search="@Model.Search"
+               class="cm-button cm-button--ghost cm-sort">
+                Program ID @(Model.Sort == "asc" ? "↑ ascending" : "↓ descending")
+            </a>
+
+        </div>
+
+        @if (Model.Programs.Count == 0)
+        {
+            <div class="cm-empty">
+                <h3>No programs found</h3>
+                <p>Create a program first, then add its classes here.</p>
+            </div>
+        }
+        else
+        {
+            <table class="cm-table">
+
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Program ID</th>
+                        <th>Program Name</th>
+                        <th>Classes</th>
+                        <th>Class List</th>
+                        <th>Add Class</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @for (int i = 0; i < Model.Programs.Count; i++)
+                    {
+                        var row = Model.Programs[i];
+
+                        <tr>
+                            <td>@(i + 1)</td>
+
+                            <td><span class="cm-id">@row.ProgramId</span></td>
+
+                            <td><strong>@row.ProgramName</strong></td>
+
+                            <td>
+                                <span class="cm-count @(row.HasNoClass ? "is-empty" : row.IsFull ? "is-full" : "")">
+                                    @row.Classes.Count / @WebAndMobile.ViewModels.ClassManagementViewModel.MaxClassesPerProgram
+                                </span>
+                            </td>
+
+                            <td>
+                                @if (row.HasNoClass)
+                                {
+                                    <span class="cm-muted">No class yet</span>
+                                }
+                                else
+                                {
+                                    <div class="cm-class-list">
+                                        @foreach (var c in row.Classes)
+                                        {
+                                            <form asp-action="Update"
+                                                  method="post"
+                                                  class="cm-class-item">
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden" name="classId" value="@c.ClassId" />
+                                                <input type="hidden" name="sort" value="@Model.Sort" />
+
+                                                <span class="cm-id">@c.ClassId</span>
+
+                                                <input type="text"
+                                                       name="className"
+                                                       value="@c.ClassName"
+                                                       minlength="2"
+                                                       maxlength="150"
+                                                       class="cm-input cm-input--inline"
+                                                       required />
+
+                                                <button type="submit" class="cm-button cm-button--small">
+                                                    Save
+                                                </button>
+
+                                                <span class="cm-usage">
+                                                    @c.StudentCount student(s) · @c.TimetableCount timetable
+                                                </span>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                            </td>
+
+                            <td>
+                                @if (row.IsFull)
+                                {
+                                    <span class="cm-muted">Maximum reached</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="Create"
+                                          method="post"
+                                          class="cm-add-form">
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden" name="programId" value="@row.ProgramId" />
+                                        <input type="hidden" name="sort" value="@Model.Sort" />
+
+                                        <input type="text"
+                                               name="className"
+                                               placeholder="e.g. DCS1"
+                                               minlength="2"
+                                               maxlength="150"
+                                               class="cm-input cm-input--inline"
+                                               required />
+
+                                        <button type="submit" class="cm-button cm-button--small">
+                                            Add
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+
+            </table>
+        }
+
+    </section>
+
+</div>
