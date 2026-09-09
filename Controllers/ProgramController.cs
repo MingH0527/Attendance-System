@@ -113,6 +113,24 @@ public class ProgramController : Controller
                     "Please select class"
                 );
             }
+            else if (!string.IsNullOrWhiteSpace(model.SelectedProgramId))
+            {
+                // The browser filters the list, but a hand-crafted post could
+                // still pair a class with the wrong program - reject that here.
+                bool belongsToProgram = await db.ClassGroups
+                    .AsNoTracking()
+                    .AnyAsync(c =>
+                        c.ClassId == model.SelectedClassId &&
+                        c.ProgramId == model.SelectedProgramId);
+
+                if (!belongsToProgram)
+                {
+                    ModelState.AddModelError(
+                        nameof(model.SelectedClassId),
+                        "That class does not belong to the selected program."
+                    );
+                }
+            }
         }
         else if (user.Position == "Teacher")
         {
@@ -145,14 +163,14 @@ public class ProgramController : Controller
 
             if (existing != null)
             {
-               
+
                 existing.ProgramId = model.SelectedProgramId;
                 existing.ClassId = model.SelectedClassId!;
                 existing.RegisteredDate = DateTime.Now;
             }
             else
             {
-                
+
                 string newStudentId = await GenerateStudentIdAsync();
 
                 db.StudentClasses.Add(new StudentClass
@@ -195,7 +213,7 @@ public class ProgramController : Controller
         return RedirectToAction("Index", "MyProfile");
     }
 
-   
+
     private async Task<string> GenerateStudentIdAsync()
     {
         int year = DateTime.Now.Year;

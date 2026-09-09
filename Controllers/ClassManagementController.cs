@@ -78,6 +78,7 @@ public class ClassManagementController : Controller
             {
                 ProgramId = program.ProgramId,
                 ProgramName = program.ProgramName,
+                ProgramCode = program.ProgramCode,
                 Classes = classes
             });
         }
@@ -175,6 +176,48 @@ public class ClassManagementController : Controller
         await _db.SaveChangesAsync();
 
         return Ok_($"Class {previous} renamed to {className}.", sort);
+    }
+
+    /// <summary>
+    /// Updates the program's short code. This is what the Timetable
+    /// Management cards display; it is a property of the program, not
+    /// something derived from its class names.
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateProgramCode(
+        string programId,
+        string programCode,
+        string sort = "asc")
+    {
+        programCode = Normalise(programCode).ToUpperInvariant();
+
+        if (programCode.Length < 2 || programCode.Length > 20)
+            return Fail("Program code must be between 2 and 20 characters.", sort);
+
+        AcademicProgram? program = await _db.AcademicPrograms
+            .FirstOrDefaultAsync(p => p.ProgramId == programId);
+
+        if (program is null)
+            return Fail("Program not found.", sort);
+
+        if (await _db.AcademicPrograms.AnyAsync(p =>
+                p.ProgramCode == programCode && p.ProgramId != programId))
+            return Fail(
+                $"Program code {programCode} is already used by another program.",
+                sort);
+
+        string previous = program.ProgramCode;
+
+        if (previous == programCode)
+            return Ok_("No change made.", sort);
+
+        program.ProgramCode = programCode;
+
+        await _db.SaveChangesAsync();
+
+        return Ok_(
+            $"Program code changed from {previous} to {programCode}.", sort);
     }
 
     // ---------- helpers ----------

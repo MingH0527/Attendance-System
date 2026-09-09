@@ -316,3 +316,20 @@
         min-width: 900px;
     }
 }
+
+/* ---------- program code ---------- */
+
+.cm-code-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cm-input--code {
+    width: 92px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}

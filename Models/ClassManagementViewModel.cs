@@ -26,6 +26,10 @@ public class ProgramClassRow
 
     public string ProgramName { get; set; } = "";
 
+    /// Short code shown on the Timetable Management cards (DCS, DIT).
+    /// Separate from class names - renaming a class does not change it.
+    public string ProgramCode { get; set; } = "";
+
     public List<ClassRow> Classes { get; set; } = [];
 
     public bool IsFull =>

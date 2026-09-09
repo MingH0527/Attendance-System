@@ -21,6 +21,8 @@
             <p class="cm-subtitle">
                 Each program can have up to @WebAndMobile.ViewModels.ClassManagementViewModel.MaxClassesPerProgram
                 classes. A program with no class cannot be used in the timetable.
+                The code is what the Timetable Management cards show, and is
+                separate from the class names.
             </p>
         </div>
     </header>
@@ -99,6 +101,7 @@
                         <th>No</th>
                         <th>Program ID</th>
                         <th>Program Name</th>
+                        <th>Code</th>
                         <th>Classes</th>
                         <th>Class List</th>
                         <th>Add Class</th>
@@ -116,6 +119,30 @@
                             <td><span class="cm-id">@row.ProgramId</span></td>
 
                             <td><strong>@row.ProgramName</strong></td>
+
+                            <td>
+                                @* Shown on the Timetable Management cards. *@
+                                <form asp-action="UpdateProgramCode"
+                                      method="post"
+                                      class="cm-code-form">
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden" name="programId" value="@row.ProgramId" />
+                                    <input type="hidden" name="sort" value="@Model.Sort" />
+
+                                    <input type="text"
+                                           name="programCode"
+                                           value="@row.ProgramCode"
+                                           minlength="2"
+                                           maxlength="20"
+                                           class="cm-input cm-input--code"
+                                           required />
+
+                                    <button type="submit" class="cm-button cm-button--small">
+                                        Save
+                                    </button>
+                                </form>
+                            </td>
 
                             <td>
                                 <span class="cm-count @(row.HasNoClass ? "is-empty" : row.IsFull ? "is-full" : "")">

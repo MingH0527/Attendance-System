@@ -127,17 +127,67 @@
 
 <script>
 
-    function filterClassesByProgram() {
-        var programId = document.getElementById('programSelect').value;
+    // The class list must only ever offer classes belonging to the chosen
+    // program, and must stay locked until a program is picked.
+    (function () {
+        var programSelect = document.getElementById('programSelect');
         var classSelect = document.getElementById('classSelect');
-        if (!classSelect) return;
 
-        Array.from(classSelect.options).forEach(function(opt) {
-            if (!opt.dataset.program) return;
-            opt.hidden = programId !== '' && opt.dataset.program !== programId;
+        if (!programSelect || !classSelect) {
+            return;
+        }
+
+        var placeholder = classSelect.querySelector('option[value=""]');
+
+        function filterClasses(keepSelection) {
+            var programId = programSelect.value;
+            var previous = classSelect.value;
+            var matches = 0;
+
+            Array.from(classSelect.options).forEach(function (opt) {
+                if (!opt.dataset.program) {
+                    return;
+                }
+
+                var show = programId !== '' && opt.dataset.program === programId;
+
+                // hidden alone is ignored by some browsers, so disable too -
+                // that also stops a hidden option being submitted.
+                opt.hidden = !show;
+                opt.disabled = !show;
+
+                if (show) {
+                    matches++;
+                }
+            });
+
+            classSelect.disabled = programId === '';
+
+            if (placeholder) {
+                placeholder.textContent =
+                    programId === ''
+                        ? '-- Choose your program first --'
+                        : (matches === 0
+                            ? '-- No class available for this program --'
+                            : '-- Choose a class --');
+            }
+
+            // Keep the current pick only if it still belongs to the program.
+            var stillValid =
+                keepSelection &&
+                previous !== '' &&
+                classSelect.querySelector(
+                    'option[value="' + previous + '"]:not([disabled])');
+
+            classSelect.value = stillValid ? previous : '';
+        }
+
+        programSelect.addEventListener('change', function () {
+            filterClasses(false);
         });
-        classSelect.value = '';
-    }
 
-    document.addEventListener('DOMContentLoaded', filterClassesByProgram);
+        // On load, keep whatever the server rendered (e.g. after a
+        // validation error) so the student does not lose their choice.
+        filterClasses(true);
+    })();
 </script>
