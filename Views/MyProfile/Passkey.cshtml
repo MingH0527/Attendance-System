@@ -37,10 +37,23 @@
 
             <div class="passkey-header">
 
-                <a asp-controller="MyProfile"
-                   asp-action="Index"
+                @{
+                    // Passkey is reachable from the admin dashboard, the
+                    // teacher dashboard and My Profile, so "back" cannot be
+                    // a fixed destination. IsLocalUrl blocks an off-site
+                    // redirect being passed in the query string.
+                    string? passkeyReturn = Context.Request.Query["returnUrl"];
+
+                    string passkeyBackUrl =
+                        !string.IsNullOrWhiteSpace(passkeyReturn) &&
+                        Url.IsLocalUrl(passkeyReturn)
+                            ? passkeyReturn!
+                            : Url.Action("Index", "MyProfile")!;
+                }
+
+                <a href="@passkeyBackUrl"
                    class="back-button"
-                   title="Back to My Profile">
+                   title="Back">
                     ←
                 </a>
 
