@@ -1,0 +1,438 @@
+﻿@model WebAndMobile.Models.TeacherManageAttendanceViewModel
+
+@{
+    ViewData["Title"] = "Student Attendance";
+}
+
+<link rel="stylesheet"
+      href="~/css/teacherhome.css"
+      asp-append-version="true" />
+
+<link rel="stylesheet"
+      href="~/css/teacher-manage-attendance.css"
+      asp-append-version="true" />
+
+
+<div class="teacher-dashboard">
+
+    <!-- ==================================================
+         HEADER
+         ================================================== -->
+
+    <section class="manage-attendance-header">
+
+        <div>
+
+            <a asp-controller="Teacher"
+               asp-action="AttendanceCode"
+               class="attendance-back">
+                ← Back to Attendance Code
+            </a>
+
+            <p class="teacher-role">
+                TEACHER PORTAL
+            </p>
+
+            <h1>
+                Student Attendance
+            </h1>
+
+            <p>
+                @Model.CourseName · @Model.ClassName
+            </p>
+
+        </div>
+
+
+        <div class="manage-lesson-summary">
+
+            <span>
+                📅 @(Model.Date.ToString("dd/MM/yyyy"))
+            </span>
+
+            <span>
+                🕐 @Model.StartTime.ToString(@"hh\:mm")
+                -
+                @Model.EndTime.ToString(@"hh\:mm")
+            </span>
+
+            <span>
+                📍 @Model.RoomName
+            </span>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- ==================================================
+         ERROR MESSAGE
+         ================================================== -->
+    @if (TempData["AttendanceError"] != null)
+    {
+        <div class="attendance-message error">
+            ⚠ @TempData["AttendanceError"]
+        </div>
+    }
+
+
+
+    <!-- ==================================================
+         SUCCESS MESSAGE
+         ================================================== -->
+    @if (TempData["AttendanceSuccess"] != null)
+    {
+        <div class="attendance-message success">
+            ✓ @TempData["AttendanceSuccess"]
+        </div>
+    }
+
+
+
+    <!-- ==================================================
+         NO CODE GENERATED WARNING
+         ================================================== -->
+    @if (!Model.HasGeneratedCode)
+    {
+        <div class="manual-attendance-alert">
+
+            <strong>
+                ⚠ Attendance code was not generated
+            </strong>
+
+            <span>
+                Please complete the attendance manually
+                by checking every student's status.
+            </span>
+
+        </div>
+    }
+
+
+
+    <!-- ==================================================
+         STUDENT ATTENDANCE CARD
+         ================================================== -->
+
+    <section class="manage-attendance-card">
+
+        <div class="manage-attendance-heading">
+
+            <div>
+
+                <h2>
+                    Student Attendance
+                </h2>
+
+                @if (!Model.HasGeneratedCode)
+                {
+                    <p>
+                        Manual attendance is required for this class.
+                    </p>
+                }
+                else
+                {
+                    <p>
+                        Review and manage attendance for this class.
+                    </p>
+                }
+
+            </div>
+
+
+            <span class="manage-attendance-count">
+                @Model.Students.Count
+            </span>
+
+        </div>
+
+
+
+        <!-- ==================================================
+             EMPTY
+             ================================================== -->
+        @if (Model.Students.Count == 0)
+        {
+            <div class="manage-attendance-empty">
+
+                <span>
+                    👥
+                </span>
+
+                <strong>
+                    No students found
+                </strong>
+
+                <p>
+                    There are no students registered
+                    for this class.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <!-- ==================================================
+                 TABLE
+                 ================================================== -->
+
+            <div class="manage-attendance-table-wrap">
+
+                <table class="manage-attendance-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Student ID
+                            </th>
+
+                            <th>
+                                Username
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                            <th>
+                                Reason
+                            </th>
+
+                            <th>
+                                Action
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (var student in Model.Students)
+                        {
+                            string statusClass =
+                                student.Status.ToLowerInvariant();
+
+                            <tr>
+
+                                <!-- ======================================
+                                     STUDENT ID
+                                     ====================================== -->
+
+                                <td>
+                                    @student.StudentId
+                                </td>
+
+
+
+                                <!-- ======================================
+                                     USERNAME
+                                     ====================================== -->
+
+                                <td>
+                                    @student.Username
+                                </td>
+
+
+
+                                <!-- ======================================
+                                     STATUS
+                                     ====================================== -->
+
+                                <td>
+
+                                    <span class="attendance-status @statusClass">
+
+                                        @student.Status
+
+                                    </span>
+
+                                </td>
+
+
+
+                                <!-- ======================================
+                                     REASON / DESCRIPTION
+                                     ====================================== -->
+
+                                <td class="attendance-description">
+
+                                    @if (
+                                        string.IsNullOrWhiteSpace(
+                                            student.Description
+                                        )
+                                    )
+                                    {
+                                        <span>
+                                            -
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span>
+                                            @student.Description
+                                        </span>
+                                    }
+
+                                </td>
+
+
+
+                                <!-- ======================================
+                                     ACTION
+                                     ====================================== -->
+
+                                <td>
+
+                                    @if (!student.CanEdit)
+                                    {
+                                        <!-- ==============================
+                                             APPROVED LEAVE
+                                             ============================== -->
+
+                                        <span class="attendance-locked">
+                                            🔒 Approved Leave
+                                        </span>
+                                    }
+
+                                    else if (
+                                        student.Status ==
+                                        "Present"
+                                    )
+                                    {
+                                        <!-- ==============================
+                                             PRESENT -> MARK ABSENT
+                                             MUST ENTER REASON
+                                             ============================== -->
+
+                                        <form asp-controller="Attendance"
+                                              asp-action="MarkAbsent"
+                                              method="post"
+                                              class="attendance-action-form">
+
+                                            @Html.AntiForgeryToken()
+
+
+                                            <input type="hidden"
+                                                   name="timetableId"
+                                                   value="@Model.TimetableId" />
+
+
+                                            <input type="hidden"
+                                                   name="date"
+                                                   value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+
+                                            <input type="hidden"
+                                                   name="studentClassId"
+                                                   value="@student.StudentClassId" />
+
+
+                                            @if (
+                                                !string.IsNullOrWhiteSpace(
+                                                    Model.ReplacementId
+                                                )
+                                            )
+                                            {
+                                                <input type="hidden"
+                                                       name="replacementId"
+                                                       value="@Model.ReplacementId" />
+                                            }
+
+
+                                            <!-- ==========================
+                                                 REASON INPUT
+                                                 ========================== -->
+
+                                            <input type="text"
+                                                   name="reason"
+                                                   class="attendance-reason-input"
+                                                   maxlength="500"
+                                                   required
+                                                   autocomplete="off"
+                                                   placeholder="Enter reason..." />
+
+
+                                            <button type="submit"
+                                                    class="mark-absent-button">
+
+                                                ✕ Mark Absent
+
+                                            </button>
+
+                                        </form>
+                                    }
+
+                                    else if (
+                                        student.Status ==
+                                        "Absent"
+                                    )
+                                    {
+                                        <!-- ==============================
+                                             ABSENT -> MARK PRESENT
+                                             ============================== -->
+
+                                        <form asp-controller="Attendance"
+                                              asp-action="MarkPresent"
+                                              method="post"
+                                              class="attendance-action-form">
+
+                                            @Html.AntiForgeryToken()
+
+
+                                            <input type="hidden"
+                                                   name="timetableId"
+                                                   value="@Model.TimetableId" />
+
+
+                                            <input type="hidden"
+                                                   name="date"
+                                                   value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+
+                                            <input type="hidden"
+                                                   name="studentClassId"
+                                                   value="@student.StudentClassId" />
+
+
+                                            @if (
+                                                !string.IsNullOrWhiteSpace(
+                                                    Model.ReplacementId
+                                                )
+                                            )
+                                            {
+                                                <input type="hidden"
+                                                       name="replacementId"
+                                                       value="@Model.ReplacementId" />
+                                            }
+
+
+                                            <button type="submit"
+                                                    class="mark-present-button">
+
+                                                ✓ Mark Present
+
+                                            </button>
+
+                                        </form>
+                                    }
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </section>
+
+</div>
