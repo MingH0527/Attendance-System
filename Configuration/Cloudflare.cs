@@ -13,7 +13,7 @@ public static class Cloudflare
     //
 
     public const string PublicUrl =
-        "https://observation-diet-calculated-brunette.trycloudflare.com";
+        "https://assisted-simon-finished-assignments.trycloudflare.com";
 
     // ==================================================
     // CONFIGURATION CHECK

@@ -2,6 +2,8 @@
 @using System.Text.Json
 
 @{
+    Layout = "_Layout";
+
     ViewData["Title"] =
         "Attendance Overview";
 
@@ -113,10 +115,10 @@
          HEADER
          ============================================== -->
     <a asp-controller="Admin"
-        asp-action="Index"
-            class="attendance-back-link">
-            
-            ← Back to Dashboard
+       asp-action="Index"
+       class="attendance-back-link">
+
+        ← Back to Dashboard
     </a>
 
     <div class="attendance-page-header">

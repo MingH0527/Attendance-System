@@ -7,7 +7,24 @@
 @{
     // Pages such as Program/RegisterProgram use this bare layout, but a
     // signed-in student should still see them in their chosen language.
+    //
+    // Login, Register, OTP and the landing page also use this layout. An
+    // auth cookie can outlive the browser session, so a student who closes
+    // the browser and reopens on /Account/Login is still "signed in" as far
+    // as this check is concerned - which used to apply their dark theme and
+    // language to the sign-in screen. Those pages are shown to every role
+    // and to visitors with no account, so they stay on the light theme.
+    string authController =
+        ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+
+    bool isPreLoginPage =
+        string.Equals(authController, "Account",
+            StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(authController, "Home",
+            StringComparison.OrdinalIgnoreCase);
+
     bool authIsStudent =
+        !isPreLoginPage &&
         string.Equals(
             User.FindFirstValue(ClaimTypes.Role),
             "Student",

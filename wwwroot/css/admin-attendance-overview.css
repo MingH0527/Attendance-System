@@ -490,3 +490,15 @@
         gap: 10px;
     }
 }
+
+/* ---------------------------------------------------------
+   Rendered inside the shared shell (_Layout): .content already
+   supplies the padding and page background, so the standalone
+   full-page treatment above is reset here.
+   --------------------------------------------------------- */
+
+.admin-attendance-page {
+    min-height: auto;
+    padding: 0;
+    background: transparent;
+}
