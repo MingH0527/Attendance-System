@@ -192,7 +192,8 @@ public class StudentController : Controller
     [HttpGet]
     [Authorize(Roles = "Student")]
     [RequireStudentProfile]
-    public async Task<IActionResult> Timetable()
+    public async Task<IActionResult> Timetable(
+        int? weekNumber = null)
     {
         string? studentId =
             User.FindFirstValue(
@@ -207,46 +208,38 @@ public class StudentController : Controller
             );
         }
 
+
+        // ==================================================
+        // STUDENT CLASS
+        // ==================================================
+
         StudentClass? studentClass =
             await db.StudentClasses
                 .AsNoTracking()
-                .Include(sc => sc.ClassGroup)
-                .Include(sc => sc.Program)
-                .FirstOrDefaultAsync(
-                    sc => sc.UserId == studentId
+                .Include(sc =>
+                    sc.ClassGroup
+                )
+                .Include(sc =>
+                    sc.Program
+                )
+                .FirstOrDefaultAsync(sc =>
+                    sc.UserId ==
+                        studentId
                 );
+
+
+        TeacherTimetableViewModel model =
+            new();
+
 
         if (studentClass == null)
         {
-            ViewBag.ClassName =
-                "Not Assigned";
-
-            ViewBag.ProgramName =
-                "Not Assigned";
-
-            ViewBag.TermName =
+            model.TermName =
                 "No Active Semester";
 
-            return View(
-                new List<Timetable>()
-            );
+            return View(model);
         }
 
-        List<Timetable> timetable =
-            await db.Timetables
-                .AsNoTracking()
-                .Where(t =>
-                    t.ClassId == studentClass.ClassId &&
-                    t.Term != null &&
-                    t.Term.Status == "Active"
-                )
-                .Include(t => t.Term)
-                .Include(t => t.Course)
-                .Include(t => t.Classroom)
-                .Include(t => t.Teacher)
-                .OrderBy(t => t.DayOfWeek)
-                .ThenBy(t => t.StartTime)
-                .ToListAsync();
 
         ViewBag.ClassName =
             studentClass.ClassGroup?.ClassName
@@ -256,34 +249,822 @@ public class StudentController : Controller
             studentClass.Program?.ProgramName
             ?? studentClass.ProgramId;
 
+
+        // ==================================================
+        // ACTIVE SEMESTER
+        // ==================================================
+
+        AcademicTerm? activeTerm =
+            await db.AcademicTerms
+                .AsNoTracking()
+                .Where(t =>
+                    t.Status ==
+                        "Active"
+                )
+                .OrderBy(t =>
+                    t.StartDate
+                )
+                .FirstOrDefaultAsync();
+
+
+        if (activeTerm == null)
+        {
+            model.TermName =
+                "No Active Semester";
+
+            ViewBag.TermName =
+                model.TermName;
+
+            return View(model);
+        }
+
+
+        model.TermName =
+            activeTerm.Name;
+
         ViewBag.TermName =
-            timetable
-                .FirstOrDefault()?
-                .Term?
-                .Name
-            ?? "No Active Semester";
+            activeTerm.Name;
 
-        var activeTermIds =
-            timetable
-                .Where(t => t.TermId != null)
-                .Select(t => t.TermId!)
-                .Distinct()
-                .ToList();
 
-        ViewBag.TimetableNotifications =
+        // ==================================================
+        // ACADEMIC WEEKS
+        // Only weeks belonging to the Active semester.
+        // ==================================================
+
+        model.Weeks =
+            await db.AcademicWeeks
+                .AsNoTracking()
+                .Where(w =>
+                    w.TermId ==
+                        activeTerm.TermId
+                )
+                .OrderBy(w =>
+                    w.WeekNumber
+                )
+                .ToListAsync();
+
+
+        // ==================================================
+        // WEEK SELECTION
+        // 0    = Weekly Template
+        // null = Current Week
+        // 1... = Specific Week
+        // ==================================================
+
+        if (weekNumber == 0)
+        {
+            model.IsTemplate =
+                true;
+
+            model.SelectedWeekNumber =
+                null;
+        }
+        else
+        {
+            AcademicWeek? selectedWeek =
+                null;
+
+
+            if (weekNumber.HasValue)
+            {
+                selectedWeek =
+                    model.Weeks
+                        .FirstOrDefault(w =>
+                            w.WeekNumber ==
+                                weekNumber.Value
+                        );
+            }
+
+
+            if (selectedWeek == null)
+            {
+                DateTime today =
+                    DateTime.Today;
+
+
+                selectedWeek =
+                    model.Weeks
+                        .FirstOrDefault(w =>
+                            today >=
+                                w.StartDate.Date &&
+                            today <=
+                                w.EndDate.Date
+                        );
+            }
+
+
+            selectedWeek ??=
+                model.Weeks
+                    .FirstOrDefault();
+
+
+            if (selectedWeek != null)
+            {
+                model.IsTemplate =
+                    false;
+
+                model.SelectedWeekNumber =
+                    selectedWeek.WeekNumber;
+
+                model.WeekStart =
+                    selectedWeek.StartDate.Date;
+
+                model.WeekEnd =
+                    selectedWeek.EndDate.Date;
+            }
+            else
+            {
+                model.IsTemplate =
+                    true;
+            }
+        }
+
+
+        // ==================================================
+        // CURRENT STUDENT CLASS TIMETABLE
+        // Only rows from the Active semester.
+        // ==================================================
+
+        List<Timetable> entries =
+            await db.Timetables
+                .AsNoTracking()
+                .Where(t =>
+                    t.ClassId ==
+                        studentClass.ClassId &&
+                    t.TermId ==
+                        activeTerm.TermId
+                )
+                .Include(t =>
+                    t.Term
+                )
+                .Include(t =>
+                    t.Course
+                )
+                .Include(t =>
+                    t.ClassGroup
+                )
+                .Include(t =>
+                    t.Classroom
+                )
+                .Include(t =>
+                    t.Teacher
+                )
+                .OrderBy(t =>
+                    t.DayOfWeek
+                )
+                .ThenBy(t =>
+                    t.StartTime
+                )
+                .ToListAsync();
+
+
+        // ==================================================
+        // WEEKLY TEMPLATE
+        // ==================================================
+
+        if (model.IsTemplate)
+        {
+            foreach (
+                Timetable entry
+                in entries
+            )
+            {
+                model.Items.Add(
+                    new TeacherTimetableItemViewModel
+                    {
+                        TimetableId =
+                            entry.TimetableId,
+
+                        CourseId =
+                            entry.CourseId,
+
+                        CourseName =
+                            entry.Course?.CourseName
+                            ?? entry.CourseId,
+
+                        ClassName =
+                            entry.ClassGroup?.ClassName
+                            ?? entry.ClassId,
+
+                        RoomName =
+                            entry.Classroom?.RoomName
+                            ?? "-",
+
+                        DayOfWeek =
+                            entry.DayOfWeek,
+
+                        OccurrenceDate =
+                            null,
+
+                        StartTime =
+                            entry.StartTime,
+
+                        EndTime =
+                            entry.EndTime,
+
+                        ClassType =
+                            entry.ClassType,
+
+                        Status =
+                            "Normal",
+
+                        ReplacementId =
+                            null,
+
+                        Reason =
+                            null
+                    }
+                );
+            }
+        }
+
+
+        // ==================================================
+        // SPECIFIC WEEK
+        // ==================================================
+
+        else if (
+            model.WeekStart.HasValue &&
+            model.WeekEnd.HasValue
+        )
+        {
+            DateTime weekStart =
+                model.WeekStart.Value.Date;
+
+            DateTime weekEnd =
+                model.WeekEnd.Value.Date;
+
+
+            List<string> timetableIds =
+                entries
+                    .Select(t =>
+                        t.TimetableId
+                    )
+                    .ToList();
+
+
+            // ==================================================
+            // TIMETABLE EXCEPTIONS
+            // Cancelled / changed time / changed classroom.
+            // ==================================================
+
+            List<TimetableException> exceptions =
+                await db.TimetableExceptions
+                    .AsNoTracking()
+                    .Where(e =>
+                        timetableIds.Contains(
+                            e.TimetableId
+                        ) &&
+                        e.OccurrenceDate.Date >=
+                            weekStart &&
+                        e.OccurrenceDate.Date <=
+                            weekEnd
+                    )
+                    .ToListAsync();
+
+
+            // ==================================================
+            // REPLACEMENT CLASSES
+            // Filter by the source timetable's class so the
+            // replacement is shown to students in that class.
+            // ==================================================
+
+            List<ReplacementSession> replacements =
+                await db.ReplacementSessions
+                    .AsNoTracking()
+                    .Where(r =>
+                        r.SourceTimetable !=
+                            null &&
+                        r.SourceTimetable.ClassId ==
+                            studentClass.ClassId &&
+                        r.SourceTimetable.TermId ==
+                            activeTerm.TermId &&
+                        r.ReplacementDate.Date >=
+                            weekStart &&
+                        r.ReplacementDate.Date <=
+                            weekEnd
+                    )
+                    .Include(r =>
+                        r.SourceTimetable
+                    )
+                    .ThenInclude(t =>
+                        t!.Course
+                    )
+                    .Include(r =>
+                        r.SourceTimetable
+                    )
+                    .ThenInclude(t =>
+                        t!.ClassGroup
+                    )
+                    .ToListAsync();
+
+
+            // ==================================================
+            // SPECIAL CLASSROOM IDS
+            // ==================================================
+
+            List<string> specialRoomIds =
+                exceptions
+                    .Where(e =>
+                        !string.IsNullOrWhiteSpace(
+                            e.OverrideClassroomId
+                        )
+                    )
+                    .Select(e =>
+                        e.OverrideClassroomId!
+                    )
+                    .Concat(
+                        replacements
+                            .Where(r =>
+                                !string.IsNullOrWhiteSpace(
+                                    r.ClassroomId
+                                )
+                            )
+                            .Select(r =>
+                                r.ClassroomId!
+                            )
+                    )
+                    .Distinct()
+                    .ToList();
+
+
+            Dictionary<string, string> roomNames =
+                await db.Classrooms
+                    .AsNoTracking()
+                    .Where(c =>
+                        specialRoomIds.Contains(
+                            c.ClassroomId
+                        )
+                    )
+                    .ToDictionaryAsync(
+                        c => c.ClassroomId,
+                        c => c.RoomName
+                    );
+
+
+            // ==================================================
+            // NORMAL / CANCELLED / UPDATED LESSONS
+            // ==================================================
+
+            foreach (
+                Timetable entry
+                in entries
+            )
+            {
+                DateTime occurrenceDate =
+                    GetStudentTimetableDateForDay(
+                        weekStart,
+                        entry.DayOfWeek
+                    );
+
+
+                if (
+                    occurrenceDate <
+                        weekStart ||
+                    occurrenceDate >
+                        weekEnd
+                )
+                {
+                    continue;
+                }
+
+
+                // Student should not see lessons before the
+                // date they joined this class.
+                if (
+                    occurrenceDate <
+                        studentClass.RegisteredDate.Date
+                )
+                {
+                    continue;
+                }
+
+
+                TimetableException? exception =
+                    exceptions
+                        .FirstOrDefault(e =>
+                            e.TimetableId ==
+                                entry.TimetableId &&
+                            e.OccurrenceDate.Date ==
+                                occurrenceDate.Date &&
+                            !IsStudentTimetablePendingDecision(
+                                e.Decision
+                            )
+                        );
+
+
+                bool cancelled =
+                    exception != null &&
+                    IsStudentTimetableCancelledValue(
+                        exception.Decision
+                    );
+
+
+                TimeSpan actualStart =
+                    exception?.OverrideStartTime
+                    ?? entry.StartTime;
+
+
+                TimeSpan actualEnd =
+                    exception?.OverrideEndTime
+                    ?? entry.EndTime;
+
+
+                string roomName =
+                    entry.Classroom?.RoomName
+                    ?? "-";
+
+
+                if (
+                    exception != null &&
+                    !string.IsNullOrWhiteSpace(
+                        exception.OverrideClassroomId
+                    ) &&
+                    roomNames.TryGetValue(
+                        exception.OverrideClassroomId!,
+                        out string? overrideRoom
+                    )
+                )
+                {
+                    roomName =
+                        overrideRoom;
+                }
+
+
+                model.Items.Add(
+                    new TeacherTimetableItemViewModel
+                    {
+                        TimetableId =
+                            entry.TimetableId,
+
+                        CourseId =
+                            entry.CourseId,
+
+                        CourseName =
+                            entry.Course?.CourseName
+                            ?? entry.CourseId,
+
+                        ClassName =
+                            entry.ClassGroup?.ClassName
+                            ?? entry.ClassId,
+
+                        RoomName =
+                            roomName,
+
+                        DayOfWeek =
+                            occurrenceDate.DayOfWeek,
+
+                        OccurrenceDate =
+                            occurrenceDate,
+
+                        StartTime =
+                            actualStart,
+
+                        EndTime =
+                            actualEnd,
+
+                        ClassType =
+                            entry.ClassType,
+
+                        Status =
+                            cancelled
+                                ? "Cancelled"
+                                : "Normal",
+
+                        ReplacementId =
+                            null,
+
+                        Reason =
+                            exception?.Reason
+                    }
+                );
+            }
+
+
+            // ==================================================
+            // REPLACEMENT CLASSES
+            // ==================================================
+
+            foreach (
+                ReplacementSession replacement
+                in replacements
+            )
+            {
+                if (
+                    IsStudentTimetableCancelledValue(
+                        replacement.Status
+                    ) ||
+                    string.Equals(
+                        replacement.Status,
+                        "Rejected",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    continue;
+                }
+
+
+                Timetable? source =
+                    replacement.SourceTimetable;
+
+
+                if (source == null)
+                {
+                    continue;
+                }
+
+
+                if (
+                    replacement.ReplacementDate.Date <
+                        studentClass.RegisteredDate.Date
+                )
+                {
+                    continue;
+                }
+
+
+                string roomName =
+                    "-";
+
+
+                if (
+                    !string.IsNullOrWhiteSpace(
+                        replacement.ClassroomId
+                    ) &&
+                    roomNames.TryGetValue(
+                        replacement.ClassroomId!,
+                        out string? replacementRoom
+                    )
+                )
+                {
+                    roomName =
+                        replacementRoom;
+                }
+
+
+                model.Items.Add(
+                    new TeacherTimetableItemViewModel
+                    {
+                        TimetableId =
+                            source.TimetableId,
+
+                        ReplacementId =
+                            replacement.ReplacementId,
+
+                        CourseId =
+                            source.CourseId,
+
+                        CourseName =
+                            source.Course?.CourseName
+                            ?? source.CourseId,
+
+                        ClassName =
+                            source.ClassGroup?.ClassName
+                            ?? source.ClassId,
+
+                        RoomName =
+                            roomName,
+
+                        DayOfWeek =
+                            replacement
+                                .ReplacementDate
+                                .DayOfWeek,
+
+                        OccurrenceDate =
+                            replacement
+                                .ReplacementDate
+                                .Date,
+
+                        StartTime =
+                            replacement.StartTime,
+
+                        EndTime =
+                            replacement.EndTime,
+
+                        ClassType =
+                            replacement.TargetClassType,
+
+                        Status =
+                            "Replacement",
+
+                        Reason =
+                            replacement.Reason
+                    }
+                );
+            }
+        }
+
+
+        // ==================================================
+        // RECENT TIMETABLE NOTIFICATIONS
+        // - Last 7 days only on timetable page
+        // - Latest state per lesson
+        // - Maximum 3 shown in the recent box
+        // ==================================================
+
+        DateTime notificationCutOff =
+            DateTime.Now.AddDays(-7);
+
+
+        List<TimetableNotification> recentNotifications =
             await db.TimetableNotifications
                 .AsNoTracking()
                 .Where(n =>
-                    n.UserId == studentId &&
-                    n.TermId != null &&
-                    activeTermIds.Contains(n.TermId)
+                    n.UserId ==
+                        studentId &&
+                    n.CreatedAt >=
+                        notificationCutOff &&
+                    n.TermId ==
+                        activeTerm.TermId
                 )
-                .OrderByDescending(n => n.CreatedAt)
-                .Take(20)
+                .OrderByDescending(n =>
+                    n.CreatedAt
+                )
                 .ToListAsync();
 
-        return View(timetable);
+
+        List<TimetableNotification> latestRecentNotifications =
+            recentNotifications
+                .GroupBy(n =>
+                    !string.IsNullOrWhiteSpace(
+                        n.TimetableId
+                    ) &&
+                    n.OccurrenceDate.HasValue
+
+                        ? $"{n.TimetableId}|{n.OccurrenceDate.Value:yyyyMMdd}"
+                        : n.NotificationId
+                )
+                .Select(g =>
+                    g.OrderByDescending(n =>
+                        n.CreatedAt
+                    )
+                    .First()
+                )
+                .OrderByDescending(n =>
+                    n.CreatedAt
+                )
+                .ToList();
+
+
+        // If an old cancellation notification is still in history
+        // but the cancellation was restored, hide that stale notice
+        // from the Recent Timetable Changes box.
+        List<TimetableNotification> cancellationNotifications =
+            latestRecentNotifications
+                .Where(n =>
+                    (
+                        string.Equals(
+                            n.Type,
+                            "LessonCancelled",
+                            StringComparison.OrdinalIgnoreCase
+                        ) ||
+                        string.Equals(
+                            n.Type,
+                            "ClassCancelled",
+                            StringComparison.OrdinalIgnoreCase
+                        ) ||
+                        string.Equals(
+                            n.Type,
+                            "Cancelled",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    ) &&
+                    !string.IsNullOrWhiteSpace(
+                        n.TimetableId
+                    ) &&
+                    n.OccurrenceDate.HasValue
+                )
+                .ToList();
+
+
+        if (cancellationNotifications.Count > 0)
+        {
+            List<string> cancelledTimetableIds =
+                cancellationNotifications
+                    .Select(n =>
+                        n.TimetableId!
+                    )
+                    .Distinct()
+                    .ToList();
+
+
+            DateTime earliestCancellationDate =
+                cancellationNotifications
+                    .Min(n =>
+                        n.OccurrenceDate!.Value.Date
+                    );
+
+
+            List<TimetableException> activeCancellationExceptions =
+                await db.TimetableExceptions
+                    .AsNoTracking()
+                    .Where(e =>
+                        cancelledTimetableIds.Contains(
+                            e.TimetableId
+                        ) &&
+                        e.OccurrenceDate.Date >=
+                            earliestCancellationDate
+                    )
+                    .ToListAsync();
+
+
+            activeCancellationExceptions =
+                activeCancellationExceptions
+                    .Where(e =>
+                        IsStudentTimetableCancelledValue(
+                            e.Decision
+                        )
+                    )
+                    .ToList();
+
+
+            HashSet<string> activeCancellationKeys =
+                activeCancellationExceptions
+                    .Select(e =>
+                        $"{e.TimetableId}|{e.OccurrenceDate.Date:yyyyMMdd}"
+                    )
+                    .ToHashSet();
+
+
+            latestRecentNotifications =
+                latestRecentNotifications
+                    .Where(n =>
+                    {
+                        bool isCancellation =
+                            string.Equals(
+                                n.Type,
+                                "LessonCancelled",
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                n.Type,
+                                "ClassCancelled",
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                n.Type,
+                                "Cancelled",
+                                StringComparison.OrdinalIgnoreCase
+                            );
+
+
+                        if (
+                            !isCancellation ||
+                            string.IsNullOrWhiteSpace(
+                                n.TimetableId
+                            ) ||
+                            !n.OccurrenceDate.HasValue
+                        )
+                        {
+                            return true;
+                        }
+
+
+                        string key =
+                            $"{n.TimetableId}|{n.OccurrenceDate.Value.Date:yyyyMMdd}";
+
+
+                        return activeCancellationKeys
+                            .Contains(
+                                key
+                            );
+                    })
+                    .ToList();
+        }
+
+
+        ViewBag.RecentNotificationCount =
+            latestRecentNotifications
+                .Count;
+
+
+        model.Notifications =
+            latestRecentNotifications
+                .Take(3)
+                .ToList();
+
+
+        // ==================================================
+        // SORT TIMETABLE
+        // ==================================================
+
+        model.Items =
+            model.Items
+                .OrderBy(i =>
+                    GetStudentTimetableDayOrder(
+                        i.DayOfWeek
+                    )
+                )
+                .ThenBy(i =>
+                    i.StartTime
+                )
+                .ToList();
+
+
+        return View(model);
     }
+
 
     // ==============================
     // STUDENT ATTENDANCE
@@ -2415,4 +3196,84 @@ public class StudentController : Controller
             "Account"
         );
     }
+
+
+    // ==================================================
+    // STUDENT TIMETABLE - GET DATE FOR DAY
+    // ==================================================
+
+    private static DateTime GetStudentTimetableDateForDay(
+        DateTime weekStart,
+        DayOfWeek day)
+    {
+        int difference =
+            (
+                (int)day -
+                (int)weekStart.DayOfWeek +
+                7
+            ) % 7;
+
+
+        return weekStart
+            .AddDays(
+                difference
+            )
+            .Date;
+    }
+
+
+    // ==================================================
+    // STUDENT TIMETABLE - DAY ORDER
+    // ==================================================
+
+    private static int GetStudentTimetableDayOrder(
+        DayOfWeek day)
+    {
+        return day ==
+            DayOfWeek.Sunday
+                ? 7
+                : (int)day;
+    }
+
+
+    // ==================================================
+    // STUDENT TIMETABLE - PENDING DECISION
+    // ==================================================
+
+    private static bool IsStudentTimetablePendingDecision(
+        string? value)
+    {
+        return string.Equals(
+            value,
+            "Pending",
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
+
+
+    // ==================================================
+    // STUDENT TIMETABLE - CANCELLED STATUS
+    // ==================================================
+
+    private static bool IsStudentTimetableCancelledValue(
+        string? value)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                value
+            )
+        )
+        {
+            return false;
+        }
+
+
+        return value
+            .Trim()
+            .Contains(
+                "cancel",
+                StringComparison.OrdinalIgnoreCase
+            );
+    }
+
 }

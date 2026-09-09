@@ -1,308 +1,912 @@
-﻿@model List<WebAndMobile.Models.Timetable>
+﻿@model WebAndMobile.Models.TeacherTimetableViewModel
+@using WebAndMobile.Models
 
 @{
     Layout = "_Layout";
+    ViewData["Title"] = "My Timetable";
 
-    ViewData["Title"] =
-        "My Timetable";
 
-    DayOfWeek[] days =
+    // ==================================================
+    // DATA
+    // ==================================================
+
+    List<TeacherTimetableItemViewModel> timetableItems =
+        Model.Items
+        ?? new List<TeacherTimetableItemViewModel>();
+
+
+    List<AcademicWeek> weeks =
+        Model.Weeks
+        ?? new List<AcademicWeek>();
+
+
+    List<TimetableNotification> notifications =
+        Model.Notifications
+        ?? new List<TimetableNotification>();
+
+
+
+    // ==================================================
+    // DAYS
+    // ==================================================
+
+    List<DayOfWeek> days =
+        new()
+        {
+            DayOfWeek.Monday,
+            DayOfWeek.Tuesday,
+            DayOfWeek.Wednesday,
+            DayOfWeek.Thursday,
+            DayOfWeek.Friday,
+            DayOfWeek.Saturday
+        };
+
+
+    // Sunday only appears when there is a Sunday class.
+
+    if (
+        timetableItems.Any(i =>
+            i.DayOfWeek ==
+                DayOfWeek.Sunday
+        )
+    )
     {
-        DayOfWeek.Monday,
-        DayOfWeek.Tuesday,
-        DayOfWeek.Wednesday,
-        DayOfWeek.Thursday,
-        DayOfWeek.Friday,
-        DayOfWeek.Saturday,
-        DayOfWeek.Sunday
-    };
+        days.Add(
+            DayOfWeek.Sunday
+        );
+    }
+
+
+
+    // ==================================================
+    // TIME RANGE
+    // ==================================================
+
+    int startHour = 8;
+    int endHour = 18;
+
+
+    if (timetableItems.Count > 0)
+    {
+        int earliestHour =
+            timetableItems
+                .Min(i =>
+                    i.StartTime.Hours
+                );
+
+
+        int latestHour =
+            timetableItems
+                .Max(i =>
+                    i.EndTime.Minutes > 0
+                        ? i.EndTime.Hours + 1
+                        : i.EndTime.Hours
+                );
+
+
+        if (earliestHour < startHour)
+        {
+            startHour =
+                earliestHour;
+        }
+
+
+        if (latestHour > endHour)
+        {
+            endHour =
+                latestHour;
+        }
+    }
+
+
+
+    // ==================================================
+    // NOTIFICATION COUNT
+    // ==================================================
+
+    int recentNotificationCount =
+        notifications.Count;
+
+
+    if (
+        ViewBag.RecentNotificationCount !=
+        null
+    )
+    {
+        recentNotificationCount =
+            Convert.ToInt32(
+                ViewBag.RecentNotificationCount
+            );
+    }
 }
 
 
-@section Styles {
 
+@section Styles
+{
     <link rel="stylesheet"
           href="~/css/student-timetable.css"
           asp-append-version="true" />
-
 }
+
 
 
 <div class="student-timetable-page">
 
 
-    <!--header-->
+    <!-- ==================================================
+         CURRENT VIEW
+         ================================================== -->
 
-    <div class="timetable-header">
-
-        <div>
-
-            <h1>
-                My Timetable
-            </h1>
-
-            <p class="timetable-description">
-                View your weekly class schedule
-                for the current semester.
-            </p>
-
-        </div>
-
-    </div>
+    <div class="current-view-card">
 
 
-    <!--student information-->
+        <!-- LEFT -->
 
-    <div class="timetable-summary">
+        <div class="current-view-left">
 
-        <div class="summary-item">
 
-            <span>
-                Class
+            <span class="small-label">
+                CURRENT VIEW
             </span>
 
-            <strong>
-                @ViewBag.ClassName
-            </strong>
 
-        </div>
-
-
-        <div class="summary-item">
-
-            <span>
-                Program
-            </span>
-
-            <strong>
-                @ViewBag.ProgramName
-            </strong>
-
-        </div>
-
-
-        <div class="summary-item">
-
-            <span>
-                Semester
-            </span>
-
-            <strong>
-                @ViewBag.TermName
-            </strong>
-
-        </div>
-
-    </div>
-
-
-
-
-    @{
-        var timetableNotifications = ViewBag.TimetableNotifications as List<WebAndMobile.Models.TimetableNotification> ?? new();
-    }
-    @if (timetableNotifications.Count > 0)
-    {
-        <div class="student-notification-panel">
-            <h2>Notifications</h2>
-            <p>Only changes for your class in the Active semester are shown.</p>
-            @foreach (var notification in timetableNotifications)
+            @if (Model.IsTemplate)
             {
-                <div class="student-notification-item">
-                    <strong>@(notification.Type == "LessonCancelled" ? "Class Cancelled" : "Timetable Updated")</strong>
-                    <span>@notification.Message</span>
-                    <small>@notification.CreatedAt.ToString("dd MMM yyyy HH:mm")</small>
-                </div>
+                <h2>
+                    Weekly Template
+                </h2>
+
+
+                <p>
+                    @Model.TermName
+                </p>
             }
+            else
+            {
+                <h2>
+                    Week @(Model.SelectedWeekNumber ?? 1)
+                </h2>
+
+
+                @if (
+                    Model.WeekStart.HasValue &&
+                    Model.WeekEnd.HasValue
+                )
+                {
+                    <p>
+
+                        @Model.WeekStart.Value.ToString("dd/MM/yyyy")
+
+                        -
+
+                        @Model.WeekEnd.Value.ToString("dd/MM/yyyy")
+
+                    </p>
+                }
+            }
+
+
         </div>
-    }
 
-    <!-- ==============================
-         NO TIMETABLE
-         ============================== -->
-    @if (Model.Count == 0)
-    {
-        <div class="empty-timetable">
 
-            <div class="empty-icon">
-                📅
+
+        <!-- RIGHT -->
+
+        <div class="current-view-right">
+
+
+            <label for="weekNumber">
+                View:
+            </label>
+
+
+            <form asp-controller="Student"
+                  asp-action="Timetable"
+                  method="get"
+                  class="week-form">
+
+
+                <select id="weekNumber"
+                        name="weekNumber"
+                        class="week-select"
+                        onchange="this.form.submit()">
+
+
+                    <!-- WEEKLY TEMPLATE -->
+
+                    @if (Model.IsTemplate)
+                    {
+                        <option value="0"
+                                selected>
+
+                            Weekly Template
+
+                        </option>
+                    }
+                    else
+                    {
+                        <option value="0">
+
+                            Weekly Template
+
+                        </option>
+                    }
+
+
+
+                    <!-- ACADEMIC WEEKS -->
+
+                    @foreach (
+                        AcademicWeek week
+                        in weeks
+                    )
+                    {
+                        if (
+                            !Model.IsTemplate &&
+                            Model.SelectedWeekNumber ==
+                                week.WeekNumber
+                        )
+                        {
+                            <option value="@week.WeekNumber"
+                                    selected>
+
+                                Week @week.WeekNumber
+                                (@week.StartDate.ToString("dd/MM")
+                                -
+                                @week.EndDate.ToString("dd/MM"))
+
+                            </option>
+                        }
+                        else
+                        {
+                            <option value="@week.WeekNumber">
+
+                                Week @week.WeekNumber
+                                (@week.StartDate.ToString("dd/MM")
+                                -
+                                @week.EndDate.ToString("dd/MM"))
+
+                            </option>
+                        }
+                    }
+
+
+                </select>
+
+
+            </form>
+
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- ==================================================
+         LEGEND
+         ================================================== -->
+
+    <div class="timetable-legend">
+
+
+        <div class="legend-item">
+
+            <span class="legend-box subject">
+            </span>
+
+            <span>
+                Subject
+            </span>
+
+        </div>
+
+
+
+        <div class="legend-item">
+
+            <span class="legend-box replacement">
+            </span>
+
+            <span>
+                Replacement
+            </span>
+
+        </div>
+
+
+
+        <div class="legend-item">
+
+            <span class="legend-box cancelled">
+            </span>
+
+            <span>
+                Cancelled
+            </span>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- ==================================================
+         RECENT TIMETABLE CHANGES
+         ================================================== -->
+
+    <div class="recent-changes">
+
+
+        <!-- HEADER -->
+
+        <div class="changes-header">
+
+
+            <div class="changes-title">
+
+
+                <span class="bell-icon">
+                    🔔
+                </span>
+
+
+                <strong>
+                    Recent Timetable Changes
+                </strong>
+
+
             </div>
 
-            <h2>
-                No timetable available
-            </h2>
 
-            <p>
-                Your timetable will appear here
-                once your class and active semester
-                have been configured.
-            </p>
+
+            <div class="changes-count">
+
+
+                <span>
+                    @recentNotificationCount
+                </span>
+
+
+                <strong>
+                    Latest changes
+                </strong>
+
+
+            </div>
+
 
         </div>
-    }
-
-    else
-    {
-
-        <!--weekly timetable-->
-
-        <div class="weekly-timetable">
-
-            @foreach (DayOfWeek day in days)
-            {
-                List<Timetable> dayEntries =
-                    Model
-                        .Where(t =>
-                            t.DayOfWeek == day)
-                        .OrderBy(t =>
-                            t.StartTime)
-                        .ToList();
 
 
-                <div class="day-section">
 
-                    <div class="day-heading">
+        <!-- NOTIFICATIONS -->
 
-                        <h2>
-                            @day
-                        </h2>
+        @if (notifications.Count > 0)
+        {
 
-                        <span>
-                            @dayEntries.Count class(es)
-                        </span>
+            <div class="changes-list">
+
+
+                @foreach (
+                    TimetableNotification notification
+                    in notifications
+                )
+                {
+
+                    <div class="change-item">
+
+
+                        <div class="change-content">
+
+
+                            <strong>
+                                @notification.Type
+                            </strong>
+
+
+                            <p>
+                                @notification.Message
+                            </p>
+
+
+                        </div>
+
+
+
+                        <small>
+
+                            @notification.CreatedAt.ToString(
+                                "dd MMM yyyy HH:mm"
+                            )
+
+                        </small>
+
+
+                    </div>
+
+                }
+
+
+            </div>
+
+        }
+        else
+        {
+
+            <div class="changes-list">
+
+
+                <div class="change-item">
+
+
+                    <div class="change-content">
+
+                        <p>
+                            No recent timetable changes.
+                        </p>
 
                     </div>
 
 
-                    @if (dayEntries.Count == 0)
-                    {
-                        <div class="no-class">
+                </div>
 
-                            No classes scheduled.
 
-                        </div>
-                    }
+            </div>
 
-                    else
-                    {
+        }
 
-                        <div class="class-list">
 
-                            @foreach (
-                                Timetable item
-                                in dayEntries)
+    </div>
+
+
+
+    <!-- ==================================================
+         TIMETABLE
+         ================================================== -->
+
+    <div class="timetable-grid-wrapper">
+
+
+        @if (timetableItems.Count == 0)
+        {
+
+            <!-- EMPTY -->
+
+            <div class="empty-timetable">
+
+
+                <div class="empty-icon">
+                    📅
+                </div>
+
+
+                <h2>
+                    No timetable entries
+                </h2>
+
+
+                <p>
+
+                    There are currently no timetable
+                    entries available for this semester.
+
+                </p>
+
+
+            </div>
+
+        }
+        else
+        {
+
+            <!-- TABLE -->
+
+            <div class="timetable-scroll">
+
+
+                <table class="teacher-style-timetable">
+
+
+                    <!-- ==================================================
+                         HEADER
+                         ================================================== -->
+
+                    <thead>
+
+
+                        <tr>
+
+
+                            <th class="day-column">
+
+                                Day
+
+                            </th>
+
+
+
+                            @for (
+                                int hour = startHour;
+                                hour < endHour;
+                                hour++
+                            )
                             {
 
-                                <div class="class-card">
+                                DateTime startTime =
+                                    DateTime.Today.AddHours(
+                                        hour
+                                    );
 
 
-                                    <!-- TIME -->
-
-                                    <div class="class-time">
-
-                                        <strong>
-
-                                            @(DateTime.Today.Add(item.StartTime).ToString("hh:mm tt"))
-
-                                        </strong>
-
-                                        <span>
-                                            to
-                                        </span>
-
-                                        <strong>
-
-                                            @(DateTime.Today.Add(item.EndTime).ToString("hh:mm tt"))
-
-                                        </strong>
-
-                                    </div>
+                                DateTime endTime =
+                                    startTime.AddHours(
+                                        1
+                                    );
 
 
-                                    <!--subject-->
-
-                                    <div class="class-details">
-
-                                        <div class="course-title">
-
-                                            @if (
-                                                !string.IsNullOrWhiteSpace(
-                                                    item.Course?.CourseCode))
-                                            {
-                                                <span class="course-code">
-
-                                                    @item.Course.CourseCode
-
-                                                </span>
-                                            }
+                                <th class="time-column">
 
 
-                                            <h3>
+                                    <strong>
 
-                                                @(item.Course?.CourseName
-                                                    ?? "Unknown Subject")
+                                        @startTime.ToString(
+                                            "hh:mm tt"
+                                        )
 
-                                            </h3>
-
-                                        </div>
-
-
-                                        <div class="class-meta">
+                                    </strong>
 
 
-                                            <span>
+                                    <span>
 
-                                                <strong>
-                                                    Teacher:
-                                                </strong>
+                                        @endTime.ToString(
+                                            "hh:mm tt"
+                                        )
 
-                                                @item.Teacher.Username
-
-                                            </span>
+                                    </span>
 
 
-                                            <span>
-
-                                                <strong>
-                                                    Room:
-                                                </strong>
-
-                                                @(item.Classroom?.RoomName
-                                                    ?? "TBA")
-
-                                            </span>
-
-
-                                            <span>
-
-                                                <strong>
-                                                    Type:
-                                                </strong>
-
-                                                @item.ClassType
-
-                                            </span>
-
-
-                                        </div>
-
-                                    </div>
-
-
-                                </div>
+                                </th>
 
                             }
 
-                        </div>
 
-                    }
+                        </tr>
 
-                </div>
-            }
 
-        </div>
+                    </thead>
 
-    }
+
+
+                    <!-- ==================================================
+                         BODY
+                         ================================================== -->
+
+                    <tbody>
+
+
+                        @foreach (
+                            DayOfWeek day
+                            in days
+                        )
+                        {
+
+                            // ==============================================
+                            // ACTUAL DATE FOR THIS DAY
+                            // ==============================================
+
+                            DateTime? actualDate =
+                                null;
+
+
+                            if (
+                                !Model.IsTemplate &&
+                                Model.WeekStart.HasValue
+                            )
+                            {
+
+                                DateTime weekStart =
+                                    Model.WeekStart.Value.Date;
+
+
+                                int difference =
+                                    (
+                                        (int)day -
+                                        (int)weekStart.DayOfWeek +
+                                        7
+                                    )
+                                    % 7;
+
+
+                                actualDate =
+                                    weekStart
+                                        .AddDays(
+                                            difference
+                                        )
+                                        .Date;
+                            }
+
+
+
+                            <tr>
+
+
+                                <!-- ======================================
+                                     DAY
+                                     ====================================== -->
+
+                                <td class="day-cell">
+
+
+                                    <strong>
+                                        @day
+                                    </strong>
+
+
+                                    @if (
+                                        actualDate.HasValue
+                                    )
+                                    {
+
+                                        <span>
+
+                                            @actualDate.Value.ToString(
+                                                "dd/MM/yyyy"
+                                            )
+
+                                        </span>
+
+                                    }
+
+
+                                </td>
+
+
+
+                                <!-- ======================================
+                                     HOURS
+                                     ====================================== -->
+
+                                @for (
+                                    int hour = startHour;
+                                    hour < endHour;
+                                    hour++
+                                )
+                                {
+
+                                    // ======================================
+                                    // ITEMS STARTING IN THIS HOUR
+                                    // ======================================
+
+                                    List<TeacherTimetableItemViewModel>
+                                        cellItems =
+                                            timetableItems
+                                                .Where(i =>
+                                                    i.DayOfWeek ==
+                                                        day &&
+                                                    i.StartTime.Hours ==
+                                                        hour
+                                                )
+                                                .OrderBy(i =>
+                                                    i.StartTime
+                                                )
+                                                .ToList();
+
+
+
+                                    <td class="schedule-cell">
+
+
+                                        @foreach (
+                                            TeacherTimetableItemViewModel item
+                                            in cellItems
+                                        )
+                                        {
+
+                                            // ==================================
+                                            // STATUS
+                                            // ==================================
+
+                                            string status =
+                                                item.Status?.Trim()
+                                                ?? "Normal";
+
+
+                                            string cardClass =
+                                                "subject-card";
+
+
+                                            if (
+                                                string.Equals(
+                                                    status,
+                                                    "Replacement",
+                                                    StringComparison.OrdinalIgnoreCase
+                                                )
+                                            )
+                                            {
+                                                cardClass +=
+                                                    " replacement-card";
+                                            }
+                                            else if (
+                                                string.Equals(
+                                                    status,
+                                                    "Cancelled",
+                                                    StringComparison.OrdinalIgnoreCase
+                                                )
+                                            )
+                                            {
+                                                cardClass +=
+                                                    " cancelled-card";
+                                            }
+
+
+
+                                            <!-- ==============================
+                                                 SUBJECT CARD
+                                                 ============================== -->
+
+                                            <div class="@cardClass">
+
+
+                                                <!-- STATUS -->
+
+                                                @if (
+                                                    string.Equals(
+                                                        status,
+                                                        "Replacement",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    )
+                                                )
+                                                {
+
+                                                    <span class="subject-status replacement-status">
+
+                                                        Replacement
+
+                                                    </span>
+
+                                                }
+                                                else if (
+                                                    string.Equals(
+                                                        status,
+                                                        "Cancelled",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    )
+                                                )
+                                                {
+
+                                                    <span class="subject-status cancelled-status">
+
+                                                        Cancelled
+
+                                                    </span>
+
+                                                }
+
+
+
+                                                <!-- COURSE -->
+
+                                                <div class="subject-name">
+
+                                                    @item.CourseName
+
+                                                </div>
+
+
+
+                                                <!-- TIME -->
+
+                                                <div class="subject-time">
+
+                                                    @(item.StartTime.ToString(@"hh\:mm"))
+
+                                                    -
+
+                                                    @(item.EndTime.ToString(@"hh\:mm"))
+
+                                                </div>
+
+
+
+                                                <!-- CLASS -->
+
+                                                <div class="subject-class">
+
+                                                    @item.ClassName
+
+                                                </div>
+
+
+
+                                                <!-- ROOM -->
+
+                                                <div class="subject-room">
+
+                                                    Room:
+                                                    @item.RoomName
+
+                                                </div>
+
+
+
+                                                <!-- CLASS TYPE -->
+
+                                                <span class="subject-type">
+
+                                                    @item.ClassType
+
+                                                </span>
+
+
+
+                                                <!-- OCCURRENCE DATE -->
+
+                                                @if (
+                                                    item.OccurrenceDate.HasValue
+                                                )
+                                                {
+
+                                                    <div class="subject-date">
+
+                                                        @item.OccurrenceDate.Value.ToString(
+                                                            "dd MMM yyyy"
+                                                        )
+
+                                                    </div>
+
+                                                }
+
+
+
+                                                <!-- REASON -->
+
+                                                @if (
+                                                    !string.IsNullOrWhiteSpace(
+                                                        item.Reason
+                                                    )
+                                                )
+                                                {
+
+                                                    <div class="subject-reason">
+
+                                                        @item.Reason
+
+                                                    </div>
+
+                                                }
+
+
+                                            </div>
+
+                                        }
+
+
+                                    </td>
+
+                                }
+
+
+                            </tr>
+
+                        }
+
+
+                    </tbody>
+
+
+                </table>
+
+
+            </div>
+
+        }
+
+
+    </div>
 
 
 </div>
