@@ -917,3 +917,27 @@
         color: #78350f;
         text-decoration: underline;
     }
+
+/* =========================================================
+   TIMETABLE DAY + REAL DATE
+   ========================================================= */
+
+.teacher-day-label {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.teacher-day-name {
+    display: block;
+    font-weight: 700;
+}
+
+.teacher-day-date {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    opacity: 0.65;
+    white-space: nowrap;
+}
