@@ -1,0 +1,790 @@
+﻿@model WebAndMobile.Models.AdminAttendanceOverviewViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] =
+        "Attendance Overview";
+
+
+    int totalAttendance =
+        Model.TotalPresent +
+        Model.TotalAbsent +
+        Model.TotalLeave;
+
+
+    double presentPercent =
+        totalAttendance == 0
+            ? 0
+            : Math.Round(
+                Model.TotalPresent *
+                100.0 /
+                totalAttendance,
+                1
+            );
+
+
+    double absentPercent =
+        totalAttendance == 0
+            ? 0
+            : Math.Round(
+                Model.TotalAbsent *
+                100.0 /
+                totalAttendance,
+                1
+            );
+
+
+    double leavePercent =
+        totalAttendance == 0
+            ? 0
+            : Math.Round(
+                Model.TotalLeave *
+                100.0 /
+                totalAttendance,
+                1
+            );
+
+
+    string chartJson =
+        JsonSerializer.Serialize(
+            new
+            {
+                subjects =
+                    Model.Subjects
+                        .Select(s =>
+                            new
+                            {
+                                label =
+                                    string.IsNullOrWhiteSpace(
+                                        s.CourseCode
+                                    )
+                                        ? s.CourseName
+                                        : s.CourseCode,
+
+                                fullName =
+                                    s.CourseName,
+
+                                percentage =
+                                    s.AttendanceRate
+                            }
+                        )
+                        .ToList(),
+
+                status =
+                    new
+                    {
+                        present =
+                            Model.TotalPresent,
+
+                        absent =
+                            Model.TotalAbsent,
+
+                        leave =
+                            Model.TotalLeave
+                    },
+
+                days =
+                    Model.AbsenceByDay
+                        .Select(d =>
+                            new
+                            {
+                                label =
+                                    d.DayName,
+
+                                value =
+                                    d.AbsentCount
+                            }
+                        )
+                        .ToList()
+            }
+        );
+}
+
+
+<link rel="stylesheet"
+      href="~/css/admin-attendance-overview.css"
+      asp-append-version="true" />
+
+
+<div class="admin-attendance-page">
+
+
+    <!-- ==============================================
+         HEADER
+         ============================================== -->
+    <a asp-controller="Admin"
+        asp-action="Index"
+            class="attendance-back-link">
+            
+            ← Back to Dashboard
+    </a>
+
+    <div class="attendance-page-header">
+
+
+        <div>
+
+            <span class="attendance-eyebrow">
+
+                ADMIN ANALYTICS
+
+            </span>
+
+
+            <h1>
+
+                Attendance Overview
+
+            </h1>
+
+
+            <p>
+
+                Monitor student attendance across
+                the active semester.
+
+            </p>
+
+        </div>
+
+
+        <div class="term-badge">
+
+            <span>
+                Active Semester
+            </span>
+
+            <strong>
+                @Model.TermName
+            </strong>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- ==============================================
+         SUMMARY
+         ============================================== -->
+
+    <div class="attendance-summary-grid">
+
+
+        <!-- TOTAL STUDENTS -->
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+
+                Total Students
+
+            </span>
+
+            <strong class="summary-value">
+
+                @Model.TotalStudents
+
+            </strong>
+
+            <span class="summary-footer">
+
+                Registered students
+
+            </span>
+
+        </div>
+
+
+
+        <!-- OVERALL ATTENDANCE -->
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+
+                Overall Attendance
+
+            </span>
+
+            <strong class="summary-value">
+
+                @Model.OverallAttendanceRate%
+
+            </strong>
+
+            <span class="summary-footer">
+
+                Active semester
+
+            </span>
+
+        </div>
+
+
+
+        <!-- PRESENT -->
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+
+                Total Present
+
+            </span>
+
+            <strong class="summary-value">
+
+                @Model.TotalPresent
+
+            </strong>
+
+            <span class="summary-footer present-text">
+
+                Present attendances
+
+            </span>
+
+        </div>
+
+
+
+        <!-- ABSENT -->
+
+        <div class="summary-card">
+
+            <span class="summary-label">
+
+                Total Absent
+
+            </span>
+
+            <strong class="summary-value">
+
+                @Model.TotalAbsent
+
+            </strong>
+
+            <span class="summary-footer absent-text">
+
+                Completed classes
+
+            </span>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- ==============================================
+         CHARTS
+         ============================================== -->
+
+    <div class="attendance-chart-grid">
+
+
+
+        <!-- ==========================================
+             ATTENDANCE BY SUBJECT
+             ========================================== -->
+
+        <section class="attendance-chart-card">
+
+
+            <div class="chart-card-header">
+
+
+                <div>
+
+                    <h2>
+
+                        Attendance by Subject
+
+                    </h2>
+
+                    <p>
+
+                        Attendance percentage
+                        for every subject.
+
+                    </p>
+
+                </div>
+
+
+                <span class="chart-tag">
+
+                    @Model.Subjects.Count Subjects
+
+                </span>
+
+
+            </div>
+
+
+            @if (
+                Model.Subjects.Count ==
+                0
+            )
+            {
+
+                <div class="chart-empty">
+
+                    No attendance data yet.
+
+                </div>
+
+            }
+            else
+            {
+
+                <div class="chart-wrapper">
+
+                    <canvas id="subjectAttendanceChart">
+                    </canvas>
+
+                </div>
+
+            }
+
+
+        </section>
+
+
+
+        <!-- ==========================================
+             ATTENDANCE STATUS
+             ========================================== -->
+
+        <section class="attendance-chart-card">
+
+
+            <div class="chart-card-header">
+
+
+                <div>
+
+                    <h2>
+                        Attendance Status
+                    </h2>
+
+                    <p>
+                        Present, absent and
+                        approved leave.
+                    </p>
+
+                </div>
+
+
+                <span class="chart-tag">
+
+                    @totalAttendance Records
+
+                </span>
+
+
+            </div>
+
+
+
+            <div class="status-chart-layout">
+
+
+                <div class="donut-wrapper">
+
+
+                    <canvas id="attendanceStatusChart">
+                    </canvas>
+
+
+                    <div class="donut-centre">
+
+                        <strong>
+
+                            @Model.OverallAttendanceRate%
+
+                        </strong>
+
+                        <span>
+
+                            attendance
+
+                        </span>
+
+                    </div>
+
+
+                </div>
+
+
+
+                <div class="status-legend">
+
+
+
+                    <!-- PRESENT -->
+
+                    <div class="status-row">
+
+
+                        <div>
+
+                            <span class="status-dot present-dot">
+                            </span>
+
+                            <strong>
+
+                                Present
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="status-value">
+
+                            <strong>
+
+                                @presentPercent%
+
+                            </strong>
+
+                            <span>
+
+                                @Model.TotalPresent records
+
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+
+                    <!-- ABSENT -->
+
+                    <div class="status-row">
+
+
+                        <div>
+
+                            <span class="status-dot absent-dot">
+                            </span>
+
+                            <strong>
+
+                                Absent
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="status-value">
+
+                            <strong>
+
+                                @absentPercent%
+
+                            </strong>
+
+                            <span>
+
+                                @Model.TotalAbsent records
+
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+
+                    <!-- LEAVE -->
+
+                    <div class="status-row">
+
+
+                        <div>
+
+                            <span class="status-dot leave-dot">
+                            </span>
+
+                            <strong>
+
+                                Leave
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="status-value">
+
+                            <strong>
+
+                                @leavePercent%
+
+                            </strong>
+
+                            <span>
+
+                                @Model.TotalLeave approved
+
+                            </span>
+
+                        </div>
+
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- ==========================================
+             TOP 5 MOST ABSENT SUBJECTS
+             ========================================== -->
+
+        <section class="attendance-chart-card">
+
+
+            <div class="chart-card-header">
+
+
+                <div>
+
+                    <h2>
+
+                        Top 5 Most Absent Subjects
+
+                    </h2>
+
+                    <p>
+
+                        Subjects with the highest
+                        absence count.
+
+                    </p>
+
+                </div>
+
+
+                <span class="chart-tag">
+
+                    Top 5
+
+                </span>
+
+
+            </div>
+
+
+
+            @if (
+                Model.TopAbsentSubjects.Count ==
+                0
+            )
+            {
+
+                <div class="chart-empty">
+
+                    No absence records yet.
+
+                </div>
+
+            }
+            else
+            {
+
+                <div class="top-absent-list">
+
+
+                    @{
+                        int maxAbsent =
+                            Model.TopAbsentSubjects
+                                .Max(s =>
+                                    s.AbsentCount
+                                );
+
+
+                        if (maxAbsent <= 0)
+                        {
+                            maxAbsent = 1;
+                        }
+                    }
+
+
+                    @foreach (
+                        var subject
+                        in Model.TopAbsentSubjects
+                    )
+                    {
+
+                        double barWidth =
+                            subject.AbsentCount *
+                            100.0 /
+                            maxAbsent;
+
+
+                        <div class="absent-subject-row">
+
+
+                            <div class="absent-subject-name">
+
+
+                                <strong>
+
+                                    @(
+                                        string.IsNullOrWhiteSpace(
+                                            subject.CourseCode
+                                        )
+                                            ? subject.CourseName
+                                            : subject.CourseCode
+                                    )
+
+                                </strong>
+
+
+                                <span>
+
+                                    @subject.CourseName
+
+                                </span>
+
+
+                            </div>
+
+
+
+                            <div class="absent-progress">
+
+                                <div class="absent-progress-bar"
+                                     style="width: @barWidth%;">
+                                </div>
+
+                            </div>
+
+
+
+                            <strong class="absent-total">
+
+                                @subject.AbsentCount
+
+                            </strong>
+
+
+                        </div>
+
+                    }
+
+
+                </div>
+
+            }
+
+
+        </section>
+
+
+
+        <!-- ==========================================
+             ABSENCE BY DAY
+             ========================================== -->
+
+        <section class="attendance-chart-card">
+
+
+            <div class="chart-card-header">
+
+
+                <div>
+
+                    <h2>
+
+                        Absence by Day
+
+                    </h2>
+
+                    <p>
+
+                        Number of student absences
+                        by day of week.
+
+                    </p>
+
+                </div>
+
+
+                @{
+                    AdminAttendanceDayViewModel?
+                        busiestDay =
+                            Model.AbsenceByDay
+                                .OrderByDescending(d =>
+                                    d.AbsentCount
+                                )
+                                .FirstOrDefault();
+                }
+
+
+                @if (busiestDay != null)
+                {
+
+                    <span class="chart-tag">
+
+                        Highest:
+                        @busiestDay.DayName
+
+                    </span>
+
+                }
+
+
+            </div>
+
+
+            <div class="chart-wrapper">
+
+                <canvas id="absenceByDayChart">
+                </canvas>
+
+            </div>
+
+
+        </section>
+
+
+    </div>
+
+
+</div>
+
+
+
+<script id="attendance-chart-data"
+        type="application/json">
+    @Html.Raw(chartJson)
+</script>
+
+
+
+@section Scripts
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="~/js/admin-attendance-overview.js"
+            asp-append-version="true">
+    </script>
+}

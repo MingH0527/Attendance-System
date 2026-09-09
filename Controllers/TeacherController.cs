@@ -1061,7 +1061,8 @@ public class TeacherController : Controller
     // ==================================================
 
     [HttpGet]
-    public async Task<IActionResult> AttendanceCode()
+    public async Task<IActionResult> AttendanceCode(
+        DateTime? date = null)
     {
         string? userId =
             GetCurrentUserId();
@@ -1075,6 +1076,10 @@ public class TeacherController : Controller
             );
         }
 
+
+        // ==================================================
+        // TEACHER PROFILE CHECK
+        // ==================================================
 
         bool hasTeacherProgram =
             await db.TeacherPrograms
@@ -1108,10 +1113,13 @@ public class TeacherController : Controller
             DateTime.Today;
 
 
-        WebAndMobile.Models.TeacherAttendanceCodeViewModel model =
+        TeacherAttendanceCodeViewModel model =
             new()
             {
                 Date =
+                    today,
+
+                SelectedDate =
                     today
             };
 
@@ -1124,7 +1132,8 @@ public class TeacherController : Controller
             await db.AcademicTerms
                 .AsNoTracking()
                 .Where(t =>
-                    t.Status == "Active"
+                    t.Status ==
+                        "Active"
                 )
                 .OrderBy(t =>
                     t.StartDate
@@ -1139,17 +1148,46 @@ public class TeacherController : Controller
 
 
         // ==================================================
-        // TODAY NORMAL CLASSES
+        // DATE RANGE
+        //
+        // Semester start -> today
+        //
+        // Future classes are not added.
         // ==================================================
 
-        List<Timetable> normalClasses =
+        DateTime rangeStart =
+            activeTerm.StartDate.Date;
+
+
+        DateTime rangeEnd =
+            today <=
+            activeTerm.EndDate.Date
+
+                ? today
+
+                : activeTerm.EndDate.Date;
+
+
+        if (
+            rangeEnd <
+            rangeStart
+        )
+        {
+            return View(model);
+        }
+
+
+        // ==================================================
+        // ALL TEACHER TIMETABLES
+        // ==================================================
+
+        List<Timetable> timetables =
             await db.Timetables
                 .AsNoTracking()
                 .Where(t =>
                     t.TeacherId ==
                         userId &&
-                    t.DayOfWeek ==
-                        today.DayOfWeek &&
+
                     t.TermId ==
                         activeTerm.TermId
                 )
@@ -1163,38 +1201,37 @@ public class TeacherController : Controller
                     t.Classroom
                 )
                 .OrderBy(t =>
+                    t.DayOfWeek
+                )
+                .ThenBy(t =>
                     t.StartTime
                 )
                 .ToListAsync();
 
 
         List<string> timetableIds =
-            normalClasses
+            timetables
                 .Select(t =>
                     t.TimetableId
                 )
+                .Distinct()
                 .ToList();
 
 
         // ==================================================
-        // TODAY EXCEPTIONS
+        // ALL TIMETABLE EXCEPTIONS
         // ==================================================
 
         List<TimetableException> exceptions =
-            await db.TimetableExceptions
-                .AsNoTracking()
-                .Where(e =>
-                    timetableIds.Contains(
-                        e.TimetableId
-                    ) &&
-                    e.OccurrenceDate.Date ==
-                        today
-                )
-                .ToListAsync();
+            timetableIds.Count == 0
+
+                ? new List<TimetableException>()
+
+                : await db.TimetableExceptions.AsNoTracking().Where(e =>timetableIds.Contains(e.TimetableId) &&e.OccurrenceDate.Date >=rangeStart && e.OccurrenceDate.Date <=rangeEnd).ToListAsync();
 
 
         // ==================================================
-        // TODAY REPLACEMENTS
+        // ALL REPLACEMENT CLASSES
         // ==================================================
 
         List<ReplacementSession> replacements =
@@ -1203,12 +1240,18 @@ public class TeacherController : Controller
                 .Where(r =>
                     r.TeacherId ==
                         userId &&
+
                     r.SourceTimetable !=
                         null &&
+
                     r.SourceTimetable.TermId ==
                         activeTerm.TermId &&
-                    r.ReplacementDate.Date ==
-                        today
+
+                    r.ReplacementDate.Date >=
+                        rangeStart &&
+
+                    r.ReplacementDate.Date <=
+                        rangeEnd
                 )
                 .Include(r =>
                     r.SourceTimetable
@@ -1222,11 +1265,33 @@ public class TeacherController : Controller
                 .ThenInclude(t =>
                     t!.ClassGroup
                 )
+                .Include(r =>
+                    r.SourceTimetable
+                )
+                .ThenInclude(t =>
+                    t!.Classroom
+                )
                 .ToListAsync();
 
 
         // ==================================================
-        // ROOM IDS
+        // ONLY SCHEDULED REPLACEMENTS
+        // ==================================================
+
+        replacements =
+            replacements
+                .Where(r =>
+                    string.Equals(
+                        r.Status,
+                        "Scheduled",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                .ToList();
+
+
+        // ==================================================
+        // SPECIAL CLASSROOM IDS
         // ==================================================
 
         List<string> roomIds =
@@ -1255,17 +1320,33 @@ public class TeacherController : Controller
 
 
         Dictionary<string, string> rooms =
-            await db.Classrooms
-                .AsNoTracking()
-                .Where(r =>
-                    roomIds.Contains(
-                        r.ClassroomId
+            roomIds.Count == 0
+
+                ? new Dictionary<string, string>()
+
+                : await db.Classrooms
+                    .AsNoTracking()
+                    .Where(r =>
+                        roomIds.Contains(
+                            r.ClassroomId
+                        )
                     )
-                )
-                .ToDictionaryAsync(
-                    r => r.ClassroomId,
-                    r => r.RoomName
-                );
+                    .ToDictionaryAsync(
+                        r =>
+                            r.ClassroomId,
+
+                        r =>
+                            r.RoomName
+                    );
+
+
+        // ==================================================
+        // BUILD ALL CLASS OCCURRENCES
+        // ==================================================
+
+        List<TeacherAttendanceCodeItemViewModel>
+            allClasses =
+                new();
 
 
         // ==================================================
@@ -1274,97 +1355,199 @@ public class TeacherController : Controller
 
         foreach (
             Timetable timetable
-            in normalClasses
+            in timetables
         )
         {
-            TimetableException? exception =
-                exceptions
-                    .FirstOrDefault(e =>
-                        e.TimetableId ==
-                            timetable.TimetableId &&
-                        !IsPendingDecision(
-                            e.Decision
-                        )
+            // Find first occurrence of this weekday
+            // starting from semester StartDate.
+
+            int difference =
+                (
+                    (int)timetable.DayOfWeek -
+                    (int)rangeStart.DayOfWeek +
+                    7
+                )
+                %
+                7;
+
+
+            DateTime occurrenceDate =
+                rangeStart.AddDays(
+                    difference
+                );
+
+
+            while (
+                occurrenceDate <=
+                rangeEnd
+            )
+            {
+                // ==============================================
+                // EXCEPTION FOR THIS EXACT OCCURRENCE
+                // ==============================================
+
+                TimetableException? exception =
+                    exceptions
+                        .FirstOrDefault(e =>
+                            e.TimetableId ==
+                                timetable.TimetableId &&
+
+                            e.OccurrenceDate.Date ==
+                                occurrenceDate.Date &&
+
+                            !IsPendingDecision(
+                                e.Decision
+                            )
+                        );
+
+
+                // ==============================================
+                // CANCELLED CLASS
+                // ==============================================
+
+                bool cancelled =
+                    exception != null &&
+                    IsCancelledValue(
+                        exception.Decision
                     );
 
 
-            if (
-                exception != null &&
-                IsCancelledValue(
-                    exception.Decision
-                )
-            )
-            {
-                continue;
-            }
-
-
-            TimeSpan startTime =
-                exception
-                    ?.OverrideStartTime
-                ?? timetable.StartTime;
-
-
-            TimeSpan endTime =
-                exception
-                    ?.OverrideEndTime
-                ?? timetable.EndTime;
-
-
-            string roomName =
-                timetable.Classroom
-                    ?.RoomName
-                ?? "-";
-
-
-            if (
-                exception != null &&
-                !string.IsNullOrWhiteSpace(
-                    exception.OverrideClassroomId
-                ) &&
-                rooms.TryGetValue(
-                    exception.OverrideClassroomId!,
-                    out string? overrideRoom
-                )
-            )
-            {
-                roomName =
-                    overrideRoom;
-            }
-
-
-            model.Classes.Add(
-                new WebAndMobile.Models.TeacherAttendanceCodeItemViewModel
+                if (cancelled)
                 {
-                    TimetableId =
-                        timetable.TimetableId,
+                    occurrenceDate =
+                        occurrenceDate
+                            .AddDays(7);
 
-                    ReplacementId =
-                        null,
-
-                    CourseName =
-                        timetable.Course
-                            ?.CourseName
-                        ?? timetable.CourseId,
-
-                    ClassName =
-                        timetable.ClassGroup
-                            ?.ClassName
-                        ?? timetable.ClassId,
-
-                    RoomName =
-                        roomName,
-
-                    StartTime =
-                        startTime,
-
-                    EndTime =
-                        endTime,
-
-                    Status =
-                        "Normal"
+                    continue;
                 }
-            );
+
+
+                // ==============================================
+                // CHECK WHETHER ORIGINAL CLASS WAS MOVED
+                // TO A REPLACEMENT SESSION
+                //
+                // If SourceOccurrenceDate is available,
+                // do not show both the old and replacement class.
+                // ==============================================
+
+                bool movedToReplacement =
+                    replacements
+                        .Any(r =>
+                            r.SourceTimetableId ==
+                                timetable.TimetableId &&
+
+                            r.SourceOccurrenceDate
+                                .HasValue &&
+
+                            r.SourceOccurrenceDate
+                                .Value
+                                .Date ==
+                                occurrenceDate.Date
+                        );
+
+
+                if (movedToReplacement)
+                {
+                    occurrenceDate =
+                        occurrenceDate
+                            .AddDays(7);
+
+                    continue;
+                }
+
+
+                // ==============================================
+                // ACTUAL TIME
+                // ==============================================
+
+                TimeSpan startTime =
+                    exception
+                        ?.OverrideStartTime
+                    ??
+                    timetable.StartTime;
+
+
+                TimeSpan endTime =
+                    exception
+                        ?.OverrideEndTime
+                    ??
+                    timetable.EndTime;
+
+
+                // ==============================================
+                // ACTUAL ROOM
+                // ==============================================
+
+                string roomName =
+                    timetable.Classroom
+                        ?.RoomName
+                    ??
+                    "-";
+
+
+                if (
+                    exception != null &&
+                    !string.IsNullOrWhiteSpace(
+                        exception.OverrideClassroomId
+                    ) &&
+                    rooms.TryGetValue(
+                        exception.OverrideClassroomId!,
+                        out string? overrideRoom
+                    )
+                )
+                {
+                    roomName =
+                        overrideRoom;
+                }
+
+
+                // ==============================================
+                // ADD OCCURRENCE
+                // ==============================================
+
+                allClasses.Add(
+                    new TeacherAttendanceCodeItemViewModel
+                    {
+                        TimetableId =
+                            timetable.TimetableId,
+
+                        ReplacementId =
+                            null,
+
+                        ClassDate =
+                            occurrenceDate.Date,
+
+                        CourseName =
+                            timetable.Course
+                                ?.CourseName
+                            ??
+                            timetable.CourseId,
+
+                        ClassName =
+                            timetable.ClassGroup
+                                ?.ClassName
+                            ??
+                            timetable.ClassId,
+
+                        RoomName =
+                            roomName,
+
+                        StartTime =
+                            startTime,
+
+                        EndTime =
+                            endTime,
+
+                        Status =
+                            "Normal"
+                    }
+                );
+
+
+                occurrenceDate =
+                    occurrenceDate
+                        .AddDays(7);
+            }
         }
 
 
@@ -1377,18 +1560,6 @@ public class TeacherController : Controller
             in replacements
         )
         {
-            if (
-                !string.Equals(
-                    replacement.Status,
-                    "Scheduled",
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
-            {
-                continue;
-            }
-
-
             Timetable? source =
                 replacement.SourceTimetable;
 
@@ -1399,7 +1570,14 @@ public class TeacherController : Controller
             }
 
 
+            // ==============================================
+            // REPLACEMENT ROOM
+            // ==============================================
+
             string roomName =
+                source.Classroom
+                    ?.RoomName
+                ??
                 "-";
 
 
@@ -1418,8 +1596,12 @@ public class TeacherController : Controller
             }
 
 
-            model.Classes.Add(
-                new WebAndMobile.Models.TeacherAttendanceCodeItemViewModel
+            // ==============================================
+            // ADD REPLACEMENT
+            // ==============================================
+
+            allClasses.Add(
+                new TeacherAttendanceCodeItemViewModel
                 {
                     TimetableId =
                         source.TimetableId,
@@ -1427,15 +1609,22 @@ public class TeacherController : Controller
                     ReplacementId =
                         replacement.ReplacementId,
 
+                    ClassDate =
+                        replacement
+                            .ReplacementDate
+                            .Date,
+
                     CourseName =
                         source.Course
                             ?.CourseName
-                        ?? source.CourseId,
+                        ??
+                        source.CourseId,
 
                     ClassName =
                         source.ClassGroup
                             ?.ClassName
-                        ?? source.ClassId,
+                        ??
+                        source.ClassId,
 
                     RoomName =
                         roomName,
@@ -1454,84 +1643,306 @@ public class TeacherController : Controller
 
 
         // ==================================================
-        // ALL ATTENDANCE SESSIONS FOR TODAY
-        // ==================================================
-        // Do not filter by expiry here because we need to
-        // remember whether the teacher generated a code before.
+        // REMOVE ACCIDENTAL DUPLICATES
         // ==================================================
 
-        List<string> allTimetableIds =
-            model.Classes
-                .Select(c =>
-                    c.TimetableId
+        allClasses =
+            allClasses
+                .GroupBy(c =>
+                    $"{c.TimetableId}|" +
+                    $"{c.ClassDate:yyyyMMdd}|" +
+                    $"{c.StartTime}|" +
+                    $"{c.ReplacementId}"
                 )
-                .Distinct()
+                .Select(g =>
+                    g.First()
+                )
                 .ToList();
 
 
-        List<AttendanceSession> sessions =
-            await db.AttendanceSessions
-                .AsNoTracking()
-                .Where(s =>
-                    allTimetableIds.Contains(
-                        s.TimetableId
-                    ) &&
-                    s.SessionDate ==
-                        today
+        // ==================================================
+        // SORT
+        //
+        // Newest date first.
+        // On same date -> earliest class first.
+        // ==================================================
+
+        allClasses =
+            allClasses
+                .OrderByDescending(c =>
+                    c.ClassDate
                 )
-                .ToListAsync();
+                .ThenBy(c =>
+                    c.StartTime
+                )
+                .ToList();
 
 
         // ==================================================
-        // BUTTON / WARNING STATUS
+        // AVAILABLE DATES
+        // ==================================================
+
+        List<DateTime> availableDates =
+            allClasses
+                .Select(c =>
+                    c.ClassDate.Date
+                )
+                .Distinct()
+                .OrderByDescending(d =>
+                    d
+                )
+                .ToList();
+
+
+        // ==================================================
+        // ALWAYS ALLOW "TODAY"
+        //
+        // Even if teacher has no classes today,
+        // Today can still be selected and display empty state.
+        // ==================================================
+
+        if (
+            today >= rangeStart &&
+            today <= rangeEnd &&
+            !availableDates.Contains(
+                today
+            )
+        )
+        {
+            availableDates.Insert(
+                0,
+                today
+            );
+        }
+
+
+        model.AvailableDates =
+            availableDates;
+
+
+        model.TotalItems =
+            allClasses.Count;
+
+
+        // ==================================================
+        // SELECT DATE
+        // ==================================================
+
+        DateTime selectedDate;
+
+
+        if (
+            date.HasValue &&
+            availableDates.Any(d =>
+                d.Date ==
+                date.Value.Date
+            )
+        )
+        {
+            selectedDate =
+                date.Value.Date;
+        }
+        else if (
+            availableDates.Any(d =>
+                d.Date ==
+                today
+            )
+        )
+        {
+            selectedDate =
+                today;
+        }
+        else if (
+            availableDates.Count >
+            0
+        )
+        {
+            selectedDate =
+                availableDates[0];
+        }
+        else
+        {
+            selectedDate =
+                today;
+        }
+
+
+        model.SelectedDate =
+            selectedDate;
+
+
+        model.Date =
+            selectedDate;
+
+
+        // ==================================================
+        // SELECTED DATE CLASSES
+        //
+        // IMPORTANT:
+        // No page size.
+        // Show ALL classes belonging to selected date.
+        // ==================================================
+
+        model.Classes =
+            allClasses
+                .Where(c =>
+                    c.ClassDate.Date ==
+                    selectedDate
+                )
+                .OrderBy(c =>
+                    c.StartTime
+                )
+                .ToList();
+
+
+        // Old pagination is no longer used.
+        model.CurrentPage =
+            1;
+
+        model.PageSize =
+            model.Classes.Count;
+
+        model.TotalPages =
+            availableDates.Count;
+
+
+        // ==================================================
+        // ATTENDANCE SESSIONS FOR SELECTED DATE
+        // ==================================================
+
+        List<AttendanceSession> sessions =
+            new();
+
+
+        if (
+            model.Classes.Count >
+            0
+        )
+        {
+            List<string> selectedTimetableIds =
+                model.Classes
+                    .Select(c =>
+                        c.TimetableId
+                    )
+                    .Distinct()
+                    .ToList();
+
+
+            DateTime nextDate =
+                selectedDate
+                    .AddDays(1);
+
+
+            sessions =
+                await db.AttendanceSessions
+                    .AsNoTracking()
+                    .Where(s =>
+                        selectedTimetableIds.Contains(
+                            s.TimetableId
+                        ) &&
+
+                        s.SessionDate >=
+                            selectedDate &&
+
+                        s.SessionDate <
+                            nextDate
+                    )
+                    .ToListAsync();
+        }
+
+
+        // ==================================================
+        // BUTTON STATUS
         // ==================================================
 
         foreach (
-            WebAndMobile.Models.TeacherAttendanceCodeItemViewModel item
+            TeacherAttendanceCodeItemViewModel item
             in model.Classes
         )
         {
+            // ==============================================
+            // FIND SESSION
+            // ==============================================
+
             AttendanceSession? session =
                 sessions
-                    .FirstOrDefault(s =>
+                    .Where(s =>
                         s.TimetableId ==
-                            item.TimetableId
+                            item.TimetableId &&
+
+                        s.SessionDate.Date ==
+                            item.ClassDate.Date
+                    )
+                    .OrderByDescending(s =>
+                        s.GeneratedAt
+                    )
+                    .FirstOrDefault();
+
+
+            // ==============================================
+            // CODE WAS GENERATED BEFORE
+            // ==============================================
+
+            item.HasGeneratedCode =
+                session != null;
+
+
+            DateTime classStart =
+                item.ClassDate
+                    .Date
+                    .Add(
+                        item.StartTime
                     );
 
 
-            // IsActive = true means a real attendance code
-            // has been generated by the teacher.
-            item.HasGeneratedCode =
-                session != null &&
-                session.IsActive;
+            DateTime classEnd =
+                item.ClassDate
+                    .Date
+                    .Add(
+                        item.EndTime
+                    );
 
 
             bool classStarted =
-                now.TimeOfDay >=
-                item.StartTime;
+                now >=
+                classStart;
+
 
             bool classEnded =
-                now.TimeOfDay >=
-                item.EndTime;
+                now >=
+                classEnd;
 
 
-            // If code was generated, teacher can view students
-            // once the class has started.
-            // If no code was generated, teacher can only view
-            // students after the class has ended to complete
-            // attendance manually.
+            // ==============================================
+            // VIEW STUDENTS
+            //
+            // Code generated:
+            // available after class starts.
+            //
+            // No code:
+            // available after class ends for manual attendance.
+            // ==============================================
+
             item.CanViewStudents =
                 item.HasGeneratedCode
+
                     ? classStarted
+
                     : classEnded;
 
 
-            // Manual attendance warning only appears after
-            // the class ended and no code was ever generated.
+            // ==============================================
+            // MANUAL ATTENDANCE WARNING
+            // ==============================================
+
             item.NeedsManualAttendance =
                 classEnded &&
                 !item.HasGeneratedCode;
 
+
+            // ==============================================
+            // ACTIVE CODE
+            // ==============================================
 
             bool codeStillActive =
                 session != null &&
@@ -1540,106 +1951,100 @@ public class TeacherController : Controller
                     now;
 
 
-            // ==================================================
-            // ACTIVE CODE
-            // ==================================================
-
             if (codeStillActive)
             {
                 item.ActiveCode =
                     session!.Code;
 
+
                 item.ExpiresAt =
                     session.ExpiresAt;
+
 
                 item.CanGenerate =
                     false;
 
+
                 item.DisabledReason =
                     "Code already generated.";
+
 
                 continue;
             }
 
 
-            // ==================================================
-            // BEFORE CLASS START
-            // ==================================================
+            // ==============================================
+            // CLASS HAS NOT STARTED YET
+            // ==============================================
 
-            if (
-                now.TimeOfDay <
-                item.StartTime
-            )
+            if (!classStarted)
             {
                 item.CanGenerate =
                     false;
+
 
                 item.DisabledReason =
                     $"Available at " +
                     $"{item.StartTime:hh\\:mm}.";
 
+
                 continue;
             }
 
 
-            // ==================================================
-            // CLASS ENDED
-            // ==================================================
+            // ==============================================
+            // CLASS ALREADY ENDED
+            // ==============================================
 
-            if (
-                now.TimeOfDay >=
-                item.EndTime
-            )
+            if (classEnded)
             {
                 item.CanGenerate =
                     false;
 
+
                 item.DisabledReason =
                     item.HasGeneratedCode
+
                         ? "Class has ended."
+
                         : "Attendance code was not generated. Please complete attendance manually.";
+
 
                 continue;
             }
 
 
-            // ==================================================
+            // ==============================================
+            // CURRENT CLASS
             // PREVIOUS CODE EXPIRED
-            // ==================================================
+            // ==============================================
 
-            if (
-                session != null &&
-                session.IsActive
-            )
+            if (session != null)
             {
                 item.CanGenerate =
                     true;
 
+
                 item.DisabledReason =
                     "Previous code expired. Generate a new code if needed.";
+
 
                 continue;
             }
 
 
-            // ==================================================
-            // NO CODE / MANUAL SESSION
-            // ==================================================
+            // ==============================================
+            // CURRENT CLASS
+            // CAN GENERATE
+            // ==============================================
 
             item.CanGenerate =
                 true;
 
+
             item.DisabledReason =
                 null;
         }
-
-
-        model.Classes =
-            model.Classes
-                .OrderBy(c =>
-                    c.StartTime
-                )
-                .ToList();
 
 
         return View(model);

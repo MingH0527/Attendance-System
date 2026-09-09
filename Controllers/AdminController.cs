@@ -584,6 +584,840 @@ public class AdminController : Controller
         return model;
     }
 
+
+    // ==================================================
+    // ATTENDANCE OVERVIEW
+    // ==================================================
+
+    [HttpGet]
+    public async Task<IActionResult> AttendanceOverview()
+    {
+        DateTime now = DateTime.Now;
+        DateTime today = DateTime.Today;
+
+        AdminAttendanceOverviewViewModel model = new();
+
+        // ==================================================
+        // ACTIVE TERM
+        // ==================================================
+
+        AcademicTerm? activeTerm =
+            await _context
+                .AcademicTerms
+                .AsNoTracking()
+                .Where(t => t.Status == "Active")
+                .OrderBy(t => t.StartDate)
+                .FirstOrDefaultAsync();
+
+        if (activeTerm == null)
+        {
+            model.TermName = "No Active Semester";
+            return View(model);
+        }
+
+        model.TermName = activeTerm.Name;
+
+        // ==================================================
+        // TERM DATE RANGE
+        // ==================================================
+
+        DateTime termStart = activeTerm.StartDate.Date;
+
+        DateTime termEnd =
+            activeTerm.EndDate.Date < today
+                ? activeTerm.EndDate.Date
+                : today;
+
+        if (termStart > termEnd)
+        {
+            return View(model);
+        }
+
+        // ==================================================
+        // ALL REGISTERED STUDENTS
+        // ==================================================
+
+        List<StudentClass> students =
+            await _context
+                .StudentClasses
+                .AsNoTracking()
+                .Include(sc => sc.User)
+                .Include(sc => sc.Program)
+                .Include(sc => sc.ClassGroup)
+                .Where(sc =>
+                    sc.User != null &&
+                    sc.User.Position == "Student" &&
+                    !sc.User.IsDeleted)
+                .OrderBy(sc => sc.User!.Username)
+                .ToListAsync();
+
+        model.TotalStudents = students.Count;
+
+        if (students.Count == 0)
+        {
+            return View(model);
+        }
+
+        // ==================================================
+        // ACTIVE TERM TIMETABLE
+        // ==================================================
+
+        List<Timetable> timetables =
+            await _context
+                .Timetables
+                .AsNoTracking()
+                .Where(t => t.TermId == activeTerm.TermId)
+                .Include(t => t.Term)
+                .Include(t => t.Course)
+                .Include(t => t.ClassGroup)
+                .ToListAsync();
+
+        if (timetables.Count == 0)
+        {
+            return View(model);
+        }
+
+        List<string> timetableIds =
+            timetables
+                .Select(t => t.TimetableId)
+                .Distinct()
+                .ToList();
+
+        // ==================================================
+        // TIMETABLE EXCEPTIONS
+        // ==================================================
+
+        List<TimetableException> exceptions =
+            await _context
+                .TimetableExceptions
+                .AsNoTracking()
+                .Where(e =>
+                    timetableIds.Contains(e.TimetableId) &&
+                    e.OccurrenceDate.Date >= termStart &&
+                    e.OccurrenceDate.Date <= termEnd)
+                .ToListAsync();
+
+        // ==================================================
+        // REPLACEMENT CLASSES
+        // ==================================================
+
+        List<ReplacementSession> replacements =
+            await _context
+                .ReplacementSessions
+                .AsNoTracking()
+                .Where(r =>
+                    timetableIds.Contains(r.SourceTimetableId) &&
+                    r.ReplacementDate.Date >= termStart &&
+                    r.ReplacementDate.Date <= termEnd &&
+                    r.Status == "Scheduled")
+                .ToListAsync();
+
+        // ==================================================
+        // ATTENDANCE SESSIONS
+        // ==================================================
+
+        List<AttendanceSession> sessions =
+            await _context
+                .AttendanceSessions
+                .AsNoTracking()
+                .Where(s =>
+                    timetableIds.Contains(s.TimetableId) &&
+                    s.SessionDate.Date >= termStart &&
+                    s.SessionDate.Date <= termEnd)
+                .ToListAsync();
+
+        Dictionary<string, AttendanceSession> sessionMap =
+            sessions
+                .GroupBy(s =>
+                    GetAdminAttendanceOccurrenceKey(
+                        s.TimetableId,
+                        s.SessionDate))
+                .ToDictionary(
+                    g => g.Key,
+                    g => g
+                        .OrderByDescending(s => s.GeneratedAt)
+                        .First());
+
+        // ==================================================
+        // ATTENDANCE RECORDS
+        // ==================================================
+
+        List<string> sessionIds =
+            sessions
+                .Select(s => s.AttendanceSessionId)
+                .Distinct()
+                .ToList();
+
+        List<AttendanceRecord> records =
+            sessionIds.Count == 0
+                ? new List<AttendanceRecord>()
+                : await _context
+                    .AttendanceRecords
+                    .AsNoTracking()
+                    .Where(r =>
+                        sessionIds.Contains(r.AttendanceSessionId))
+                    .ToListAsync();
+
+        Dictionary<string, AttendanceRecord> recordMap =
+            records
+                .GroupBy(r =>
+                    GetAdminAttendanceRecordKey(
+                        r.AttendanceSessionId,
+                        r.StudentClassId))
+                .ToDictionary(
+                    g => g.Key,
+                    g => g
+                        .OrderByDescending(r => r.SubmittedAt)
+                        .First());
+
+        // ==================================================
+        // APPROVED LEAVES
+        // ==================================================
+
+        List<string> studentUserIds =
+            students
+                .Select(sc => sc.UserId)
+                .Distinct()
+                .ToList();
+
+        List<LeaveApplication> approvedLeaves =
+            await _context
+                .LeaveApplications
+                .AsNoTracking()
+                .Where(l =>
+                    studentUserIds.Contains(l.StudentId) &&
+                    l.Status == "Approved" &&
+                    l.EndDate.Date >= termStart &&
+                    l.StartDate.Date <= termEnd)
+                .ToListAsync();
+
+        // ==================================================
+        // SUBJECT MAP
+        // ==================================================
+
+        Dictionary<string, AdminAttendanceSubjectViewModel> subjectMap =
+            timetables
+                .GroupBy(t => t.CourseId)
+                .ToDictionary(
+                    g => g.Key,
+                    g =>
+                    {
+                        Timetable timetable = g.First();
+
+                        return new AdminAttendanceSubjectViewModel
+                        {
+                            CourseId = timetable.CourseId,
+                            CourseCode = timetable.Course?.CourseCode ?? "",
+                            CourseName =
+                                timetable.Course?.CourseName
+                                ?? timetable.CourseId
+                        };
+                    });
+
+        // ==================================================
+        // SUBJECT STUDENT SETS
+        // ==================================================
+
+        Dictionary<string, HashSet<string>> subjectStudents = new();
+
+        // Used for Overall Attendance +4 buffer.
+        HashSet<string> studentSubjectPairs = new();
+
+        // ==================================================
+        // ABSENCE BY DAY
+        // ==================================================
+
+        Dictionary<DayOfWeek, int> absenceByDay =
+            new()
+            {
+                [DayOfWeek.Monday] = 0,
+                [DayOfWeek.Tuesday] = 0,
+                [DayOfWeek.Wednesday] = 0,
+                [DayOfWeek.Thursday] = 0,
+                [DayOfWeek.Friday] = 0,
+                [DayOfWeek.Saturday] = 0,
+                [DayOfWeek.Sunday] = 0
+            };
+
+        // ==================================================
+        // LOOP THROUGH EVERY STUDENT
+        // ==================================================
+
+        foreach (StudentClass student in students)
+        {
+            List<Timetable> studentTimetables =
+                timetables
+                    .Where(t => t.ClassId == student.ClassId)
+                    .ToList();
+
+            if (studentTimetables.Count == 0)
+            {
+                continue;
+            }
+
+            List<string> studentTimetableIds =
+                studentTimetables
+                    .Select(t => t.TimetableId)
+                    .ToList();
+
+            List<TimetableException> studentExceptions =
+                exceptions
+                    .Where(e =>
+                        studentTimetableIds.Contains(e.TimetableId))
+                    .ToList();
+
+            List<ReplacementSession> studentReplacements =
+                replacements
+                    .Where(r =>
+                        studentTimetableIds.Contains(
+                            r.SourceTimetableId))
+                    .ToList();
+
+            List<AdminAttendanceOccurrence> occurrences =
+                BuildAdminAttendanceOccurrences(
+                    student,
+                    studentTimetables,
+                    studentExceptions,
+                    studentReplacements,
+                    activeTerm,
+                    today);
+
+            // Only completed classes count in analytics.
+            occurrences =
+                occurrences
+                    .Where(o =>
+                        now >= o.Date.Add(o.EndTime))
+                    .ToList();
+
+            foreach (AdminAttendanceOccurrence occurrence in occurrences)
+            {
+                if (!subjectMap.ContainsKey(occurrence.CourseId))
+                {
+                    continue;
+                }
+
+                if (!subjectStudents.ContainsKey(occurrence.CourseId))
+                {
+                    subjectStudents[occurrence.CourseId] =
+                        new HashSet<string>();
+                }
+
+                subjectStudents[occurrence.CourseId]
+                    .Add(student.StudentClassId);
+
+                studentSubjectPairs.Add(
+                    $"{student.StudentClassId}|{occurrence.CourseId}");
+
+                string occurrenceKey =
+                    GetAdminAttendanceOccurrenceKey(
+                        occurrence.TimetableId,
+                        occurrence.Date);
+
+                sessionMap.TryGetValue(
+                    occurrenceKey,
+                    out AttendanceSession? session);
+
+                AttendanceRecord? record = null;
+
+                if (session != null)
+                {
+                    string recordKey =
+                        GetAdminAttendanceRecordKey(
+                            session.AttendanceSessionId,
+                            student.StudentClassId);
+
+                    recordMap.TryGetValue(
+                        recordKey,
+                        out record);
+                }
+
+                LeaveApplication? approvedLeave =
+                    approvedLeaves
+                        .FirstOrDefault(l =>
+                            l.StudentId == student.UserId &&
+                            occurrence.Date >= l.StartDate.Date &&
+                            occurrence.Date <= l.EndDate.Date);
+
+                string status =
+                    ResolveAdminAttendanceStatus(
+                        occurrence,
+                        record,
+                        approvedLeave,
+                        now);
+
+                AdminAttendanceSubjectViewModel subject =
+                    subjectMap[occurrence.CourseId];
+
+                if (status == "Present")
+                {
+                    subject.PresentCount++;
+                    model.TotalPresent++;
+                }
+                else if (status == "Leave")
+                {
+                    subject.LeaveCount++;
+                    model.TotalLeave++;
+                }
+                else if (status == "Absent")
+                {
+                    subject.AbsentCount++;
+                    model.TotalAbsent++;
+
+                    absenceByDay[occurrence.Date.DayOfWeek]++;
+                }
+            }
+        }
+
+        // ==================================================
+        // ATTENDANCE FORMULA
+        //
+        // (Present + 4) / (Present + Absent + 4) x 100
+        // Approved Leave is excluded.
+        // ==================================================
+
+        const int AttendanceStartingBuffer = 4;
+
+        // ==================================================
+        // SUBJECT ATTENDANCE RATE
+        // ==================================================
+
+        foreach (
+            KeyValuePair<string, AdminAttendanceSubjectViewModel> pair
+            in subjectMap)
+        {
+            AdminAttendanceSubjectViewModel subject = pair.Value;
+
+            int studentCount =
+                subjectStudents.TryGetValue(
+                    pair.Key,
+                    out HashSet<string>? set)
+                        ? set.Count
+                        : 0;
+
+            subject.StudentCount = studentCount;
+
+            int countedClasses =
+                subject.PresentCount +
+                subject.AbsentCount;
+
+            int subjectBuffer =
+                studentCount *
+                AttendanceStartingBuffer;
+
+            subject.AttendanceRate =
+                countedClasses == 0
+                    ? 100
+                    : Math.Round(
+                        (subject.PresentCount + subjectBuffer) *
+                        100.0 /
+                        (
+                            subject.PresentCount +
+                            subject.AbsentCount +
+                            subjectBuffer
+                        ),
+                        1);
+        }
+
+        // ==================================================
+        // ALL SUBJECTS
+        // ==================================================
+
+        model.Subjects =
+            subjectMap
+                .Values
+                .Where(s => s.StudentCount > 0)
+                .OrderBy(s => s.CourseName)
+                .ToList();
+
+        // ==================================================
+        // TOP 5 MOST ABSENT SUBJECTS
+        // ==================================================
+
+        model.TopAbsentSubjects =
+            model.Subjects
+                .Where(s => s.AbsentCount > 0)
+                .OrderByDescending(s => s.AbsentCount)
+                .ThenBy(s => s.AttendanceRate)
+                .Take(5)
+                .ToList();
+
+        // ==================================================
+        // OVERALL ATTENDANCE
+        // ==================================================
+
+        int totalCounted =
+            model.TotalPresent +
+            model.TotalAbsent;
+
+        int overallBuffer =
+            studentSubjectPairs.Count *
+            AttendanceStartingBuffer;
+
+        model.OverallAttendanceRate =
+            totalCounted == 0
+                ? 100
+                : Math.Round(
+                    (model.TotalPresent + overallBuffer) *
+                    100.0 /
+                    (
+                        model.TotalPresent +
+                        model.TotalAbsent +
+                        overallBuffer
+                    ),
+                    1);
+
+        // ==================================================
+        // ABSENCE BY DAY
+        // ==================================================
+
+        model.AbsenceByDay =
+            new List<AdminAttendanceDayViewModel>
+            {
+                new()
+                {
+                    DayName = "Mon",
+                    AbsentCount = absenceByDay[DayOfWeek.Monday]
+                },
+                new()
+                {
+                    DayName = "Tue",
+                    AbsentCount = absenceByDay[DayOfWeek.Tuesday]
+                },
+                new()
+                {
+                    DayName = "Wed",
+                    AbsentCount = absenceByDay[DayOfWeek.Wednesday]
+                },
+                new()
+                {
+                    DayName = "Thu",
+                    AbsentCount = absenceByDay[DayOfWeek.Thursday]
+                },
+                new()
+                {
+                    DayName = "Fri",
+                    AbsentCount = absenceByDay[DayOfWeek.Friday]
+                },
+                new()
+                {
+                    DayName = "Sat",
+                    AbsentCount = absenceByDay[DayOfWeek.Saturday]
+                },
+                new()
+                {
+                    DayName = "Sun",
+                    AbsentCount = absenceByDay[DayOfWeek.Sunday]
+                }
+            };
+
+        return View(model);
+    }
+
+    // ==================================================
+    // BUILD ADMIN ATTENDANCE OCCURRENCES
+    // ==================================================
+
+    private static List<AdminAttendanceOccurrence>
+        BuildAdminAttendanceOccurrences(
+            StudentClass student,
+            List<Timetable> timetables,
+            List<TimetableException> exceptions,
+            List<ReplacementSession> replacements,
+            AcademicTerm term,
+            DateTime today)
+    {
+        List<AdminAttendanceOccurrence> result = new();
+
+        DateTime fromDate =
+            student.RegisteredDate.Date > term.StartDate.Date
+                ? student.RegisteredDate.Date
+                : term.StartDate.Date;
+
+        DateTime toDate =
+            today < term.EndDate.Date
+                ? today
+                : term.EndDate.Date;
+
+        if (fromDate > toDate)
+        {
+            return result;
+        }
+
+        // ==================================================
+        // NORMAL TIMETABLE CLASSES
+        // ==================================================
+
+        foreach (Timetable timetable in timetables)
+        {
+            int dayOffset =
+                (
+                    (int)timetable.DayOfWeek -
+                    (int)fromDate.DayOfWeek +
+                    7
+                ) % 7;
+
+            DateTime occurrenceDate =
+                fromDate.AddDays(dayOffset);
+
+            while (occurrenceDate <= toDate)
+            {
+                TimetableException? exception =
+                    exceptions
+                        .FirstOrDefault(e =>
+                            e.TimetableId == timetable.TimetableId &&
+                            e.OccurrenceDate.Date == occurrenceDate.Date &&
+                            !string.Equals(
+                                e.Decision,
+                                "Pending",
+                                StringComparison.OrdinalIgnoreCase));
+
+                bool cancelled =
+                    exception != null &&
+                    IsAdminAttendanceCancelledValue(
+                        exception.Decision);
+
+                bool movedToReplacement =
+                    replacements
+                        .Any(r =>
+                            r.SourceTimetableId ==
+                                timetable.TimetableId &&
+                            r.SourceOccurrenceDate.HasValue &&
+                            r.SourceOccurrenceDate.Value.Date ==
+                                occurrenceDate.Date);
+
+                if (!cancelled && !movedToReplacement)
+                {
+                    TimeSpan actualStart =
+                        exception?.OverrideStartTime
+                        ?? timetable.StartTime;
+
+                    TimeSpan actualEnd =
+                        exception?.OverrideEndTime
+                        ?? timetable.EndTime;
+
+                    DateTime classStart =
+                        occurrenceDate.Add(actualStart);
+
+                    if (student.RegisteredDate <= classStart)
+                    {
+                        result.Add(
+                            new AdminAttendanceOccurrence
+                            {
+                                TimetableId = timetable.TimetableId,
+                                CourseId = timetable.CourseId,
+                                CourseCode =
+                                    timetable.Course?.CourseCode ?? "",
+                                CourseName =
+                                    timetable.Course?.CourseName
+                                    ?? timetable.CourseId,
+                                Date = occurrenceDate.Date,
+                                StartTime = actualStart,
+                                EndTime = actualEnd,
+                                IsReplacement = false
+                            });
+                    }
+                }
+
+                occurrenceDate =
+                    occurrenceDate.AddDays(7);
+            }
+        }
+
+        // ==================================================
+        // REPLACEMENT CLASSES
+        // ==================================================
+
+        foreach (ReplacementSession replacement in replacements)
+        {
+            Timetable? source =
+                timetables
+                    .FirstOrDefault(t =>
+                        t.TimetableId ==
+                            replacement.SourceTimetableId);
+
+            if (source == null)
+            {
+                continue;
+            }
+
+            DateTime replacementDate =
+                replacement.ReplacementDate.Date;
+
+            if (
+                replacementDate < fromDate ||
+                replacementDate > toDate)
+            {
+                continue;
+            }
+
+            DateTime replacementStart =
+                replacementDate.Add(
+                    replacement.StartTime);
+
+            if (student.RegisteredDate > replacementStart)
+            {
+                continue;
+            }
+
+            result.Add(
+                new AdminAttendanceOccurrence
+                {
+                    TimetableId = source.TimetableId,
+                    CourseId = source.CourseId,
+                    CourseCode = source.Course?.CourseCode ?? "",
+                    CourseName =
+                        source.Course?.CourseName
+                        ?? source.CourseId,
+                    Date = replacementDate,
+                    StartTime = replacement.StartTime,
+                    EndTime = replacement.EndTime,
+                    IsReplacement = true
+                });
+        }
+
+        // ==================================================
+        // REMOVE DUPLICATE OCCURRENCES
+        // ==================================================
+
+        return result
+            .GroupBy(o =>
+                $"{o.TimetableId}|" +
+                $"{o.Date:yyyyMMdd}|" +
+                $"{o.StartTime}")
+            .Select(g => g.First())
+            .OrderBy(o => o.Date)
+            .ThenBy(o => o.StartTime)
+            .ToList();
+    }
+
+    // ==================================================
+    // RESOLVE ATTENDANCE STATUS
+    // ==================================================
+
+    private static string ResolveAdminAttendanceStatus(
+        AdminAttendanceOccurrence occurrence,
+        AttendanceRecord? record,
+        LeaveApplication? approvedLeave,
+        DateTime now)
+    {
+        // 1. APPROVED LEAVE
+        if (approvedLeave != null)
+        {
+            return "Leave";
+        }
+
+        // 2. VALID PRESENT RECORD
+        if (
+            record != null &&
+            !record.IsRemoved &&
+            !string.Equals(
+                record.Status,
+                "Absent",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return "Present";
+        }
+
+        // 3. REMOVED / ABSENT RECORD
+        if (
+            record != null &&
+            (
+                record.IsRemoved ||
+                string.Equals(
+                    record.Status,
+                    "Absent",
+                    StringComparison.OrdinalIgnoreCase)
+            ))
+        {
+            return "Absent";
+        }
+
+        // 4. CLASS FINISHED + NO PRESENT RECORD = ABSENT
+        DateTime classEnd =
+            occurrence.Date.Add(
+                occurrence.EndTime);
+
+        if (now >= classEnd)
+        {
+            return "Absent";
+        }
+
+        return "Not Open";
+    }
+
+    // ==================================================
+    // OCCURRENCE KEY
+    // ==================================================
+
+    private static string GetAdminAttendanceOccurrenceKey(
+        string timetableId,
+        DateTime date)
+    {
+        return
+            $"{timetableId}|" +
+            $"{date.Date:yyyyMMdd}";
+    }
+
+    // ==================================================
+    // ATTENDANCE RECORD KEY
+    // ==================================================
+
+    private static string GetAdminAttendanceRecordKey(
+        string attendanceSessionId,
+        string studentClassId)
+    {
+        return
+            $"{attendanceSessionId}|" +
+            $"{studentClassId}";
+    }
+
+    // ==================================================
+    // CANCELLED VALUE
+    // ==================================================
+
+    private static bool IsAdminAttendanceCancelledValue(
+        string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return value
+            .Trim()
+            .Contains(
+                "cancel",
+                StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ==================================================
+    // INTERNAL ATTENDANCE OCCURRENCE
+    // ==================================================
+
+    private class AdminAttendanceOccurrence
+    {
+        public string TimetableId { get; set; } =
+            string.Empty;
+
+        public string CourseId { get; set; } =
+            string.Empty;
+
+        public string CourseCode { get; set; } =
+            string.Empty;
+
+        public string CourseName { get; set; } =
+            string.Empty;
+
+        public DateTime Date { get; set; }
+
+        public TimeSpan StartTime { get; set; }
+
+        public TimeSpan EndTime { get; set; }
+
+        public bool IsReplacement { get; set; }
+    }
+
+
     // ==================================================
     // LEAVE MANAGEMENT
     // ==================================================
@@ -1453,6 +2287,18 @@ public class AdminController : Controller
     // ==================================================
     // CALCULATE ATTENDANCE FOR BARRED LIST
     // ==================================================
+    // IMPORTANT:
+    // This now uses the SAME occurrence/status rules as
+    // Student Attendance and Attendance Overview.
+    //
+    // Therefore:
+    // - No Generate Code + class already ended = Absent
+    // - Approved Leave = Leave and is excluded from formula
+    // - Removed / Absent record = Absent
+    // - Timetable cancellation is excluded
+    // - Changed class time uses the override time
+    // - Replacement class uses replacement date/time
+    // ==================================================
 
     private async Task<AttendanceCalculationResult>
         CalculateAttendanceAsync(
@@ -1465,6 +2311,41 @@ public class AdminController : Controller
         DateTime today =
             DateTime.Today;
 
+
+        // ==============================================
+        // ACTIVE TERM
+        // ==============================================
+
+        AcademicTerm? activeTerm =
+            await _context
+                .AcademicTerms
+                .AsNoTracking()
+                .Where(t =>
+                    t.Status == "Active"
+                )
+                .OrderBy(t =>
+                    t.StartDate
+                )
+                .FirstOrDefaultAsync();
+
+
+        if (
+            activeTerm ==
+            null
+        )
+        {
+            return new AttendanceCalculationResult
+            {
+                AbsentCount = 0,
+                Percentage = 100
+            };
+        }
+
+
+        // ==============================================
+        // COURSE TIMETABLE FOR THIS STUDENT'S CLASS
+        // ==============================================
+
         List<Timetable> timetables =
             await _context
                 .Timetables
@@ -1474,33 +2355,165 @@ public class AdminController : Controller
                         studentClass.ClassId &&
                     t.CourseId ==
                         courseId &&
-                    t.Term != null &&
-                    t.Term.Status ==
-                        "Active"
+                    t.TermId ==
+                        activeTerm.TermId
+                )
+                .Include(t =>
+                    t.Term
+                )
+                .Include(t =>
+                    t.Course
                 )
                 .ToListAsync();
+
+
+        if (
+            timetables.Count ==
+            0
+        )
+        {
+            return new AttendanceCalculationResult
+            {
+                AbsentCount = 0,
+                Percentage = 100
+            };
+        }
+
 
         List<string> timetableIds =
             timetables
                 .Select(t =>
                     t.TimetableId
                 )
+                .Distinct()
                 .ToList();
 
+
+        DateTime fromDate =
+            studentClass.RegisteredDate.Date >
+            activeTerm.StartDate.Date
+                ? studentClass.RegisteredDate.Date
+                : activeTerm.StartDate.Date;
+
+
+        DateTime toDate =
+            today <
+            activeTerm.EndDate.Date
+                ? today
+                : activeTerm.EndDate.Date;
+
+
         if (
-            timetableIds.Count ==
+            fromDate >
+            toDate
+        )
+        {
+            return new AttendanceCalculationResult
+            {
+                AbsentCount = 0,
+                Percentage = 100
+            };
+        }
+
+
+        // ==============================================
+        // TIMETABLE EXCEPTIONS
+        // ==============================================
+
+        List<TimetableException> exceptions =
+            await _context
+                .TimetableExceptions
+                .AsNoTracking()
+                .Where(e =>
+                    timetableIds.Contains(
+                        e.TimetableId
+                    ) &&
+                    e.OccurrenceDate.Date >=
+                        fromDate &&
+                    e.OccurrenceDate.Date <=
+                        toDate
+                )
+                .ToListAsync();
+
+
+        // ==============================================
+        // REPLACEMENT CLASSES
+        // ==============================================
+
+        List<ReplacementSession> replacements =
+            await _context
+                .ReplacementSessions
+                .AsNoTracking()
+                .Where(r =>
+                    timetableIds.Contains(
+                        r.SourceTimetableId
+                    ) &&
+                    r.ReplacementDate.Date >=
+                        fromDate &&
+                    r.ReplacementDate.Date <=
+                        toDate &&
+                    r.Status ==
+                        "Scheduled"
+                )
+                .ToListAsync();
+
+
+        // ==============================================
+        // BUILD THE CLASSES THAT SHOULD HAVE HAPPENED
+        // ==============================================
+
+        List<AdminAttendanceOccurrence> occurrences =
+            BuildAdminAttendanceOccurrences(
+                studentClass,
+                timetables,
+                exceptions,
+                replacements,
+                activeTerm,
+                today
+            );
+
+
+        // Only completed classes affect percentage.
+        List<AdminAttendanceOccurrence> endedOccurrences =
+            occurrences
+                .Where(o =>
+                    now >=
+                    o.Date.Add(
+                        o.EndTime
+                    )
+                )
+                .OrderBy(o =>
+                    o.Date
+                )
+                .ThenBy(o =>
+                    o.StartTime
+                )
+                .ToList();
+
+
+        if (
+            endedOccurrences.Count ==
             0
         )
         {
             return new AttendanceCalculationResult
             {
-                AbsentCount =
-                    0,
-
-                Percentage =
-                    100
+                AbsentCount = 0,
+                Percentage = 100
             };
         }
+
+
+        // ==============================================
+        // ATTENDANCE SESSIONS
+        // ==============================================
+
+        DateTime firstOccurrenceDate =
+            endedOccurrences
+                .Min(o =>
+                    o.Date
+                );
+
 
         List<AttendanceSession> sessions =
             await _context
@@ -1510,13 +2523,105 @@ public class AdminController : Controller
                     timetableIds.Contains(
                         s.TimetableId
                     ) &&
-                    s.SessionDate <=
-                        today
-                )
-                .OrderBy(s =>
-                    s.SessionDate
+                    s.SessionDate.Date >=
+                        firstOccurrenceDate &&
+                    s.SessionDate.Date <=
+                        toDate
                 )
                 .ToListAsync();
+
+
+        Dictionary<string, AttendanceSession>
+            sessionMap =
+                sessions
+                    .GroupBy(s =>
+                        GetAdminAttendanceOccurrenceKey(
+                            s.TimetableId,
+                            s.SessionDate
+                        )
+                    )
+                    .ToDictionary(
+                        g =>
+                            g.Key,
+                        g =>
+                            g.OrderByDescending(s =>
+                                s.GeneratedAt
+                            )
+                            .First()
+                    );
+
+
+        // ==============================================
+        // ATTENDANCE RECORDS
+        // ==============================================
+
+        List<string> sessionIds =
+            sessions
+                .Select(s =>
+                    s.AttendanceSessionId
+                )
+                .Distinct()
+                .ToList();
+
+
+        List<AttendanceRecord> records =
+            sessionIds.Count ==
+            0
+                ? new List<AttendanceRecord>()
+                : await _context
+                    .AttendanceRecords
+                    .AsNoTracking()
+                    .Where(r =>
+                        sessionIds.Contains(
+                            r.AttendanceSessionId
+                        ) &&
+                        r.StudentClassId ==
+                            studentClass.StudentClassId
+                    )
+                    .ToListAsync();
+
+
+        Dictionary<string, AttendanceRecord>
+            recordMap =
+                records
+                    .GroupBy(r =>
+                        r.AttendanceSessionId
+                    )
+                    .ToDictionary(
+                        g =>
+                            g.Key,
+                        g =>
+                            g.OrderByDescending(r =>
+                                r.SubmittedAt
+                            )
+                            .First()
+                    );
+
+
+        // ==============================================
+        // APPROVED LEAVE
+        // ==============================================
+
+        List<LeaveApplication> approvedLeaves =
+            await _context
+                .LeaveApplications
+                .AsNoTracking()
+                .Where(l =>
+                    l.StudentId ==
+                        studentClass.UserId &&
+                    l.Status ==
+                        "Approved" &&
+                    l.EndDate.Date >=
+                        firstOccurrenceDate &&
+                    l.StartDate.Date <=
+                        toDate
+                )
+                .ToListAsync();
+
+
+        // ==============================================
+        // CALCULATE PRESENT / ABSENT / LEAVE
+        // ==============================================
 
         int present =
             0;
@@ -1524,136 +2629,109 @@ public class AdminController : Controller
         int absent =
             0;
 
+
         foreach (
-            AttendanceSession session
-            in sessions)
+            AdminAttendanceOccurrence occurrence
+            in endedOccurrences
+        )
         {
-            Timetable? timetable =
-                timetables
-                    .FirstOrDefault(t =>
-                        t.TimetableId ==
-                        session.TimetableId
-                    );
+            string occurrenceKey =
+                GetAdminAttendanceOccurrenceKey(
+                    occurrence.TimetableId,
+                    occurrence.Date
+                );
+
+
+            sessionMap.TryGetValue(
+                occurrenceKey,
+                out AttendanceSession? session
+            );
+
+
+            AttendanceRecord? record =
+                null;
+
 
             if (
-                timetable ==
+                session !=
                 null
             )
             {
-                continue;
+                recordMap.TryGetValue(
+                    session.AttendanceSessionId,
+                    out record
+                );
             }
 
-            // ==========================================
-            // STUDENT REGISTRATION VALIDATION
-            // ==========================================
 
-            DateTime classStart =
-                session.SessionDate.Date
-                    .Add(
-                        timetable.StartTime
-                    );
-
-            if (
-                studentClass.RegisteredDate >
-                classStart
-            )
-            {
-                continue;
-            }
-
-            AttendanceRecord? record =
-                await _context
-                    .AttendanceRecords
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(r =>
-                        r.AttendanceSessionId ==
-                            session.AttendanceSessionId &&
-                        r.StudentClassId ==
-                            studentClass.StudentClassId
-                    );
-
-            if (
-                record != null &&
-                !record.IsRemoved
-            )
-            {
-                present++;
-                continue;
-            }
-
-            // ==========================================
-            // APPROVED LEAVE
-            // ==========================================
-
-            bool approvedLeave =
-                await _context
-                    .LeaveApplications
-                    .AsNoTracking()
-                    .AnyAsync(l =>
-                        l.StudentId ==
-                            studentClass.UserId &&
-                        l.Status ==
-                            "Approved" &&
-                        session.SessionDate.Date >=
+            LeaveApplication? approvedLeave =
+                approvedLeaves
+                    .FirstOrDefault(l =>
+                        occurrence.Date >=
                             l.StartDate.Date &&
-                        session.SessionDate.Date <=
+                        occurrence.Date <=
                             l.EndDate.Date
                     );
 
-            if (
-                approvedLeave
-            )
-            {
-                continue;
-            }
 
-            // ==========================================
-            // CLASS END TIME
-            // ==========================================
+            string status =
+                ResolveAdminAttendanceStatus(
+                    occurrence,
+                    record,
+                    approvedLeave,
+                    now
+                );
 
-            DateTime classEnd =
-                session.SessionDate.Date
-                    .Add(
-                        timetable.EndTime
-                    );
 
             if (
-                now <
-                classEnd
+                status ==
+                "Present"
             )
             {
-                continue;
+                present++;
+            }
+            else if (
+                status ==
+                "Absent"
+            )
+            {
+                absent++;
             }
 
-            absent++;
+            // Leave is intentionally excluded from the formula.
         }
 
-        // ==========================================
-        // FORMULA
+
+        // ==============================================
+        // SAME FORMULA AS STUDENT ATTENDANCE
+        //
         // Attendance % =
         // (Present + 4) / (Present + Absent + 4) × 100
         //
-        // Starting buffer = 4.
         // Approved Leave is excluded.
-        //
-        // Example:
-        // 0 Present + 1 Absent = 80%
-        // 1 Present + 1 Absent = 83.3%
-        // ==========================================
+        // ==============================================
 
         const int AttendanceStartingBuffer =
             4;
+
 
         int countedClasses =
             present +
             absent;
 
+
         double percentage =
-            countedClasses == 0
+            countedClasses ==
+            0
                 ? 100
                 : Math.Round(
-                    (present + AttendanceStartingBuffer) *
-                    100.0 /
+                    (
+                        present +
+                        AttendanceStartingBuffer
+                    )
+                    *
+                    100.0
+                    /
                     (
                         present +
                         absent +
@@ -1661,6 +2739,7 @@ public class AdminController : Controller
                     ),
                     1
                 );
+
 
         return new AttendanceCalculationResult
         {

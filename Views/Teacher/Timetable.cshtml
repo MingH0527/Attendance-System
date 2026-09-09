@@ -1,5 +1,6 @@
 ﻿@model WebAndMobile.Models.TeacherTimetableViewModel
 @using WebAndMobile.Models
+@using System.Linq
 
 @{
     ViewData["Title"] = "My Timetable";
@@ -22,6 +23,7 @@
 
 
     if (
+        Model.Items != null &&
         Model.Items.Any(i =>
             i.DayOfWeek ==
                 DayOfWeek.Sunday
@@ -46,7 +48,10 @@
         18;
 
 
-    if (Model.Items.Count > 0)
+    if (
+        Model.Items != null &&
+        Model.Items.Count > 0
+    )
     {
         int earliestHour =
             Model.Items
@@ -206,9 +211,13 @@
             </span>
 
 
+
+            <!-- ==================================================
+                 WEEKLY TEMPLATE
+                 ================================================== -->
+
             @if (Model.IsTemplate)
             {
-
                 <strong>
 
                     Weekly Template
@@ -221,11 +230,16 @@
                     @Model.TermName
 
                 </span>
-
             }
-            else
-            {
 
+
+
+            <!-- ==================================================
+                 SPECIFIC WEEK
+                 ================================================== -->
+
+            @if (!Model.IsTemplate)
+            {
                 <strong>
 
                     Week @Model.SelectedWeekNumber
@@ -238,19 +252,20 @@
                     Model.WeekEnd.HasValue
                 )
                 {
-
                     <span class="week-date">
 
-                        @Model.WeekStart.Value.ToString("dd MMM yyyy")
+                        @Model.WeekStart.Value.ToString(
+                            "dd MMM yyyy"
+                        )
 
                         -
 
-                        @Model.WeekEnd.Value.ToString("dd MMM yyyy")
+                        @Model.WeekEnd.Value.ToString(
+                            "dd MMM yyyy"
+                        )
 
                     </span>
-
                 }
-
             }
 
 
@@ -281,47 +296,54 @@
 
 
 
-                <!-- WEEKLY TEMPLATE -->
+                <!-- ==================================================
+                     WEEKLY TEMPLATE SELECTED
+                     ================================================== -->
 
                 @if (Model.IsTemplate)
                 {
-
                     <option value="0"
                             selected>
 
                         Weekly Template
 
                     </option>
-
                 }
-                else
-                {
 
+
+
+                <!-- ==================================================
+                     WEEKLY TEMPLATE NOT SELECTED
+                     ================================================== -->
+
+                @if (!Model.IsTemplate)
+                {
                     <option value="0">
 
                         Weekly Template
 
                     </option>
-
                 }
 
 
 
-                <!-- WEEK LIST -->
+                <!-- ==================================================
+                     WEEK LIST
+                     ================================================== -->
 
                 @foreach (
                     AcademicWeek week
                     in Model.Weeks
                 )
                 {
-
-                    if (
+                    bool selectedWeek =
+                        !Model.IsTemplate &&
                         Model.SelectedWeekNumber ==
-                            week.WeekNumber &&
-                        !Model.IsTemplate
-                    )
-                    {
+                            week.WeekNumber;
 
+
+                    if (selectedWeek)
+                    {
                         <option value="@week.WeekNumber"
                                 selected>
 
@@ -331,11 +353,11 @@
                             @week.EndDate.ToString("dd MMM"))
 
                         </option>
-
                     }
-                    else
-                    {
 
+
+                    if (!selectedWeek)
+                    {
                         <option value="@week.WeekNumber">
 
                             Week @week.WeekNumber
@@ -344,9 +366,7 @@
                             @week.EndDate.ToString("dd MMM"))
 
                         </option>
-
                     }
-
                 }
 
 
@@ -456,7 +476,7 @@
 
 
         <!-- ==================================================
-             NOTIFICATIONS
+             HAS NOTIFICATIONS
              ================================================== -->
 
         @if (
@@ -464,7 +484,6 @@
             Model.Notifications.Count > 0
         )
         {
-
             <div class="notification-list">
 
 
@@ -473,7 +492,6 @@
                     in Model.Notifications
                 )
                 {
-
                     <div class="teacher-notification">
 
 
@@ -507,16 +525,23 @@
 
 
                     </div>
-
                 }
 
 
             </div>
-
         }
-        else
-        {
 
+
+
+        <!-- ==================================================
+             NO NOTIFICATIONS
+             ================================================== -->
+
+        @if (
+            Model.Notifications == null ||
+            Model.Notifications.Count == 0
+        )
+        {
             <div class="notification-list">
 
 
@@ -540,7 +565,6 @@
 
 
             </div>
-
         }
 
 
@@ -555,6 +579,7 @@
     <section class="teacher-grid-card">
 
 
+
         <!-- ==================================================
              EMPTY
              ================================================== -->
@@ -564,7 +589,6 @@
             Model.Items.Count == 0
         )
         {
-
             <div class="teacher-tt-empty">
 
 
@@ -591,17 +615,19 @@
 
 
             </div>
-
         }
+
 
 
         <!-- ==================================================
              TIMETABLE EXISTS
              ================================================== -->
 
-        else
+        @if (
+            Model.Items != null &&
+            Model.Items.Count > 0
+        )
         {
-
             <div class="teacher-grid-scroll">
 
 
@@ -635,7 +661,6 @@
                                 hour++
                             )
                             {
-
                                 DateTime start =
                                     DateTime.Today
                                         .AddHours(
@@ -654,7 +679,9 @@
 
                                     <span class="time-start">
 
-                                        @start.ToString("hh:mm tt")
+                                        @start.ToString(
+                                            "hh:mm tt"
+                                        )
 
                                     </span>
 
@@ -668,13 +695,14 @@
 
                                     <span class="time-end">
 
-                                        @end.ToString("hh:mm tt")
+                                        @end.ToString(
+                                            "hh:mm tt"
+                                        )
 
                                     </span>
 
 
                                 </th>
-
                             }
 
 
@@ -697,7 +725,6 @@
                             in days
                         )
                         {
-
                             DateTime? actualDate =
                                 null;
 
@@ -712,23 +739,27 @@
                                 Model.WeekStart.HasValue
                             )
                             {
+                                DateTime weekStart =
+                                    Model.WeekStart
+                                        .Value
+                                        .Date;
+
 
                                 int dayOffset =
                                     (
                                         (int)day -
-                                        (int)DayOfWeek.Monday +
+                                        (int)weekStart.DayOfWeek +
                                         7
                                     )
                                     % 7;
 
 
                                 actualDate =
-                                    Model.WeekStart
-                                        .Value
-                                        .Date
+                                    weekStart
                                         .AddDays(
                                             dayOffset
-                                        );
+                                        )
+                                        .Date;
                             }
 
 
@@ -755,7 +786,6 @@
                                         actualDate.HasValue
                                     )
                                     {
-
                                         <small class="teacher-day-date">
 
                                             @actualDate.Value.ToString(
@@ -763,7 +793,6 @@
                                             )
 
                                         </small>
-
                                     }
 
 
@@ -783,7 +812,6 @@
                                     hour++
                                 )
                                 {
-
                                     List<TeacherTimetableItemViewModel>
                                         cellItems =
                                             Model.Items
@@ -808,7 +836,6 @@
                                             in cellItems
                                         )
                                         {
-
                                             string colourClass;
 
 
@@ -825,10 +852,8 @@
                                                 )
                                             )
                                             {
-
                                                 colourClass =
                                                     "replacement";
-
                                             }
 
 
@@ -844,10 +869,8 @@
                                                 )
                                             )
                                             {
-
                                                 colourClass =
                                                     "cancelled";
-
                                             }
 
 
@@ -857,10 +880,8 @@
 
                                             else
                                             {
-
                                                 colourClass =
                                                     "subject-color-5 normal-subject";
-
                                             }
 
 
@@ -873,7 +894,9 @@
 
 
 
-                                                <!-- STATUS BADGE -->
+                                                <!-- ==================================
+                                                     REPLACEMENT BADGE
+                                                     ================================== -->
 
                                                 @if (
                                                     string.Equals(
@@ -883,15 +906,20 @@
                                                     )
                                                 )
                                                 {
-
                                                     <span class="teacher-status-badge replacement-badge">
 
                                                         Replacement
 
                                                     </span>
-
                                                 }
-                                                else if (
+
+
+
+                                                <!-- ==================================
+                                                     CANCELLED BADGE
+                                                     ================================== -->
+
+                                                @if (
                                                     string.Equals(
                                                         item.Status,
                                                         "Cancelled",
@@ -899,18 +927,18 @@
                                                     )
                                                 )
                                                 {
-
                                                     <span class="teacher-status-badge cancelled-badge">
 
                                                         Cancelled
 
                                                     </span>
-
                                                 }
 
 
 
-                                                <!-- COURSE -->
+                                                <!-- ==================================
+                                                     COURSE
+                                                     ================================== -->
 
                                                 <span class="class-course-name">
 
@@ -920,21 +948,29 @@
 
 
 
-                                                <!-- TIME -->
+                                                <!-- ==================================
+                                                     TIME
+                                                     ================================== -->
 
                                                 <span class="class-time">
 
-                                                    @(item.StartTime.ToString(@"hh\:mm"))
+                                                    @(item.StartTime.ToString(
+                                                        @"hh\:mm"
+                                                    ))
 
                                                     -
 
-                                                    @(item.EndTime.ToString(@"hh\:mm"))
+                                                    @(item.EndTime.ToString(
+                                                        @"hh\:mm"
+                                                    ))
 
                                                 </span>
 
 
 
-                                                <!-- CLASS -->
+                                                <!-- ==================================
+                                                     CLASS
+                                                     ================================== -->
 
                                                 <span class="class-group">
 
@@ -944,7 +980,9 @@
 
 
 
-                                                <!-- ROOM -->
+                                                <!-- ==================================
+                                                     ROOM
+                                                     ================================== -->
 
                                                 <span class="class-room">
 
@@ -956,7 +994,9 @@
 
 
 
-                                                <!-- CLASS TYPE -->
+                                                <!-- ==================================
+                                                     CLASS TYPE
+                                                     ================================== -->
 
                                                 <span class="class-type">
 
@@ -966,14 +1006,15 @@
 
 
 
-                                                <!-- DATE -->
+                                                <!-- ==================================
+                                                     DATE
+                                                     ================================== -->
 
                                                 @if (
                                                     item.OccurrenceDate
                                                         .HasValue
                                                 )
                                                 {
-
                                                     <span class="class-room">
 
                                                         @item.OccurrenceDate
@@ -983,12 +1024,13 @@
                                                             )
 
                                                     </span>
-
                                                 }
 
 
 
-                                                <!-- REASON -->
+                                                <!-- ==================================
+                                                     REASON
+                                                     ================================== -->
 
                                                 @if (
                                                     !string.IsNullOrWhiteSpace(
@@ -996,28 +1038,23 @@
                                                     )
                                                 )
                                                 {
-
                                                     <span class="teacher-class-reason">
 
                                                         @item.Reason
 
                                                     </span>
-
                                                 }
 
 
                                             </div>
-
                                         }
 
 
                                     </td>
-
                                 }
 
 
                             </tr>
-
                         }
 
 
@@ -1028,7 +1065,6 @@
 
 
             </div>
-
         }
 
 

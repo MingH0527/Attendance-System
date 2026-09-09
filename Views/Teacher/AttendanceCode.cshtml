@@ -1,8 +1,35 @@
 ﻿@model WebAndMobile.Models.TeacherAttendanceCodeViewModel
+@using WebAndMobile.Models
+@using System.Globalization
 
 @{
-    ViewData["Title"] = "Attendance Code";
+    ViewData["Title"] =
+        "Attendance Code";
+
+
+    bool selectedIsToday =
+        Model.SelectedDate.Date ==
+        DateTime.Today;
+
+
+    string selectedDayTitle =
+        selectedIsToday
+
+            ? "Today"
+
+            : Model.SelectedDate.ToString(
+                "dddd",
+                CultureInfo.InvariantCulture
+            );
+
+
+    string selectedFullDate =
+        Model.SelectedDate.ToString(
+            "dd MMMM yyyy",
+            CultureInfo.InvariantCulture
+        );
 }
+
 
 <link rel="stylesheet"
       href="~/css/teacherhome.css"
@@ -15,202 +42,559 @@
 
 <div class="teacher-dashboard">
 
-    <header class="teacher-header">
 
-        <div>
+    <!-- ==================================================
+         HEADER
+         ================================================== -->
+
+    <header class="teacher-header attendance-code-header">
+
+
+        <div class="attendance-header-left">
+
 
             <a asp-controller="Teacher"
                asp-action="Index"
                class="attendance-back">
+
                 ← Back to Dashboard
+
             </a>
 
+
             <p class="teacher-role">
-                Teacher Portal
+
+                TEACHER PORTAL
+
             </p>
+
 
             <h1>
-                Generate Attendance Code
+
+                Attendance Code
+
             </h1>
 
-            <p>
-                Generate attendance codes for today's classes.
+
+            <p class="attendance-header-description">
+
+                Generate attendance codes and
+                manage student attendance.
+
             </p>
+
 
         </div>
 
 
+        <!-- ==================================================
+             VIEW TIMETABLE
+             ================================================== -->
+
         <a asp-controller="Teacher"
            asp-action="Timetable"
-           class="attendance-timetable-link">
-            📅 View Timetable
+           class="attendance-timetable-button">
+
+
+            <span class="attendance-timetable-icon">
+
+                📅
+
+            </span>
+
+
+            <span>
+
+                View Timetable
+
+            </span>
+
+
         </a>
+
 
     </header>
 
 
+
+    <!-- ==================================================
+         ERROR
+         ================================================== -->
     @if (TempData["AttendanceError"] != null)
     {
         <div class="attendance-message error">
+
             ⚠ @TempData["AttendanceError"]
+
         </div>
     }
 
 
+
+    <!-- ==================================================
+         SUCCESS
+         ================================================== -->
     @if (TempData["AttendanceSuccess"] != null)
     {
         <div class="attendance-message success">
+
             ✓ @TempData["AttendanceSuccess"]
+
         </div>
     }
 
 
+
+    <!-- ==================================================
+         MAIN CARD
+         ================================================== -->
+
     <section class="attendance-code-card">
+
+
+        <!-- ==================================================
+             CARD HEADER
+             ================================================== -->
 
         <div class="attendance-code-heading">
 
+
             <div>
 
+
                 <h2>
-                    Today's Classes
+
+                    Attendance Classes
+
                 </h2>
 
+
                 <p>
-                    @Model.Date.ToString("dddd, dd MMMM yyyy")
+
+                    Current semester attendance history
+
                 </p>
+
 
             </div>
 
 
-            <span class="attendance-count">
-                @Model.Classes.Count
-            </span>
+            <div class="attendance-summary-badges">
+
+
+                <span class="attendance-count">
+
+                    @Model.TotalItems
+                    Total
+
+                </span>
+
+
+            </div>
+
 
         </div>
 
 
+
+        <!-- ==================================================
+             DATE NAVIGATION
+             ================================================== -->
+        @if (Model.AvailableDates.Count > 0)
+        {
+            <div class="attendance-date-navigation">
+
+
+                <div class="attendance-date-scroll">
+
+
+                    @foreach (
+                        DateTime attendanceDate
+                        in Model.AvailableDates
+                    )
+                    {
+                        bool isSelected =
+                            attendanceDate.Date ==
+                            Model.SelectedDate.Date;
+
+
+                        bool isToday =
+                            attendanceDate.Date ==
+                            DateTime.Today;
+
+
+                        string dayLabel =
+                            attendanceDate.ToString(
+                                "ddd",
+                                CultureInfo.InvariantCulture
+                            );
+
+
+                        string dateLabel =
+                            attendanceDate.ToString(
+                                "dd/MM"
+                            );
+
+
+                        <a asp-controller="Teacher"
+                           asp-action="AttendanceCode"
+                           asp-route-date="@attendanceDate.ToString("yyyy-MM-dd")"
+                           class="attendance-date-tab @(isSelected ? "active" : "")">
+
+
+                            @if (isToday)
+                            {
+                                <span class="date-tab-today">
+
+                                    Today
+
+                                </span>
+
+
+                                <span class="date-tab-divider">
+
+                                    ·
+
+                                </span>
+                            }
+
+
+                            <span>
+
+                                @dayLabel
+                                @dateLabel
+
+                            </span>
+
+
+                        </a>
+                    }
+
+
+                </div>
+
+
+            </div>
+        }
+
+
+
+        <!-- ==================================================
+             SELECTED DAY HEADER
+             ================================================== -->
+
+        <div class="selected-attendance-day">
+
+
+            <div>
+
+
+                <span class="selected-day-label">
+
+                    @(selectedIsToday
+                        ? "TODAY"
+                        : selectedDayTitle.ToUpperInvariant())
+
+                </span>
+
+
+                <h3>
+
+                    @selectedDayTitle,
+                    @selectedFullDate
+
+                </h3>
+
+
+            </div>
+
+
+            <span class="selected-day-count">
+
+                @Model.Classes.Count
+                @(Model.Classes.Count == 1
+                    ? "Class"
+                    : "Classes")
+
+            </span>
+
+
+        </div>
+
+
+
+        <!-- ==================================================
+             NO CLASS ON SELECTED DATE
+             ================================================== -->
         @if (Model.Classes.Count == 0)
         {
             <div class="attendance-code-empty">
 
-                <span>
-                    ✨
+
+                <span class="attendance-code-empty-icon">
+
+                    📅
+
                 </span>
 
+
                 <strong>
-                    No classes today
+
+                    No classes on this date
+
                 </strong>
 
+
                 <p>
-                    You do not have any classes scheduled today.
+
+                    There are no attendance classes
+                    scheduled for
+                    @Model.SelectedDate.ToString(
+                        "dd MMMM yyyy",
+                        CultureInfo.InvariantCulture
+                    ).
+
                 </p>
+
 
             </div>
         }
         else
         {
+
+            <!-- ==================================================
+                 CLASS LIST
+                 ================================================== -->
+
             <div class="attendance-class-list">
 
-                @foreach (var item in Model.Classes)
+
+                @foreach (
+                    TeacherAttendanceCodeItemViewModel item
+                    in Model.Classes
+                )
                 {
                     string classStyle =
-                        item.Status == "Replacement"
+                        string.Equals(
+                            item.Status,
+                            "Replacement",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+
                             ? "replacement"
+
                             : "";
 
 
                     <div class="attendance-class-item @classStyle">
 
 
+
+                        <!-- ======================================
+                             TIME
+                             ====================================== -->
+
                         <div class="attendance-class-time">
 
+
                             <strong>
-                                @item.StartTime.ToString(@"hh\:mm")
+
+                                @(
+                                    item.StartTime
+                                        .ToString(@"hh\:mm")
+                                )
+
                             </strong>
 
+
                             <span>
-                                @item.EndTime.ToString(@"hh\:mm")
+
+                                @(
+                                    item.EndTime
+                                        .ToString(@"hh\:mm")
+                                )
+
                             </span>
+
 
                         </div>
 
 
+
+                        <!-- ======================================
+                             CLASS INFO
+                             ====================================== -->
+
                         <div class="attendance-class-info">
 
-                            <div>
 
-                                <strong>
+                            <div class="attendance-class-title-row">
+
+
+                                <strong class="attendance-course-name">
+
                                     @item.CourseName
+
                                 </strong>
 
-                                @if (item.Status == "Replacement")
+
+                                @if (
+                                    string.Equals(
+                                        item.Status,
+                                        "Replacement",
+                                        StringComparison.OrdinalIgnoreCase
+                                    )
+                                )
                                 {
                                     <span class="replacement-label">
+
                                         Replacement
+
                                     </span>
                                 }
+
 
                             </div>
 
 
-                            <span>
+
+                            <span class="attendance-class-meta">
+
                                 @item.ClassName
-                                ·
+
+
+                                <span class="attendance-meta-dot">
+
+                                    ·
+
+                                </span>
+
+
                                 @item.RoomName
+
                             </span>
 
 
+
+                            <span class="attendance-class-date">
+
+                                📅
+
+                                @item.ClassDate.ToString(
+                                    "dddd, dd/MM/yyyy",
+                                    CultureInfo.InvariantCulture
+                                )
+
+                            </span>
+
+
+
+                            <!-- ==================================
+                                 MANUAL ATTENDANCE
+                                 ================================== -->
                             @if (item.NeedsManualAttendance)
                             {
                                 <div class="manual-attendance-warning">
 
-                                    <strong>
-                                        ⚠ Attendance code was not generated
-                                    </strong>
+
+                                    <div class="manual-warning-title">
+
+
+                                        <span class="manual-warning-icon">
+
+                                            ⚠
+
+                                        </span>
+
+
+                                        <strong>
+
+                                            Attendance code was not generated.
+
+                                        </strong>
+
+
+                                    </div>
+
 
                                     <span>
+
                                         The class has ended.
-                                        Please complete the attendance manually.
+                                        Please use View Students
+                                        to complete attendance manually.
+
                                     </span>
+
 
                                 </div>
                             }
 
+
                         </div>
 
+
+
+                        <!-- ======================================
+                             ACTION
+                             ====================================== -->
 
                         <div class="attendance-code-action">
 
 
-                            @* ACTIVE CODE / GENERATE CODE *@
 
-                            @if (!string.IsNullOrWhiteSpace(item.ActiveCode))
+                            <!-- ==================================
+                                 ACTIVE CODE
+                                 ================================== -->
+                            @if (
+                                                            !string.IsNullOrWhiteSpace(
+                                                                item.ActiveCode
+                                                            )
+                                                        )
                             {
                                 <div class="active-attendance-code">
 
+
                                     <small>
-                                        Active Code
+
+                                        ACTIVE CODE
+
                                     </small>
 
+
                                     <strong>
+
                                         @item.ActiveCode
+
                                     </strong>
 
-                                    @if (item.ExpiresAt != null)
+
+                                    @if (item.ExpiresAt.HasValue)
                                     {
                                         <span>
+
                                             Expires
-                                            @item.ExpiresAt.Value.ToString("HH:mm")
+
+                                            @item.ExpiresAt.Value
+                                            .ToString("HH:mm")
+
                                         </span>
                                     }
+
 
                                 </div>
                             }
                             else
                             {
+
+                                <!-- ==============================
+                                     GENERATE CODE
+                                     ============================== -->
+
                                 <form asp-controller="Attendance"
                                       asp-action="GenerateCode"
-                                      method="post">
+                                      method="post"
+                                      class="generate-code-form">
+
 
                                     @Html.AntiForgeryToken()
 
@@ -220,7 +604,11 @@
                                            value="@item.TimetableId" />
 
 
-                                    @if (!string.IsNullOrWhiteSpace(item.ReplacementId))
+                                    @if (
+                                        !string.IsNullOrWhiteSpace(
+                                            item.ReplacementId
+                                        )
+                                    )
                                     {
                                         <input type="hidden"
                                                name="replacementId"
@@ -233,7 +621,20 @@
                                         <button type="submit"
                                                 class="generate-code-button">
 
-                                            Generate Code
+
+                                            <span class="generate-code-icon">
+
+                                                #
+
+                                            </span>
+
+
+                                            <span>
+
+                                                Generate Code
+
+                                            </span>
+
 
                                         </button>
                                     }
@@ -243,12 +644,29 @@
                                                 class="generate-code-button disabled"
                                                 disabled>
 
-                                            Generate Code
+
+                                            <span class="generate-code-icon">
+
+                                                #
+
+                                            </span>
+
+
+                                            <span>
+
+                                                Generate Code
+
+                                            </span>
+
 
                                         </button>
 
 
-                                        @if (!string.IsNullOrWhiteSpace(item.DisabledReason))
+                                        @if (
+                                            !string.IsNullOrWhiteSpace(
+                                                item.DisabledReason
+                                            )
+                                        )
                                         {
                                             <small class="generate-disabled-reason">
 
@@ -258,22 +676,38 @@
                                         }
                                     }
 
+
                                 </form>
                             }
 
 
-                            @* VIEW STUDENTS *@
 
+                            <!-- ==================================
+                                 VIEW STUDENTS
+                                 ================================== -->
                             @if (item.CanViewStudents)
                             {
                                 <a asp-controller="Attendance"
                                    asp-action="Manage"
                                    asp-route-timetableId="@item.TimetableId"
-                                   asp-route-date="@Model.Date.ToString("yyyy-MM-dd")"
+                                   asp-route-date="@item.ClassDate.ToString("yyyy-MM-dd")"
                                    asp-route-replacementId="@item.ReplacementId"
                                    class="view-students-button">
 
-                                    👥 View Students
+
+                                    <span class="view-students-icon">
+
+                                        👥
+
+                                    </span>
+
+
+                                    <span>
+
+                                        View Students
+
+                                    </span>
+
 
                                 </a>
                             }
@@ -283,42 +717,67 @@
                                         class="view-students-button disabled"
                                         disabled>
 
-                                    👥 View Students
+
+                                    <span class="view-students-icon">
+
+                                        👥
+
+                                    </span>
+
+
+                                    <span>
+
+                                        View Students
+
+                                    </span>
+
 
                                 </button>
 
 
-                                @if (DateTime.Now.TimeOfDay < item.StartTime)
+                                @if (
+                                    !item.HasGeneratedCode &&
+                                    item.CanGenerate
+                                )
                                 {
-                                    <small class="generate-disabled-reason">
-
-                                        Available at
-                                        @item.StartTime.ToString(@"hh\:mm").
-
-                                    </small>
-                                }
-                                else if (!item.HasGeneratedCode)
-                                {
-                                    <small class="generate-disabled-reason">
+                                    <small class="view-students-reason">
 
                                         Generate the attendance code first.
                                         If no code is generated,
-                                        View Students will be available after the class ends.
+                                        this button will become available
+                                        after the class ends.
 
                                     </small>
                                 }
+                                else if (
+                                    !item.HasGeneratedCode &&
+                                    !item.NeedsManualAttendance
+                                )
+                                {
+                                    <small class="view-students-reason">
 
+                                        Available after the class starts
+                                        if a code is generated,
+                                        or after the class ends
+                                        for manual attendance.
+
+                                    </small>
+                                }
                             }
 
 
                         </div>
 
+
                     </div>
                 }
+
 
             </div>
         }
 
+
     </section>
+
 
 </div>

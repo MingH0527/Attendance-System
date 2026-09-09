@@ -61,12 +61,42 @@ public class TeacherTimetableItemViewModel
 }
 
 
+// ==================================================
+// ATTENDANCE CODE
+// ==================================================
+
 public class TeacherAttendanceCodeViewModel
 {
+    // Currently selected attendance date
     public DateTime Date { get; set; }
 
+    public DateTime SelectedDate { get; set; }
+
+    // All dates that can be selected.
+    // Newest date first.
+    public List<DateTime> AvailableDates { get; set; } =
+        new();
+
+    // Only classes belonging to SelectedDate
     public List<TeacherAttendanceCodeItemViewModel> Classes { get; set; } =
         new();
+
+    // Total number of class occurrences
+    // from semester start until today.
+    public int TotalItems { get; set; }
+
+    // ==================================================
+    // OLD PAGINATION PROPERTIES
+    //
+    // Keep them so nothing else breaks.
+    // They are no longer used by AttendanceCode view.
+    // ==================================================
+
+    public int CurrentPage { get; set; } = 1;
+
+    public int PageSize { get; set; } = 5;
+
+    public int TotalPages { get; set; }
 }
 
 
@@ -76,6 +106,9 @@ public class TeacherAttendanceCodeItemViewModel
         string.Empty;
 
     public string? ReplacementId { get; set; }
+
+    // Each occurrence has its own actual date
+    public DateTime ClassDate { get; set; }
 
     public string CourseName { get; set; } =
         string.Empty;
@@ -90,6 +123,7 @@ public class TeacherAttendanceCodeItemViewModel
 
     public TimeSpan EndTime { get; set; }
 
+    // Normal / Replacement
     public string Status { get; set; } =
         "Normal";
 
@@ -101,22 +135,17 @@ public class TeacherAttendanceCodeItemViewModel
 
     public DateTime? ExpiresAt { get; set; }
 
-    // True when teacher generated a real attendance code.
     public bool HasGeneratedCode { get; set; }
 
-    // If code was generated:
-    // teacher can view students once class starts.
-    //
-    // If code was NOT generated:
-    // teacher can only view students after class ends
-    // to complete attendance manually.
     public bool CanViewStudents { get; set; }
 
-    // True only when the class has ended
-    // and the teacher never generated a code.
     public bool NeedsManualAttendance { get; set; }
 }
 
+
+// ==================================================
+// MANAGE ATTENDANCE
+// ==================================================
 
 public class TeacherManageAttendanceViewModel
 {
@@ -142,7 +171,6 @@ public class TeacherManageAttendanceViewModel
 
     public bool ClassEnded { get; set; }
 
-    // True if teacher generated an attendance code for this lesson.
     public bool HasGeneratedCode { get; set; }
 
     public List<TeacherManageAttendanceStudentViewModel> Students { get; set; } =
@@ -168,8 +196,6 @@ public class TeacherManageAttendanceStudentViewModel
     public string Status { get; set; } =
         "Absent";
 
-    // Database still stores this in AttendanceRecord.Description.
-    // On the page it is displayed as "Reason".
     public string? Description { get; set; }
 
     public bool CanEdit { get; set; }
