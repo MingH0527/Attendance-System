@@ -518,29 +518,83 @@
                             in days
                         )
                         {
+                            DateTime? actualDate =
+                                null;
+
+
+                            // ==========================================
+                            // REAL DATE FOR SPECIFIC WEEK
+                            //
+                            // Weekly Template:
+                            // Monday
+                            //
+                            // Specific Week:
+                            // Monday
+                            // 07/09/2026
+                            // ==========================================
+
+                            if (
+                                !Model.IsTemplate &&
+                                Model.WeekStart.HasValue
+                            )
+                            {
+                                int dayOffset =
+                                    (
+                                        (int)day -
+                                        (int)DayOfWeek.Monday +
+                                        7
+                                    )
+                                    % 7;
+
+
+                                actualDate =
+                                    Model.WeekStart
+                                        .Value
+                                        .Date
+                                        .AddDays(
+                                            dayOffset
+                                        );
+                            }
+
+
                             <tr>
 
 
-                                <!-- DAY -->
+                                <!-- ==================================
+                                     DAY + REAL DATE
+                                     ================================== -->
 
                                 <th class="teacher-day-label">
 
-                                    <span>
+                                    <span class="teacher-day-name">
                                         @day
                                     </span>
+
+
+                                    @if (
+                                        actualDate.HasValue
+                                    )
+                                    {
+                                        <small class="teacher-day-date">
+
+                                            @actualDate.Value.ToString("dd/MM/yyyy")
+
+                                        </small>
+                                    }
 
                                 </th>
 
 
 
                                 <!-- HOURS -->
+
                                 @for (
-                                                                    int hour =
-                                                                        startHour;
-                                                                    hour <
-                                                                        endHour;
-                                                                    hour++
-                                                                )
+                                    int hour =
+                                        startHour;
+                                    hour <
+                                        endHour;
+                                    hour++
+                                )
                                 {
                                     List<TeacherTimetableItemViewModel>
                                         cellItems =
@@ -594,6 +648,7 @@
                                             {
                                                 // All normal subjects
                                                 // use the same colour.
+
                                                 colourClass =
                                                     "subject-color-5 normal-subject";
                                             }
@@ -604,13 +659,14 @@
 
 
                                                 <!-- STATUS BADGE -->
+
                                                 @if (
-                                                                                                    string.Equals(
-                                                                                                        item.Status,
-                                                                                                        "Replacement",
-                                                                                                        StringComparison.OrdinalIgnoreCase
-                                                                                                    )
-                                                                                                )
+                                                    string.Equals(
+                                                        item.Status,
+                                                        "Replacement",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    )
+                                                )
                                                 {
                                                     <span class="teacher-status-badge replacement-badge">
                                                         Replacement
@@ -642,9 +698,11 @@
                                                 <!-- TIME -->
 
                                                 <span class="class-time">
+
                                                     @item.StartTime.ToString(@"hh\:mm")
                                                     -
                                                     @item.EndTime.ToString(@"hh\:mm")
+
                                                 </span>
 
 
@@ -677,14 +735,17 @@
 
 
                                                 <!-- DATE -->
+
                                                 @if (
-                                                                                                    item.OccurrenceDate
-                                                                                                        .HasValue
-                                                                                                )
+                                                    item.OccurrenceDate
+                                                        .HasValue
+                                                )
                                                 {
                                                     <span class="class-room">
 
-                                                        @item.OccurrenceDate.Value.ToString("dd MMM yyyy")
+                                                        @item.OccurrenceDate
+                                                            .Value
+                                                            .ToString("dd MMM yyyy")
 
                                                     </span>
                                                 }
@@ -692,11 +753,12 @@
 
 
                                                 <!-- REASON -->
+
                                                 @if (
-                                                                                                    !string.IsNullOrWhiteSpace(
-                                                                                                        item.Reason
-                                                                                                    )
-                                                                                                )
+                                                    !string.IsNullOrWhiteSpace(
+                                                        item.Reason
+                                                    )
+                                                )
                                                 {
                                                     <span class="teacher-class-reason">
                                                         @item.Reason
