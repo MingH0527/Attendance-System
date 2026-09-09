@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using WebAndMobile.Models;
 using WebAndMobile.Services;
 using WebAndMobile.ViewModels;
+using WebAndMobile.Filters;
 
 namespace WebAndMobile.Controllers;
 
 [Authorize(Roles = "Teacher")]
+[RequireTeacherProfile]
 public class TeacherController : Controller
 {
     private readonly DB db;
