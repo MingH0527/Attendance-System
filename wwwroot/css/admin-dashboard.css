@@ -770,3 +770,96 @@
         margin-right: 7px;
         font-weight: 700;
     }
+
+/* =========================================================
+   Chart tooltip
+   ========================================================= */
+
+.apd-tip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    max-width: 260px;
+    padding: 9px 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 11px;
+    background: #101a2b;
+    box-shadow: 0 10px 30px rgba(9, 18, 33, .34);
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1.35;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .13s ease;
+}
+
+    .apd-tip.is-open {
+        opacity: 1;
+    }
+
+.apd-tip-title {
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+
+.apd-tip-value {
+    color: #b8c6d8;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- hover affordances ---------- */
+
+/* Bars lift slightly so it is obvious which one is being read. */
+.apd-bar-col {
+    cursor: default;
+}
+
+    .apd-bar-col:hover .apd-bar-fill {
+        filter: brightness(1.12);
+    }
+
+    .apd-bar-col:hover .apd-bar-track {
+        background: #e7ecf3;
+    }
+
+/* Donut slices thicken on hover. */
+.apd-donut-slice {
+    cursor: default;
+    transition: stroke-width .14s ease, opacity .14s ease;
+}
+
+.apd-donut:hover .apd-donut-slice {
+    opacity: .55;
+}
+
+.apd-donut .apd-donut-slice:hover {
+    stroke-width: 28;
+    opacity: 1;
+}
+
+.apd-legend li {
+    cursor: default;
+    border-radius: 8px;
+    transition: background-color .14s ease;
+}
+
+    .apd-legend li:hover {
+        background: #f4f8fb;
+    }
+
+.apd-hbars li {
+    cursor: default;
+    border-radius: 8px;
+    transition: background-color .14s ease;
+}
+
+    .apd-hbars li:hover {
+        background: #f4f8fb;
+    }
+
+        .apd-hbars li:hover .apd-hbar-fill {
+            filter: brightness(1.1);
+        }

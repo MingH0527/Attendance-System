@@ -893,3 +893,439 @@ html.dark {
         background: var(--dk-accent);
         color: #0d1521;
     }
+
+
+    /* =========================================================
+   Round 7 - program registration + student timetable
+   ========================================================= */
+
+    /* ---- Program / Class Registration (bare shell) ---- */
+
+    html.dark .program-page {
+        background: var(--dk-bg);
+    }
+
+    html.dark .program-container,
+    html.dark .program-form {
+        background: var(--dk-surface);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+        html.dark .program-form h1,
+        html.dark .program-container h1,
+        html.dark .form-group label,
+        html.dark .current-registration__value {
+            color: var(--dk-text);
+        }
+
+        html.dark .program-form .subtitle,
+        html.dark .current-registration__label {
+            color: var(--dk-muted);
+        }
+
+        html.dark .program-form select,
+        html.dark .program-form input {
+            background: var(--dk-surface-2);
+            border-color: var(--dk-border);
+            color: var(--dk-text);
+        }
+
+            /* A disabled select must still read as text, not vanish. */
+            html.dark .program-form select:disabled {
+                background: #131b28;
+                color: #7d889a;
+            }
+
+    html.dark .current-registration {
+        background: var(--dk-surface-2);
+        border-color: var(--dk-border);
+    }
+
+    html.dark .current-registration__tag,
+    html.dark .course-option {
+        background: var(--dk-raised);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    /* The amber banner is .profile-required-message (the outer box);
+   .profile-required-content is just the text wrapper inside it, so
+   giving that a background painted a dark block behind the words. */
+
+    html.dark .profile-required-message {
+        background: #33290f;
+        border-color: #5c4a1c;
+        color: #f3dfae;
+    }
+
+    html.dark .profile-required-content,
+    html.dark .profile-required-content strong {
+        background: transparent;
+        color: #f3dfae;
+    }
+
+        html.dark .profile-required-content span {
+            color: #d8c391;
+        }
+
+    html.dark .back-link {
+        color: var(--dk-accent);
+    }
+
+    /* ---- Student timetable week view ----------------------------------
+   Corrected class names: the lesson card is .subject-card (with
+   .replacement-card / .cancelled-card modifiers). ".subject-class" is
+   the small "DCS1" text line inside the card, not the card itself.
+   .day-cell sets its background with !important, so this must too. */
+
+    html.dark .student-timetable-page {
+        background: var(--dk-bg);
+    }
+
+    html.dark .current-view-card,
+    html.dark .timetable-legend,
+    html.dark .timetable-grid-wrapper,
+    html.dark .teacher-style-timetable,
+    html.dark .empty-timetable {
+        background: var(--dk-surface);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .current-view-left h1,
+    html.dark .current-view-left h2,
+    html.dark .legend-item,
+    html.dark .small-label {
+        color: var(--dk-text);
+    }
+
+    html.dark .week-select {
+        background: var(--dk-surface-2);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    /* ---- grid frame ---- */
+
+    html.dark .teacher-style-timetable th {
+        background: var(--dk-surface-2) !important;
+        border-color: var(--dk-border) !important;
+        color: var(--dk-text) !important;
+    }
+
+    html.dark .day-cell {
+        background: var(--dk-surface-2) !important;
+        border-color: var(--dk-border) !important;
+        color: var(--dk-text) !important;
+    }
+
+        html.dark .day-cell strong,
+        html.dark .day-cell span,
+        html.dark .day-cell div {
+            color: var(--dk-text) !important;
+        }
+
+    html.dark .schedule-cell {
+        background: var(--dk-surface) !important;
+        border-color: var(--dk-border) !important;
+    }
+
+    html.dark .time-column strong,
+    html.dark .time-column span,
+    html.dark .time-column div {
+        color: var(--dk-text) !important;
+    }
+
+    html.dark .teacher-style-timetable td,
+    html.dark .teacher-style-timetable th {
+        border-color: var(--dk-border) !important;
+    }
+
+    /* ---- lesson cards ---- */
+
+    html.dark .subject-card {
+        background: #12313a !important;
+        border-color: #1e5464 !important;
+        border-left-color: #37a4bd !important;
+    }
+
+    html.dark .replacement-card {
+        background: #241f42 !important;
+        border-color: #3f3878 !important;
+        border-left-color: #8f7dff !important;
+    }
+
+    html.dark .cancelled-card {
+        background: #3a1a1e !important;
+        border-color: #6d2c33 !important;
+        border-left-color: #e0616e !important;
+    }
+
+    /* Card text: two levels, so the subject name still leads. */
+
+    html.dark .subject-name,
+    html.dark .subject-time {
+        color: #f1f6fb !important;
+    }
+
+    html.dark .subject-class,
+    html.dark .subject-room,
+    html.dark .subject-date,
+    html.dark .subject-reason {
+        color: #b3c2d1 !important;
+    }
+
+    /* The SCHOOL / TUITION tag sits on a translucent white in the light
+   theme, which turns into a near-solid block on a dark card. */
+    html.dark .subject-type {
+        background: rgba(255, 255, 255, 0.10) !important;
+        color: #dce6f2 !important;
+    }
+
+    /* Status pills keep their meaning at dark-friendly lightness. */
+    html.dark .subject-status {
+        color: #f1f6fb !important;
+    }
+
+    html.dark .cancelled-status {
+        background: #6d2c33 !important;
+        color: #ffd9dc !important;
+    }
+
+    html.dark .replacement-status {
+        background: #3f3878 !important;
+        color: #ded7ff !important;
+    }
+
+    /* ---- recent changes panel ---- */
+
+    html.dark .recent-changes {
+        background: #2e250f;
+        border-color: #5c4a1c;
+        color: var(--dk-text);
+    }
+
+    html.dark .changes-title,
+    html.dark .change-item strong,
+    html.dark .changes-count {
+        color: #f2cf80;
+    }
+
+    html.dark .change-content,
+    html.dark .change-item {
+        border-color: #5c4a1c;
+        color: var(--dk-text);
+    }
+
+        html.dark .change-content span,
+        html.dark .change-content div {
+            color: #dfe6ef;
+        }
+
+
+    /* =========================================================
+   Round 8 - facility booking calendar and time slots
+
+   In the light theme "available" is white and "selected" is the
+   app's near-black. On dark both of those invert in meaning:
+   white is the loudest thing on the page, and near-black is
+   invisible. So availability is signalled the other way round -
+   selected becomes the bright accent, unavailable recedes below
+   the card surface, and available sits in between with a clear
+   border.
+   ========================================================= */
+
+    html.dark .calendar-card,
+    html.dark .time-slot-grid {
+        background: var(--dk-surface);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .calendar-title,
+    html.dark .calendar-weekdays,
+    html.dark .calendar-weekdays span {
+        color: var(--dk-text);
+    }
+
+    /* ---------- calendar days ---------- */
+
+    html.dark .calendar-day.available {
+        background: var(--dk-surface-2);
+        border: 1px solid #46587a;
+        color: var(--dk-text);
+    }
+
+        html.dark .calendar-day.available:hover {
+            border-color: var(--dk-accent);
+            background: #26374f;
+        }
+
+    html.dark .calendar-day.unavailable {
+        background: #131b28;
+        border: 1px solid transparent;
+        color: #5d687a;
+    }
+
+    html.dark .calendar-day.selected {
+        background: var(--dk-accent);
+        border-color: var(--dk-accent);
+        color: #0d1521;
+    }
+
+    /* ---------- time slots ---------- */
+
+    html.dark .time-slot {
+        color: var(--dk-text);
+    }
+
+    html.dark .slot-available {
+        background: var(--dk-surface-2);
+        border: 1px solid #46587a;
+        color: var(--dk-text);
+    }
+
+        html.dark .slot-available:hover {
+            border-color: var(--dk-accent);
+            background: #26374f;
+        }
+
+    html.dark .slot-range {
+        background: #27405f;
+        border-color: #3c5a80;
+        color: #dbe7f7;
+    }
+
+    html.dark .slot-boundary {
+        background: var(--dk-accent);
+        border-color: var(--dk-accent);
+        color: #0d1521;
+    }
+
+    html.dark .slot-own-booking {
+        background: #3a2f14;
+        border: 1px solid #6d5a26;
+        color: #f0dfb4;
+    }
+
+    html.dark .slot-unavailable {
+        background: #131b28;
+        border: 1px solid transparent;
+        color: #5d687a;
+    }
+
+    html.dark .slot-booking-limit {
+        background: #18212f;
+        border: 1px dashed #4a5568;
+        color: #7d889a;
+    }
+
+    /* ---------- legends ---------- */
+
+    html.dark .legend,
+    html.dark .legend-item,
+    html.dark .legend span {
+        color: var(--dk-text);
+    }
+
+    html.dark .legend-dot.date-available,
+    html.dark .legend-box.slot-available {
+        background: var(--dk-surface-2);
+        border: 1px solid #46587a;
+    }
+
+    html.dark .legend-dot.date-selected,
+    html.dark .legend-box.slot-boundary {
+        background: var(--dk-accent);
+        border: 1px solid var(--dk-accent);
+    }
+
+    html.dark .legend-dot.date-unavailable,
+    html.dark .legend-box.slot-unavailable {
+        background: #131b28;
+        border: 1px solid #2b3648;
+    }
+
+    html.dark .legend-box.slot-range {
+        background: #27405f;
+        border: 1px solid #3c5a80;
+    }
+
+    html.dark .legend-box.slot-own-booking {
+        background: #3a2f14;
+        border: 1px solid #6d5a26;
+    }
+
+    html.dark .legend-box.slot-booking-limit {
+        background: #18212f;
+        border: 1px dashed #4a5568;
+    }
+
+    /* ---------- booking summary + confirm ---------- */
+
+    html.dark .booking-summary,
+    html.dark .summary-box,
+    html.dark .selected-info {
+        background: var(--dk-surface-2);
+        border-color: var(--dk-border);
+        color: var(--dk-text);
+    }
+
+    html.dark .confirm-booking-btn:disabled {
+        background: #37445c;
+        color: #9aa5b6;
+    }
+
+
+    /* ---------------------------------------------------------
+   Round 8b - the real time-slot state classes.
+
+   The legend swatches use .slot-* names, but the slots
+   themselves are styled with .time-slot.* and the selection
+   is applied at runtime as .selected-boundary /
+   .selected-range. Styling the legend names alone left the
+   actual selection invisible.
+   --------------------------------------------------------- */
+
+    html.dark .time-slot.available {
+        background: var(--dk-surface-2);
+        border-color: #46587a;
+        color: var(--dk-text);
+    }
+
+        html.dark .time-slot.available:hover {
+            border-color: var(--dk-accent);
+            background: #26374f;
+        }
+
+    html.dark .time-slot.selected-range {
+        background: #27405f;
+        border-color: #4d6f9c;
+        color: #e4eefc;
+    }
+
+    html.dark .time-slot.selected-boundary {
+        background: var(--dk-accent);
+        border-color: var(--dk-accent);
+        color: #0d1521;
+    }
+
+    html.dark .time-slot.unavailable {
+        background: #131b28;
+        border-color: #1d2635;
+        color: #5d687a;
+    }
+
+    html.dark .time-slot.own-booking,
+    html.dark .time-slot.cooldown {
+        background: #3a2f14;
+        border-color: #6d5a26;
+        color: #f0dfb4;
+    }
+
+    html.dark .time-slot.booking-limit {
+        background: #18212f;
+        border: 1px dashed #4a5568;
+        color: #7d889a;
+    }

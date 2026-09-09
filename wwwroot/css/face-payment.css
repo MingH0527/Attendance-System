@@ -3,3 +3,161 @@
 /* V2 payment method selection */
 .payment-choice-card{max-width:980px}.payment-method-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:26px 0}.payment-method-card{padding:24px;border:1px solid #dbe5f1;border-radius:22px;background:#fff;text-align:left;box-shadow:0 12px 28px rgba(15,23,42,.07)}.payment-method-card h2{margin:8px 0;font-size:22px}.payment-method-icon{width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:#eff6ff;font-size:27px}.qr-method-card{border-color:#bfdbfe;background:linear-gradient(180deg,#fff,#f8fbff)}.security-mini-status{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.security-mini-status span{padding:8px 10px;border-radius:999px;font-size:12px;font-weight:750}.security-mini-status .ok{background:#ecfdf5;color:#047857}.security-mini-status .missing{background:#fff7ed;color:#c2410c}.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.wallet-option{padding:14px 8px;border:2px solid #e2e8f0;border-radius:15px;text-align:center;cursor:pointer;transition:.2s;background:#fff}.wallet-option:hover,.wallet-option.selected{border-color:#2563eb;transform:translateY(-2px);box-shadow:0 8px 18px rgba(37,99,235,.12)}.wallet-option input{position:absolute;opacity:0;pointer-events:none}.wallet-emoji{display:block;font-size:25px;margin-bottom:5px}.field-group small{display:block;margin-top:6px;color:#64748b;font-size:12px}.qr-debug{margin-top:14px;text-align:left}.qr-debug code{display:block;margin-top:8px;padding:10px;overflow-wrap:anywhere;border-radius:10px;background:#f1f5f9;font-size:11px}.mobile-result-box{margin:18px 0;padding:14px;display:grid;grid-template-columns:1fr auto;gap:10px;border-radius:15px;background:#f8fafc;text-align:left}.already-paid-icon{width:76px;height:76px;margin:0 auto 18px;display:grid;place-items:center;border-radius:50%;background:#d1fae5;color:#047857;font-size:40px;font-weight:900}.already-paid-screen{border:2px solid #a7f3d0}
 @media(max-width:780px){.payment-method-grid{grid-template-columns:1fr}.wallet-grid{grid-template-columns:1fr}.payment-choice-card{max-width:620px}}
+
+
+/* Hide amount number arrows */
+.amount-input::-webkit-inner-spin-button,
+.amount-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.amount-input {
+    -moz-appearance: textfield;
+}
+
+/* ==================================================
+   PAYMENT CANCELLED PAGE
+================================================== */
+
+.payment-cancel-page {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: linear-gradient( 135deg, #f5f8fb, #edf4fb );
+}
+
+
+.payment-cancel-card {
+    width: 100%;
+    max-width: 520px;
+    padding: 42px 38px;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #e1e8f0;
+    border-radius: 22px;
+    box-shadow: 0 16px 45px rgba(38, 61, 92, 0.10);
+}
+
+
+/* Cancel icon */
+
+.payment-cancel-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff0f0;
+    color: #dc3f4f;
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+
+/* Small label */
+
+.payment-cancel-eyebrow {
+    margin: 0 0 8px;
+    color: #2b6fe8;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+}
+
+
+.payment-cancel-card h1 {
+    margin: 0 0 14px;
+    color: #101a2c;
+    font-size: 32px;
+    font-weight: 800;
+}
+
+
+/* Description */
+
+.payment-cancel-message {
+    max-width: 410px;
+    margin: 0 auto 30px;
+    color: #738095;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+
+/* Buttons */
+
+.payment-cancel-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.cancel-button {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 700;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+
+    /* Try Again */
+
+    .cancel-button.primary {
+        background: linear-gradient( 135deg, #2d6df6, #19a7df );
+        color: #ffffff;
+        box-shadow: 0 8px 20px rgba(45, 109, 246, 0.20);
+    }
+
+
+        .cancel-button.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(45, 109, 246, 0.28);
+        }
+
+
+    /* Back to Fees */
+
+    .cancel-button.secondary {
+        background: #f6f8fb;
+        color: #314158;
+        border: 1px solid #dfe6ef;
+    }
+
+
+        .cancel-button.secondary:hover {
+            background: #eef3f8;
+            transform: translateY(-1px);
+        }
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    .payment-cancel-page {
+        padding: 24px 16px;
+    }
+
+    .payment-cancel-card {
+        padding: 34px 22px;
+    }
+
+        .payment-cancel-card h1 {
+            font-size: 27px;
+        }
+}
